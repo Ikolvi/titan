@@ -365,6 +365,29 @@ Titan also includes advanced patterns for large-scale apps:
 
 See the [full documentation](docs/) for details.
 
+---
+
+## Performance
+
+Titan's reactive engine is built for speed. Benchmarks run automatically in CI on every push.
+
+> **Run locally:** `cd packages/titan && dart run benchmark/benchmark.dart`
+
+| Benchmark | Result | Detail |
+|-----------|--------|--------|
+| **Node Creation** (100K) | **0.04 µs/node** | 25M allocations/sec |
+| **Notification Throughput** | **5.0M mutations/sec** | 1 listener × 10K mutations |
+| **Batch Speedup** | **1.4×** | 100 states batched vs unbatched |
+| **Deep Chain** (1000 deep) | **103 µs/propagation** | Full chain recompute |
+| **Wide Fan-Out** (10K deps) | **1016 µs/propagation** | 1 source → 10K dependents |
+| **Diamond Pattern** (1K) | **0.48 µs/diamond** | A→B, A→C, B+C→D |
+| **Herald Events** (10 listeners) | **2.8M events/sec** | Cross-domain messaging |
+| **Pillar Lifecycle** (10K) | **1.43 µs/pillar** | Create → init → dispose |
+| **Epoch Overhead** | **~1.0× vs plain state** | Undo/redo history recording |
+| **Vigil Capture** | **13M+ captures/sec** | Ring buffer error tracking |
+
+<sup>Measured on Apple Silicon (M-series). CI results available in [GitHub Actions](../../actions) job summaries.</sup>
+
 ## Packages
 
 | Package | Description |

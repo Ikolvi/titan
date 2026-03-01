@@ -51,3 +51,48 @@ jobs:
 
       - name: Check formatting
         run: dart format --set-exit-if-changed packages/titan/lib packages/titan_bastion/lib packages/titan_atlas/lib
+
+  benchmark:
+    runs-on: ubuntu-latest
+    needs: analyze-and-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.4'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Melos
+        run: dart pub global activate melos
+
+      - name: Bootstrap
+        run: melos bootstrap
+
+      - name: Run Core Benchmarks
+        working-directory: packages/titan
+        run: dart run benchmark/benchmark.dart | tee benchmark_output.txt
+
+      - name: Run CI Benchmarks (JSON)
+        working-directory: packages/titan
+        run: dart run benchmark/benchmark_ci.dart > benchmark_results.json
+
+      - name: Generate Benchmark Summary
+        working-directory: packages/titan
+        run: |
+          echo "## ⚡ Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat benchmark_output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            packages/titan/benchmark_output.txt
+            packages/titan/benchmark_results.json
+          retention-days: 90
