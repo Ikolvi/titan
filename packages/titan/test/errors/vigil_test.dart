@@ -453,4 +453,101 @@ void main() {
           error: 'fatal', severity: ErrorSeverity.fatal));
     });
   });
+
+  group('Vigil — Ring Buffer', () {
+    test('ring buffer wraps correctly at capacity', () {
+      Vigil.maxHistorySize = 3;
+
+      for (var i = 0; i < 10; i++) {
+        Vigil.capture('error $i');
+      }
+
+      expect(Vigil.history, hasLength(3));
+      // Should have the 3 most recent in order
+      expect(Vigil.history[0].error, 'error 7');
+      expect(Vigil.history[1].error, 'error 8');
+      expect(Vigil.history[2].error, 'error 9');
+    });
+
+    test('lastError correct after buffer wraps multiple times', () {
+      Vigil.maxHistorySize = 2;
+
+      Vigil.capture('a');
+      expect(Vigil.lastError?.error, 'a');
+
+      Vigil.capture('b');
+      expect(Vigil.lastError?.error, 'b');
+
+      Vigil.capture('c'); // wraps
+      expect(Vigil.lastError?.error, 'c');
+
+      Vigil.capture('d'); // wraps again
+      expect(Vigil.lastError?.error, 'd');
+
+      // History should be [c, d]
+      expect(Vigil.history[0].error, 'c');
+      expect(Vigil.history[1].error, 'd');
+    });
+
+    test('increasing maxHistorySize preserves existing entries', () {
+      Vigil.maxHistorySize = 3;
+
+      Vigil.capture('a');
+      Vigil.capture('b');
+      Vigil.capture('c');
+
+      expect(Vigil.history, hasLength(3));
+
+      Vigil.maxHistorySize = 10;
+      expect(Vigil.history, hasLength(3));
+      expect(Vigil.history[0].error, 'a');
+      expect(Vigil.history[1].error, 'b');
+      expect(Vigil.history[2].error, 'c');
+
+      // Can now add more
+      Vigil.capture('d');
+      expect(Vigil.history, hasLength(4));
+    });
+
+    test('clearHistory resets ring buffer after wrap', () {
+      Vigil.maxHistorySize = 2;
+
+      Vigil.capture('a');
+      Vigil.capture('b');
+      Vigil.capture('c'); // wraps
+
+      Vigil.clearHistory();
+      expect(Vigil.history, isEmpty);
+      expect(Vigil.lastError, isNull);
+
+      // Can record again after clear
+      Vigil.capture('d');
+      expect(Vigil.history, hasLength(1));
+      expect(Vigil.lastError?.error, 'd');
+    });
+
+    test('setting same maxHistorySize is no-op', () {
+      Vigil.maxHistorySize = 100; // default
+      Vigil.capture('a');
+      Vigil.capture('b');
+
+      Vigil.maxHistorySize = 100; // same
+      expect(Vigil.history, hasLength(2));
+    });
+
+    test('bySeverity works after ring buffer wraps', () {
+      Vigil.maxHistorySize = 3;
+
+      Vigil.capture('w1', severity: ErrorSeverity.warning);
+      Vigil.capture('e1', severity: ErrorSeverity.error);
+      Vigil.capture('w2', severity: ErrorSeverity.warning);
+      Vigil.capture('e2', severity: ErrorSeverity.error); // wraps, evicts w1
+      Vigil.capture('f1', severity: ErrorSeverity.fatal); // wraps, evicts e1
+
+      // History: [w2, e2, f1]
+      expect(Vigil.bySeverity(ErrorSeverity.warning), hasLength(1));
+      expect(Vigil.bySeverity(ErrorSeverity.error), hasLength(1));
+      expect(Vigil.bySeverity(ErrorSeverity.fatal), hasLength(1));
+    });
+  });
 }

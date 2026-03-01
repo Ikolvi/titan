@@ -76,4 +76,53 @@ void main() {
       expect(state.value, 2);
     });
   });
+
+  group('batch error handling', () {
+    test('endBatch runs even when updates throw', () {
+      final state = TitanState(0);
+      int listenerCalls = 0;
+      state.addListener(() => listenerCalls++);
+
+      expect(
+        () => titanBatch(() {
+          state.value = 1;
+          throw StateError('boom');
+        }),
+        throwsStateError,
+      );
+
+      // endBatch should have been called, flushing the pending state change
+      expect(state.value, 1);
+      expect(listenerCalls, 1);
+
+      // Subsequent batches should still work
+      titanBatch(() {
+        state.value = 2;
+      });
+      expect(state.value, 2);
+      expect(listenerCalls, 2);
+
+      state.dispose();
+    });
+
+    test('async batch endBatch runs even when updates throw', () async {
+      final state = TitanState(0);
+      int listenerCalls = 0;
+      state.addListener(() => listenerCalls++);
+
+      await expectLater(
+        titanBatchAsync(() async {
+          state.value = 1;
+          throw StateError('async boom');
+        }),
+        throwsStateError,
+      );
+
+      // endBatch should still have been called
+      expect(state.value, 1);
+      expect(listenerCalls, 1);
+
+      state.dispose();
+    });
+  });
 }

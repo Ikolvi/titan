@@ -76,5 +76,68 @@ void main() {
       store.initialize(); // Should not throw or re-initialize
       expect(store.isInitialized, true);
     });
+
+    test('addMiddleware and removeMiddleware', () {
+      final store = _TestStore();
+      final mw = _RecordingMiddleware();
+
+      store.addMiddleware(mw);
+      // Middleware list is internal; verify remove doesn't throw
+      store.removeMiddleware(mw);
+
+      // Re-add and dispose — dispose clears middleware list
+      store.addMiddleware(mw);
+      store.dispose();
+      // After dispose, middleware list is cleared
+      expect(store.isDisposed, true);
+    });
+
+    test('createEffect is managed and disposed with store', () {
+      final store = _EffectStore();
+      store.initialize();
+
+      // Effect should have fired immediately
+      expect(store.effectRanCount, 1);
+
+      store.counter.value = 5;
+      expect(store.effectRanCount, 2);
+
+      store.dispose();
+      expect(store.isDisposed, true);
+    });
+
+    test('only disposes once', () {
+      final store = _TestStore();
+      store.dispose();
+      store.dispose(); // Should not throw
+      expect(store.isDisposed, true);
+    });
   });
+}
+
+class _RecordingMiddleware extends TitanMiddleware {
+  final List<StateChangeEvent> events = [];
+
+  @override
+  void onStateChange(StateChangeEvent event) {
+    events.add(event);
+  }
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {}
+}
+
+class _EffectStore extends TitanStore {
+  late final counter = createState(0, name: 'counter');
+  int effectRanCount = 0;
+  late final _trackEffect = createEffect(() {
+    counter.value; // track dependency
+    effectRanCount++;
+  }, name: 'trackEffect');
+
+  @override
+  void onInit() {
+    // Access the late field to trigger initialization
+    _trackEffect;
+  }
 }

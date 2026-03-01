@@ -265,6 +265,33 @@ void main() {
       Titan.reset();
       expect(pillar.isDisposed, true);
     });
+
+    test('forge registers Pillar by runtimeType', () {
+      final pillar = _TestCounterPillar();
+      Titan.forge(pillar);
+
+      expect(Titan.has<_TestCounterPillar>(), isTrue);
+      expect(Titan.get<_TestCounterPillar>(), same(pillar));
+      // Should be auto-initialized
+      expect(pillar.isInitialized, isTrue);
+    });
+
+    test('removeByType removes and disposes Pillar', () {
+      final pillar = _TestLifecyclePillar();
+      Titan.forge(pillar);
+
+      final removed = Titan.removeByType(_TestLifecyclePillar);
+      expect(removed, same(pillar));
+      expect(pillar.isDisposed, isTrue);
+      expect(Titan.has<_TestLifecyclePillar>(), isFalse);
+    });
+
+    test('lazy factory auto-initializes Pillar on first get', () {
+      Titan.lazy<_TestLifecyclePillar>(() => _TestLifecyclePillar());
+
+      final pillar = Titan.get<_TestLifecyclePillar>();
+      expect(pillar.isInitialized, isTrue);
+    });
   });
 }
 

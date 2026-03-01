@@ -467,4 +467,48 @@ void main() {
       expect(ins[ListenerPillar], isA<Pillar>());
     });
   });
+
+  group('Herald — maxLastEventTypes', () {
+    test('evicts oldest when exceeding maxLastEventTypes', () {
+      Herald.reset();
+      Herald.maxLastEventTypes = 2;
+
+      // Emit 3 different event types — only 2 should be cached
+      Herald.emit(UserLoggedIn('user1'));
+      Herald.emit(UserLoggedOut());
+      Herald.emit(_ThirdEvent());
+
+      // One of the first two types should have been evicted
+      final hasLogin = Herald.last<UserLoggedIn>() != null;
+      final hasLogout = Herald.last<UserLoggedOut>() != null;
+      final hasThird = Herald.last<_ThirdEvent>() != null;
+
+      // Exactly 2 should be present
+      final presentCount = [hasLogin, hasLogout, hasThird].where((b) => b).length;
+      expect(presentCount, 2);
+      // The most recently emitted should always be present
+      expect(hasThird, isTrue);
+
+      Herald.reset();
+    });
+
+    test('clearAllLast removes all cached events', () {
+      Herald.reset();
+
+      Herald.emit(UserLoggedIn('user1'));
+      Herald.emit(UserLoggedOut());
+
+      expect(Herald.last<UserLoggedIn>(), isNotNull);
+      expect(Herald.last<UserLoggedOut>(), isNotNull);
+
+      Herald.clearAllLast();
+
+      expect(Herald.last<UserLoggedIn>(), isNull);
+      expect(Herald.last<UserLoggedOut>(), isNull);
+
+      Herald.reset();
+    });
+  });
 }
+
+class _ThirdEvent {}

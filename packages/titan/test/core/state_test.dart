@@ -101,5 +101,111 @@ void main() {
       state.dispose();
       expect(state.isDisposed, true);
     });
+
+    test('listen returns unsubscribe function', () {
+      final state = TitanState(0);
+      final values = <int>[];
+
+      final cancel = state.listen((v) => values.add(v));
+      state.value = 1;
+      state.value = 2;
+      expect(values, [1, 2]);
+
+      cancel();
+      state.value = 3;
+      expect(values, [1, 2]); // No more notifications
+
+      state.dispose();
+    });
+
+    test('setting value after dispose does not notify', () {
+      final state = TitanState(0);
+      int notified = 0;
+      state.addListener(() => notified++);
+
+      state.dispose();
+      // Setting value on disposed state - should be safe
+      state.value = 99;
+      expect(notified, 0);
+    });
+
+    test('addListener during notification is safe (copy-on-write)', () {
+      final state = TitanState(0);
+      int secondListenerCalls = 0;
+
+      state.addListener(() {
+        // Add a new listener while notifying
+        state.addListener(() => secondListenerCalls++);
+      });
+
+      state.value = 1; // First listener fires, adds second
+      expect(secondListenerCalls, 0); // Second not called during this cycle
+
+      state.value = 2; // Now both fire
+      expect(secondListenerCalls, 1);
+
+      state.dispose();
+    });
+
+    test('removeListener during notification is safe (copy-on-write)', () {
+      final state = TitanState(0);
+      int calls = 0;
+      late void Function() listener2;
+
+      state.addListener(() {
+        calls++;
+        state.removeListener(listener2);
+      });
+      listener2 = () => calls++;
+      state.addListener(listener2);
+
+      state.value = 1;
+      // Both listeners fire during this notification (snapshot taken before removal)
+      expect(calls, 2);
+
+      // Now listener2 is removed
+      state.value = 2;
+      expect(calls, 3); // Only first listener fires
+
+      state.dispose();
+    });
+
+    test('notifies TitanObserver on value change', () {
+      final changes = <(dynamic, dynamic)>[];
+      TitanObserver.instance = _TestObserver(
+        onChanged: (_, oldVal, newVal) => changes.add((oldVal, newVal)),
+      );
+
+      final state = TitanState(0);
+      state.value = 1;
+      state.value = 2;
+
+      expect(changes, [(0, 1), (1, 2)]);
+
+      state.dispose();
+      TitanObserver.instance = null;
+    });
+
+    test('toString without name shows type and value', () {
+      final state = TitanState(42);
+      expect(state.toString(), contains('42'));
+      state.dispose();
+    });
   });
+}
+
+class _TestObserver extends TitanObserver {
+  final void Function(TitanState state, dynamic oldValue, dynamic newValue)
+      onChanged;
+
+  _TestObserver({required this.onChanged});
+
+  @override
+  void onStateChanged({
+    required TitanState state,
+    required dynamic oldValue,
+    required dynamic newValue,
+  }) {
+    onChanged(state, oldValue, newValue);
+  }
 }
