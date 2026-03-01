@@ -1,10 +1,16 @@
+import 'dart:async';
+
 import 'package:meta/meta.dart';
 
 import '../core/batch.dart';
 import '../core/computed.dart';
 import '../core/effect.dart';
+import '../core/epoch.dart';
 import '../core/reactive.dart';
 import '../core/state.dart';
+import '../errors/vigil.dart';
+import '../events/herald.dart';
+import '../logging/chronicle.dart';
 
 /// The fundamental organizing unit of Titan's state management.
 ///
@@ -75,6 +81,7 @@ import '../core/state.dart';
 abstract class Pillar {
   final List<ReactiveNode> _managedNodes = [];
   final List<TitanEffect> _managedEffects = [];
+  final List<StreamSubscription<dynamic>> _managedSubscriptions = [];
   bool _isInitialized = false;
   bool _isDisposed = false;
 
@@ -133,6 +140,40 @@ abstract class Pillar {
   }
 
   // ---------------------------------------------------------------------------
+  // Epoch creation — Cores with undo/redo history
+  // ---------------------------------------------------------------------------
+
+  /// Creates an [Epoch] (Core with undo/redo history) managed by this Pillar.
+  ///
+  /// An Epoch behaves exactly like a Core, but records every value change
+  /// for time-travel navigation.
+  ///
+  /// ```dart
+  /// late final text = epoch('', maxHistory: 200);
+  ///
+  /// void type(String s) => strike(() => text.value = s);
+  /// void undo() => text.undo();
+  /// void redo() => text.redo();
+  /// ```
+  @protected
+  Epoch<T> epoch<T>(
+    T initialValue, {
+    int maxHistory = 100,
+    String? name,
+    bool Function(T previous, T next)? equals,
+  }) {
+    _assertNotDisposed();
+    final e = Epoch<T>(
+      initialValue,
+      maxHistory: maxHistory,
+      name: name,
+      equals: equals,
+    );
+    _managedNodes.add(e);
+    return e;
+  }
+
+  // ---------------------------------------------------------------------------
   // Strike — batched, tracked mutations
   // ---------------------------------------------------------------------------
 
@@ -159,6 +200,9 @@ abstract class Pillar {
 
   /// Async version of [strike].
   ///
+  /// Errors thrown inside the action are automatically captured via
+  /// [Vigil] with this Pillar's type as the source, then rethrown.
+  ///
   /// ```dart
   /// Future<void> login(String email, String pass) => strikeAsync(() async {
   ///   final response = await api.login(email, pass);
@@ -167,9 +211,14 @@ abstract class Pillar {
   /// });
   /// ```
   @protected
-  Future<void> strikeAsync(Future<void> Function() action) {
+  Future<void> strikeAsync(Future<void> Function() action) async {
     _assertNotDisposed();
-    return titanBatchAsync(action);
+    try {
+      await titanBatchAsync(action);
+    } catch (e, s) {
+      captureError(e, stackTrace: s, action: 'strikeAsync');
+      rethrow;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -217,6 +266,140 @@ abstract class Pillar {
   }
 
   // ---------------------------------------------------------------------------
+  // Herald — cross-Pillar event messaging
+  // ---------------------------------------------------------------------------
+
+  /// Listen for [Herald] events of type [T].
+  ///
+  /// The subscription is automatically cancelled when this Pillar is disposed,
+  /// so you never need to manually cancel it.
+  ///
+  /// ```dart
+  /// @override
+  /// void onInit() {
+  ///   listen<UserLoggedOut>((_) {
+  ///     strike(() => items.value = []);
+  ///   });
+  ///
+  ///   listen<ThemeChanged>((event) {
+  ///     strike(() => isDark.value = event.isDark);
+  ///   });
+  /// }
+  /// ```
+  @protected
+  StreamSubscription<T> listen<T>(void Function(T event) handler) {
+    _assertNotDisposed();
+    final subscription = Herald.on<T>(handler);
+    _managedSubscriptions.add(subscription);
+    return subscription;
+  }
+
+  /// Listen for exactly one [Herald] event of type [T], then auto-cancel.
+  ///
+  /// The subscription is also cancelled if the Pillar is disposed before
+  /// the event arrives.
+  ///
+  /// ```dart
+  /// @override
+  /// void onInit() {
+  ///   listenOnce<AppReady>((_) => loadData());
+  /// }
+  /// ```
+  @protected
+  StreamSubscription<T> listenOnce<T>(void Function(T event) handler) {
+    _assertNotDisposed();
+    final subscription = Herald.once<T>(handler);
+    _managedSubscriptions.add(subscription);
+    return subscription;
+  }
+
+  /// Emit a [Herald] event of type [T].
+  ///
+  /// Broadcasts the event to all listeners across the application.
+  ///
+  /// ```dart
+  /// void checkout() {
+  ///   processOrder(items.value);
+  ///   emit(OrderPlaced(items: items.value));
+  ///   strike(() => items.value = []);
+  /// }
+  /// ```
+  @protected
+  void emit<T>(T event) {
+    _assertNotDisposed();
+    Herald.emit<T>(event);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Vigil — centralized error tracking
+  // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // Chronicle — structured logging
+  // ---------------------------------------------------------------------------
+
+  /// A named [Chronicle] logger for this Pillar.
+  ///
+  /// Automatically named after the Pillar's `runtimeType` for easy
+  /// identification in log output.
+  ///
+  /// ```dart
+  /// class AuthPillar extends Pillar {
+  ///   Future<void> login(String email) async {
+  ///     log.info('Attempting login', {'email': email});
+  ///     try {
+  ///       final user = await api.login(email);
+  ///       log.info('Login successful');
+  ///     } catch (e, s) {
+  ///       log.error('Login failed', e, s);
+  ///     }
+  ///   }
+  /// }
+  /// ```
+  @protected
+  late final Chronicle log = Chronicle('$runtimeType');
+
+  // ---------------------------------------------------------------------------
+  // Vigil — centralized error tracking
+  // ---------------------------------------------------------------------------
+
+  /// Capture an error via [Vigil] with automatic Pillar context.
+  ///
+  /// The error is tagged with this Pillar's `runtimeType` as the source.
+  /// Use this instead of raw `Vigil.capture` inside Pillars for
+  /// richer error context.
+  ///
+  /// ```dart
+  /// Future<void> loadData() async {
+  ///   try {
+  ///     final data = await api.fetchData();
+  ///     strike(() => items.value = data);
+  ///   } catch (e, s) {
+  ///     captureError(e, stackTrace: s, action: 'loadData');
+  ///   }
+  /// }
+  /// ```
+  @protected
+  void captureError(
+    Object error, {
+    StackTrace? stackTrace,
+    ErrorSeverity severity = ErrorSeverity.error,
+    String? action,
+    Map<String, dynamic>? metadata,
+  }) {
+    Vigil.capture(
+      error,
+      stackTrace: stackTrace,
+      severity: severity,
+      context: ErrorContext(
+        source: runtimeType,
+        action: action,
+        metadata: metadata,
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Lifecycle
   // ---------------------------------------------------------------------------
 
@@ -255,7 +438,13 @@ abstract class Pillar {
 
     onDispose();
 
-    // Dispose effects first (they may reference cores/derived)
+    // Cancel Herald subscriptions first
+    for (final subscription in _managedSubscriptions) {
+      subscription.cancel();
+    }
+    _managedSubscriptions.clear();
+
+    // Dispose effects (they may reference cores/derived)
     for (final effect in _managedEffects) {
       effect.dispose();
     }

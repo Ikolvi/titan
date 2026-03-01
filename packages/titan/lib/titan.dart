@@ -39,6 +39,8 @@
 /// - [Derived] / [derived] — Reactive computed values
 /// - [strike] — Batched state mutations
 /// - [Titan] — Global Pillar registry & DI
+/// - [Herald] — Cross-Pillar event bus
+/// - [Vigil] — Centralized error tracking
 ///
 /// ## Advanced API
 ///
@@ -52,6 +54,10 @@ library;
 // Primary API — Titan architecture
 export 'src/api.dart';
 export 'src/pillar/pillar.dart';
+export 'src/events/herald.dart';
+export 'src/errors/vigil.dart';
+export 'src/logging/chronicle.dart';
+export 'src/persistence/relic.dart';
 
 // Core reactive primitives
 export 'src/core/reactive.dart';
@@ -59,6 +65,8 @@ export 'src/core/state.dart';
 export 'src/core/computed.dart';
 export 'src/core/effect.dart';
 export 'src/core/batch.dart';
+export 'src/core/epoch.dart';
+export 'src/core/flux.dart';
 export 'src/core/observer.dart';
 
 // Store pattern (advanced / legacy)

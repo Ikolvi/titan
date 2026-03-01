@@ -5,6 +5,61 @@ All notable changes to the Titan packages will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.3] - 2025-07-12
+
+### Added
+
+#### Titan Core (`titan`)
+- **Herald** — Cross-domain event bus for decoupled Pillar-to-Pillar communication
+  - `Herald.emit<T>()`, `Herald.on<T>()`, `Herald.once<T>()`, `Herald.stream<T>()`
+  - `Herald.last<T>()` — replay the most recently emitted event
+  - `Herald.hasListeners<T>()`, `Herald.reset()`
+- **Pillar.listen<T>()** — Managed Herald subscription (auto-cancelled on dispose)
+- **Pillar.listenOnce<T>()** — Managed one-shot Herald subscription
+- **Pillar.emit<T>()** — Convenience to emit Herald events from a Pillar
+- **Vigil** — Centralized error tracking with pluggable handlers
+  - `Vigil.capture()`, `Vigil.guard()`, `Vigil.guardAsync()`, `Vigil.captureAndRethrow()`
+  - `ConsoleErrorHandler`, `FilteredErrorHandler` — built-in handler implementations
+  - `Vigil.history`, `Vigil.lastError`, `Vigil.bySeverity()`, `Vigil.bySource()`
+  - `Vigil.errors` — real-time error stream
+- **Pillar.captureError()** — Managed Vigil capture with automatic Pillar context
+- **Pillar.strikeAsync** now auto-captures errors via Vigil before rethrowing
+- **Chronicle** — Structured logging with named loggers and pluggable sinks
+  - `Chronicle('name')` — named logger instances
+  - Log levels: `trace`, `debug`, `info`, `warning`, `error`, `fatal`
+  - `LogSink`, `ConsoleLogSink` — pluggable output destinations
+  - `Chronicle.level`, `Chronicle.addSink()`, `Chronicle.removeSink()`
+- **Pillar.log** — Auto-named Chronicle logger per Pillar
+- **Epoch** — Core with undo/redo history (time-travel state)
+  - `Epoch<T>` — `undo()`, `redo()`, `canUndo`, `canRedo`, `history`, `clearHistory()`
+  - Configurable `maxHistory` depth (default 100)
+- **Pillar.epoch()** — Create managed Epoch (Core with history)
+- **Flux** — Stream-like operators for reactive Cores
+  - `core.debounce(duration)` — debounced state propagation
+  - `core.throttle(duration)` — throttled state propagation
+  - `core.asStream()` — convert Core to typed `Stream<T>`
+  - `node.onChange` — stream of change signals
+- **Relic** — Persistence & hydration for Cores
+  - `RelicAdapter` — pluggable storage backend interface
+  - `InMemoryRelicAdapter` — built-in adapter for testing
+  - `RelicEntry<T>` — typed serialization config per Core
+  - `Relic.hydrate()`, `Relic.persist()`, `Relic.enableAutoSave()`
+  - Configurable key prefix (default `'titan:'`)
+- 83 new tests (Herald: 28, Vigil: 35, Chronicle: 21, Epoch: 22, Flux: 13, Relic: 18) — 221 total in titan core
+
+#### Atlas — Routing (`titan_atlas`)
+- **HeraldAtlasObserver** — Bridges Atlas lifecycle to Herald events
+  - `AtlasRouteChanged` — emitted on navigate/pop/replace/reset
+  - `AtlasGuardRedirect` — emitted when Sentinel redirects
+  - `AtlasDriftRedirect` — emitted when Drift redirects
+  - `AtlasRouteNotFound` — emitted on 404
+- 9 new tests — 92 total in titan_atlas
+
+### Fixed
+- **Top-level function shadowing**: Removed `strike()` / `strikeAsync()` from `api.dart` — Dart resolves top-level functions over inherited instance methods, bypassing `_assertNotDisposed()` and auto-capture. Use `titanBatch()` / `titanBatchAsync()` for standalone batching.
+
+---
+
 ## [0.0.2] - 2025-07-12
 
 ### Added

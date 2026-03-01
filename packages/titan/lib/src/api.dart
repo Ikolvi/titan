@@ -34,7 +34,6 @@
 /// ```
 library;
 
-import 'core/batch.dart';
 import 'core/state.dart';
 import 'core/computed.dart';
 import 'pillar/pillar.dart';
@@ -69,29 +68,20 @@ typedef Derived<T> = TitanComputed<T>;
 // Top-level functions
 // ---------------------------------------------------------------------------
 
-/// Executes a **Strike** — a batched state mutation.
-///
-/// All [Core] mutations inside are grouped into a single notification
-/// cycle, preventing unnecessary intermediate rebuilds.
-///
-/// ```dart
-/// strike(() {
-///   count.value = 0;
-///   name.value = '';
-///   filter.value = Filter.all;
-/// }); // Single notification — dependents see final state only
-/// ```
-void strike(void Function() fn) => titanBatch(fn);
-
-/// Async version of [strike].
-///
-/// ```dart
-/// await strikeAsync(() async {
-///   count.value = await fetchCount();
-///   name.value = await fetchName();
-/// });
-/// ```
-Future<void> strikeAsync(Future<void> Function() fn) => titanBatchAsync(fn);
+// IMPORTANT: Top-level strike() and strikeAsync() functions have been
+// intentionally removed. Dart's name resolution causes top-level functions
+// to shadow Pillar instance methods of the same name, even in regular method
+// bodies — not just `late final` initializers. This means:
+//
+//   class MyPillar extends Pillar {
+//     void increment() => strike(() => count.value++);
+//   }
+//
+// Would call the TOP-LEVEL strike() instead of Pillar.strike(), bypassing
+// _assertNotDisposed() and auto-capture in strikeAsync().
+//
+// Use titanBatch() / titanBatchAsync() for standalone batching outside
+// of Pillars, or call this.strike() / this.strikeAsync() in Pillar methods.
 
 // ---------------------------------------------------------------------------
 // Titan — Global service locator & Pillar registry

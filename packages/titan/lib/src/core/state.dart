@@ -1,5 +1,3 @@
-import 'package:meta/meta.dart';
-
 import 'observer.dart';
 import 'reactive.dart';
 
@@ -94,7 +92,8 @@ class TitanState<T> extends ReactiveNode {
   /// Silently sets the value without notifying dependents.
   ///
   /// Use with caution — this bypasses the reactive system.
-  @visibleForTesting
+  /// Primarily used by [Relic] for hydration (restoring persisted values
+  /// without triggering reactive updates).
   void silent(T newValue) {
     _value = newValue;
   }

@@ -57,6 +57,7 @@ export 'src/core/route_trie.dart';
 
 // Navigation
 export 'src/navigation/atlas.dart';
+export 'src/navigation/herald_atlas_observer.dart';
 
 // Widgets & extensions
 export 'src/widgets/atlas_context.dart';

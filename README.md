@@ -19,6 +19,8 @@ A uniquely powerful reactive state management architecture for Flutter — struc
 | State | **Core** | The indestructible center of the Pillar |
 | Consumer | **Vestige** | The UI — a visible trace of the underlying power |
 | Provider | **Beacon** | Shines state down to all children |
+| Event Bus | **Herald** | Cross-Pillar messaging, no coupling |
+| Error Tracking | **Vigil** | Centralized error capture & routing |
 | Router | **Atlas** | Maps all paths, bears the world |
 | Route | **Passage** | A way through to a destination |
 | Shell Route | **Sanctum** | Inner chamber — persistent layout |
@@ -27,6 +29,10 @@ A uniquely powerful reactive state management architecture for Flutter — struc
 | Route State | **Waypoint** | Current position in the journey |
 | Parameters | **Runes** | Ancient symbols carrying meaning |
 | Redirect | **Drift** | Navigation shifts course |
+| Logger | **Chronicle** | Records all that transpires |
+| Undo/Redo State | **Epoch** | A distinct period in time |
+| Stream Operators | **Flux** | Flow of reactive changes |
+| Persistence | **Relic** | Preserved across ages |
 
 ---
 
@@ -92,7 +98,11 @@ Vestige<CounterPillar>(
 | Structured scalability | ⚠️ | ✅ | ✅ | ❌ | ✅ |
 | Lifecycle management | ❌ | ✅ | ✅ | ⚠️ | ✅ |
 | Scoped + Global DI | ❌ | ⚠️ | ✅ | ❌ | ✅ |
+| Cross-domain events | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Pure Dart core | ❌ | ✅ | ✅ | ❌ | ✅ |
+| Undo/Redo built-in | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Persistence layer | ❌ | ⚠️ | ❌ | ❌ | ✅ |
+| Structured logging | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 ### Vs Bloc
 

@@ -75,7 +75,7 @@ void main() {
     });
   });
 
-  group('strike()', () {
+  group('titanBatch()', () {
     test('groups updates into single notification', () {
       final a = Core(0);
       final b = Core(0);
@@ -83,7 +83,7 @@ void main() {
 
       a.addListener(() => listenerCalls++);
 
-      strike(() {
+      titanBatch(() {
         a.value = 1;
         a.value = 2;
         a.value = 3;

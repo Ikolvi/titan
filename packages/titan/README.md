@@ -25,6 +25,12 @@ A signal-based reactive state management engine for Dart & Flutter — fine-grai
 | DI Container | **Vault** | Hierarchical dependency container |
 | Module | **Forge** | Dependency assembly unit |
 | Config | **Edict** | Global Titan configuration |
+| Event Bus | **Herald** | Cross-domain Pillar messaging |
+| Error Tracking | **Vigil** | Centralized error capture & handlers |
+| Logger | **Chronicle** | Structured logging with pluggable sinks |
+| Undo/Redo | **Epoch** | Core with time-travel history |
+| Stream Operators | **Flux** | Debounce, throttle, asStream |
+| Persistence | **Relic** | Auto-save & hydrate Cores |
 | Async Data | **Ether** | Loading / error / data wrapper |
 
 ---
@@ -90,12 +96,19 @@ Each `Core` is an independent reactive node. Reading `.value` inside a `Derived`
 ### Strike — Batched Mutations
 
 ```dart
-strike(() {
+// Inside a Pillar:
+void updateProfile() => strike(() {
   name.value = 'Alice';
   age.value = 30;
   role.value = 'Admin';
 });
 // Dependents recompute ONCE, not three times
+
+// Standalone (outside a Pillar):
+titanBatch(() {
+  name.value = 'Alice';
+  age.value = 30;
+});
 ```
 
 ### Watch — Reactive Side Effects
@@ -132,6 +145,36 @@ class DataPillar extends Pillar {
 }
 ```
 
+### Herald — Cross-Pillar Events
+
+```dart
+// Define events (plain Dart classes)
+class UserLoggedIn {
+  final String userId;
+  UserLoggedIn(this.userId);
+}
+
+// In AuthPillar — emit events
+void login() {
+  // ... authenticate ...
+  emit(UserLoggedIn(user.id));
+}
+
+// In CartPillar — listen for events (auto-disposed)
+@override
+void onInit() {
+  listen<UserLoggedIn>((event) {
+    strike(() => loadCartForUser(event.userId));
+  });
+}
+
+// Or use Herald directly
+Herald.emit(UserLoggedIn('abc'));
+Herald.on<UserLoggedIn>((e) => print(e.userId));
+Herald.once<AppReady>((_) => startUp());
+final last = Herald.last<UserLoggedIn>(); // Replay
+```
+
 ### Global DI
 
 ```dart
@@ -164,6 +207,36 @@ users.value.when(
 );
 ```
 
+### Vigil — Centralized Error Tracking
+
+```dart
+// Add handlers (console, Crashlytics, Sentry, etc.)
+Vigil.addHandler(ConsoleErrorHandler());
+Vigil.addHandler(myCrashlyticsHandler);
+
+// Errors in strikeAsync are auto-captured with Pillar context
+Future<void> loadData() => strikeAsync(() async {
+  final data = await api.fetchData(); // If this throws → auto-captured
+  items.value = data;
+});
+
+// Manual capture with context
+try {
+  await riskyOperation();
+} catch (e, s) {
+  captureError(e, stackTrace: s, action: 'riskyOperation');
+}
+
+// Query error history
+final fatals = Vigil.bySeverity(ErrorSeverity.fatal);
+final authErrors = Vigil.bySource(AuthPillar);
+final lastError = Vigil.lastError;
+
+// Guarded execution (captures error, returns null on failure)
+final result = Vigil.guard(() => parseConfig(raw));
+final users = await Vigil.guardAsync(() => api.fetchUsers());
+```
+
 ### Oracle — Global Observer
 
 ```dart
@@ -189,6 +262,76 @@ class ValidationAegis extends TitanMiddleware {
 }
 ```
 
+### Chronicle — Structured Logging
+
+```dart
+class AuthPillar extends Pillar {
+  @override
+  void onInit() {
+    log.info('AuthPillar initialized');  // auto-named 'AuthPillar'
+  }
+
+  Future<void> login(String email) async {
+    log.debug('Attempting login', {'email': email});
+    try {
+      final user = await api.login(email);
+      log.info('Login successful');
+    } catch (e, s) {
+      log.error('Login failed', e, s);
+    }
+  }
+}
+
+// Configure globally
+Chronicle.level = LogLevel.info;     // Suppress trace/debug
+Chronicle.addSink(MyFileSink());     // Custom output
+```
+
+### Epoch — Undo/Redo History
+
+```dart
+class EditorPillar extends Pillar {
+  late final text = epoch('');            // Core with history!
+  late final fontSize = epoch(14.0);
+
+  void type(String s) => strike(() => text.value = s);
+  void undo() => text.undo();
+  void redo() => text.redo();
+  // text.canUndo, text.canRedo, text.history
+}
+```
+
+### Flux — Stream Operators
+
+```dart
+class SearchPillar extends Pillar {
+  late final query = core('');
+  late final debouncedQuery = query.debounce(Duration(milliseconds: 300));
+
+  // Also: query.throttle(), query.asStream(), query.onChange
+}
+```
+
+### Relic — Persistence & Hydration
+
+```dart
+class SettingsPillar extends Pillar {
+  late final theme = core('light');
+  late final relic = Relic(
+    adapter: sharedPrefsAdapter,
+    entries: {
+      'theme': RelicEntry(core: theme, toJson: (v) => v, fromJson: (v) => v as String),
+    },
+  );
+
+  @override
+  void onInit() async {
+    await relic.hydrate();        // Restore from storage
+    relic.enableAutoSave();       // Auto-persist on changes
+  }
+}
+```
+
 ---
 
 ## Why Titan?
@@ -202,6 +345,9 @@ class ValidationAegis extends TitanMiddleware {
 | Lifecycle management | ❌ | ✅ | ✅ | ⚠️ | ✅ |
 | Scoped + Global DI | ❌ | ⚠️ | ✅ | ❌ | ✅ |
 | Pure Dart core | ❌ | ✅ | ✅ | ❌ | ✅ |
+| Undo/Redo built-in | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Persistence layer | ❌ | ⚠️ | ❌ | ❌ | ✅ |
+| Structured logging | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 ---
 

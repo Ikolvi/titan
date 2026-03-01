@@ -177,6 +177,35 @@ Atlas(
 )
 ```
 
+### HeraldAtlasObserver — Cross-Domain Route Events
+
+Bridge Atlas navigation into Titan's Herald event bus automatically:
+
+```dart
+import 'package:titan/titan.dart';
+import 'package:titan_atlas/titan_atlas.dart';
+
+Atlas(
+  passages: [...],
+  observers: [HeraldAtlasObserver()],
+)
+
+// Listen for navigation events anywhere in your app
+class AnalyticsPillar extends Pillar {
+  @override
+  void onInit() {
+    listen<AtlasRouteChanged>((event) {
+      trackScreen(event.toPath);
+    });
+    listen<AtlasGuardRedirect>((event) {
+      log.warning('Guard redirected from ${event.from} to ${event.to}');
+    });
+  }
+}
+```
+
+Emits `AtlasRouteChanged`, `AtlasGuardRedirect`, `AtlasDriftRedirect`, and `AtlasRouteNotFound` events.
+
 ## Type-Safe Runes
 
 ```dart

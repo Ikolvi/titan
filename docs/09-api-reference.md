@@ -30,12 +30,25 @@ abstract class Pillar
 | `onInit()` | Called once after initialization |
 | `onDispose()` | Called when the Pillar is disposed |
 
+#### Vigil Integration (Protected)
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `captureError(Object error, {...})` | `void` | Capture via Vigil with Pillar context |
+
+#### Chronicle Integration (Protected)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `log` | `Chronicle` | Auto-named logger (named after `runtimeType`) |
+
 #### Factory Methods (Protected)
 
 | Method | Return | Description |
 |--------|--------|-------------|
 | `core<T>(T value, {String? name, bool Function(T,T)? equals})` | `TitanState<T>` | Create a managed reactive Core |
 | `derived<T>(T Function() compute, {String? name})` | `TitanComputed<T>` | Create a managed Derived value |
+| `epoch<T>(T value, {int maxHistory, String? name})` | `Epoch<T>` | Create a managed Core with undo/redo |
 | `watch(dynamic Function() fn, {bool fireImmediately})` | `TitanEffect` | Create a managed reactive side effect |
 
 #### Mutation
@@ -44,6 +57,205 @@ abstract class Pillar
 |--------|--------|-------------|
 | `strike(void Function() fn)` | `void` | Batched synchronous mutation |
 | `strikeAsync(Future<void> Function() fn)` | `Future<void>` | Batched async mutation |
+
+#### Herald Integration (Protected)
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `listen<T>(void Function(T) handler)` | `StreamSubscription<T>` | Managed Herald listener (auto-disposed) |
+| `listenOnce<T>(void Function(T) handler)` | `StreamSubscription<T>` | One-shot managed listener |
+| `emit<T>(T event)` | `void` | Broadcast event via Herald |
+
+---
+
+### Herald
+
+Cross-domain event bus for decoupled Pillar-to-Pillar communication.
+
+```dart
+abstract final class Herald
+```
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `emit<T>(T event)` | `void` | Broadcast event to all listeners of type T |
+| `on<T>(void Function(T) handler)` | `StreamSubscription<T>` | Listen for events of type T |
+| `once<T>(void Function(T) handler)` | `StreamSubscription<T>` | Listen for one event, then auto-cancel |
+| `stream<T>()` | `Stream<T>` | Get broadcast stream of events |
+| `last<T>()` | `T?` | Get last emitted event of type T |
+| `hasListeners<T>()` | `bool` | Check for active listeners |
+| `clearLast<T>()` | `void` | Clear last-event cache for type T |
+| `reset()` | `void` | Close all streams, clear history |
+
+---
+
+### Vigil
+
+Centralized error tracking with pluggable handlers.
+
+```dart
+abstract final class Vigil
+```
+
+#### Capture
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `capture(Object error, {StackTrace?, ErrorSeverity, ErrorContext?})` | `void` | Capture error with context |
+| `guard<T>(T Function() fn, {...})` | `T?` | Execute sync, capture on failure, return null |
+| `guardAsync<T>(Future<T> Function() fn, {...})` | `Future<T?>` | Execute async, capture on failure, return null |
+| `captureAndRethrow<T>(Future<T> Function() fn, {...})` | `Future<T>` | Capture then rethrow |
+
+#### Handlers
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `addHandler(ErrorHandler handler)` | `void` | Add pluggable error handler |
+| `removeHandler(ErrorHandler handler)` | `void` | Remove a handler |
+| `handlers` | `List<ErrorHandler>` | Read-only list of registered handlers |
+
+#### History & Query
+
+| Property/Method | Return | Description |
+|-----------------|--------|-------------|
+| `history` | `List<TitanError>` | All captured errors (most recent last) |
+| `lastError` | `TitanError?` | Most recently captured error |
+| `bySeverity(ErrorSeverity)` | `List<TitanError>` | Filter history by severity |
+| `bySource(Type)` | `List<TitanError>` | Filter history by source Pillar type |
+| `errors` | `Stream<TitanError>` | Real-time broadcast stream of errors |
+| `clearHistory()` | `void` | Clear the error history |
+| `maxHistorySize` | `int` | Max errors to keep (default: 100) |
+| `reset()` | `void` | Remove all handlers, clear history |
+
+#### Built-in Handlers
+
+| Class | Description |
+|-------|-------------|
+| `ConsoleErrorHandler` | Formatted console output with severity filter |
+| `FilteredErrorHandler` | Route errors by condition to another handler |
+
+#### Supporting Types
+
+| Type | Description |
+|------|-------------|
+| `TitanError` | Captured error with `error`, `stackTrace`, `severity`, `context`, `timestamp` |
+| `ErrorContext` | Context with `source` (Type), `action` (String), `metadata` (Map) |
+| `ErrorSeverity` | `debug`, `info`, `warning`, `error`, `fatal` |
+| `ErrorHandler` | Abstract base — implement `handle(TitanError)` |
+
+---
+
+### Chronicle
+
+Structured logging system with named loggers and pluggable sinks.
+
+```dart
+class Chronicle
+```
+
+#### Static Configuration
+
+| Property/Method | Return | Description |
+|-----------------|--------|-------------|
+| `Chronicle.level` | `LogLevel` | Global min log level (default: `debug`) |
+| `Chronicle.addSink(LogSink sink)` | `void` | Add output destination |
+| `Chronicle.removeSink(LogSink sink)` | `void` | Remove output destination |
+| `Chronicle.sinks` | `List<LogSink>` | Read-only list of registered sinks |
+| `Chronicle.consoleSink` | `ConsoleLogSink` | Default built-in console sink |
+| `Chronicle.reset()` | `void` | Clear sinks, restore defaults |
+
+#### Instance Methods
+
+| Method | Description |
+|--------|-------------|
+| `trace(String message, [Map?])` | Log at trace level |
+| `debug(String message, [Map?])` | Log at debug level |
+| `info(String message, [Map?])` | Log at info level |
+| `warning(String message, [Map?])` | Log at warning level |
+| `error(String message, [Object?, StackTrace?, Map?])` | Log at error level |
+| `fatal(String message, [Object?, StackTrace?, Map?])` | Log at fatal level |
+
+#### Supporting Types
+
+| Type | Description |
+|------|-------------|
+| `LogLevel` | `trace`, `debug`, `info`, `warning`, `error`, `fatal`, `off` |
+| `LogEntry` | Structured entry with `loggerName`, `level`, `message`, `data`, `error`, `stackTrace`, `timestamp` |
+| `LogSink` | Abstract base — implement `write(LogEntry)` |
+| `ConsoleLogSink` | Built-in formatted console output with icons |
+
+---
+
+### Epoch\<T\>
+
+Core with undo/redo history (time-travel state). Extends `TitanState<T>`.
+
+```dart
+Epoch<T>(T initialValue, {int maxHistory = 100, String? name})
+```
+
+| Method/Property | Type | Description |
+|-----------------|------|-------------|
+| `undo()` | `void` | Revert to previous value |
+| `redo()` | `void` | Replay next value |
+| `canUndo` | `bool` | Whether undo is available |
+| `canRedo` | `bool` | Whether redo is available |
+| `undoCount` | `int` | Number of undo steps |
+| `redoCount` | `int` | Number of redo steps |
+| `history` | `List<T>` | Read-only list of past values |
+| `clearHistory()` | `void` | Wipe history, keep current value |
+| `maxHistory` | `int` | Max undo depth (default 100) |
+
+---
+
+### Flux (Stream Operators)
+
+Extensions on `TitanState<T>` for stream-like composition.
+
+#### FluxStateExtensions\<T\>
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `debounce(Duration)` | `DebouncedState<T>` | Value updates after quiet period |
+| `throttle(Duration)` | `ThrottledState<T>` | Value updates at most once per duration |
+| `asStream()` | `Stream<T>` | Convert to typed broadcast stream |
+
+#### FluxNodeExtensions
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `onChange` | `Stream<void>` | Emits on every change (any ReactiveNode) |
+
+---
+
+### Relic
+
+Persistence & hydration manager for Cores.
+
+```dart
+Relic({required RelicAdapter adapter, required Map<String, RelicEntry> entries, String prefix = 'titan:'})
+```
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `hydrate()` | `Future<void>` | Restore all values from storage |
+| `hydrateKey(String key)` | `Future<bool>` | Restore single value |
+| `persist()` | `Future<void>` | Save all values to storage |
+| `persistKey(String key)` | `Future<bool>` | Save single value |
+| `enableAutoSave()` | `void` | Auto-persist on every Core change |
+| `disableAutoSave()` | `void` | Stop auto-persisting |
+| `clear()` | `Future<void>` | Remove all persisted data |
+| `clearKey(String key)` | `Future<bool>` | Remove single key |
+| `keys` | `Iterable<String>` | Registered entry keys |
+| `dispose()` | `void` | Stop auto-save, release resources |
+
+#### Supporting Types
+
+| Type | Description |
+|------|-------------|
+| `RelicAdapter` | Abstract storage backend — implement `read`, `write`, `delete` |
+| `InMemoryRelicAdapter` | Built-in adapter for testing |
+| `RelicEntry<T>` | Typed config: `core`, `toJson`, `fromJson` |
 
 ---
 
@@ -350,6 +562,37 @@ extension TitanContextExtensions on BuildContext {
   bool hasTitan<T extends TitanStore>();
 }
 ```
+
+---
+
+## Atlas Integration (package:titan_atlas)
+
+### HeraldAtlasObserver
+
+An `AtlasObserver` that emits Herald events for all navigation actions.
+
+```dart
+Atlas(
+  passages: [...],
+  observers: [HeraldAtlasObserver()],
+);
+```
+
+#### Events
+
+| Event | Description |
+|-------|-------------|
+| `AtlasRouteChanged` | Navigation event with `from` (Waypoint?), `to` (Waypoint), `type` (AtlasNavigationType) |
+| `AtlasGuardRedirect` | Guard redirect with `originalPath`, `redirectPath` |
+| `AtlasDriftRedirect` | Drift redirect with `originalPath`, `redirectPath` |
+| `AtlasRouteNotFound` | 404 event with `path` |
+
+| `AtlasNavigationType` | Description |
+|------------------------|-------------|
+| `push` | Forward navigation via `Atlas.to()` |
+| `pop` | Backward navigation via `Atlas.back()` |
+| `replace` | Replace current route via `Atlas.replace()` |
+| `reset` | Reset stack via `Atlas.reset()` |
 
 ---
 
