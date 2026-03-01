@@ -14,6 +14,7 @@
 | Parameters | **Runes** | Ancient symbols carrying meaning |
 | Transition | **Shift** | Change of form/phase |
 | Route State | **Waypoint** | Current position in the journey |
+| Observer | **AtlasObserver** | Watches all navigation events |
 
 ## Quick Start
 
@@ -53,6 +54,22 @@ Passage('/settings', (_) => SettingsScreen(), name: 'settings')
 // With custom transition
 Passage('/modal', (_) => ModalScreen(), shift: Shift.slideUp())
 
+// With metadata (accessible via waypoint.metadata)
+Passage('/admin', (_) => AdminScreen(),
+  name: 'admin',
+  metadata: {'title': 'Admin Panel', 'icon': Icons.settings},
+)
+
+// With per-route redirect
+Passage('/old-dashboard', (_) => DashboardScreen(),
+  redirect: (wp) => '/dashboard',  // Always redirect
+)
+
+// Conditional per-route redirect
+Passage('/premium', (wp) => PremiumScreen(),
+  redirect: (wp) => isPremiumUser ? null : '/upgrade',
+)
+
 // Nested passages
 Passage('/settings', (_) => SettingsScreen(), passages: [
   Passage('/settings/account', (_) => AccountScreen()),
@@ -72,9 +89,34 @@ Passage('/user/:id', (waypoint) {
   final path = waypoint.path;            // Full matched path
   final pattern = waypoint.pattern;      // Route pattern
   final rest = waypoint.remaining;       // Wildcard remainder
+  final meta = waypoint.metadata;        // Route metadata
+  final name = waypoint.name;            // Route name
   
   return UserScreen(id: id, tab: tab);
 })
+```
+
+### Type-Safe Rune Accessors
+
+Waypoint provides type-safe accessors for Runes and query parameters, eliminating manual parsing:
+
+```dart
+Passage('/product/:id', (wp) {
+  // Parse Runes to specific types
+  final id = wp.intRune('id');           // int?
+  final price = wp.doubleRune('price');  // double?
+  final active = wp.boolRune('active');  // bool?
+
+  // Parse query parameters to specific types
+  final page = wp.intQuery('page');      // int?
+  final rating = wp.doubleQuery('min');  // double?
+  final asc = wp.boolQuery('asc');       // bool?
+
+  return ProductScreen(id: id ?? 0, page: page ?? 1);
+})
+```
+
+`boolRune` and `boolQuery` recognize `'true'` and `'1'` as `true`, everything else as `false`.
 ```
 
 ## Navigation
@@ -187,6 +229,8 @@ Atlas(
 )
 ```
 
+Async Sentinels are fully resolved during navigation — Atlas automatically detects whether any Sentinels are async and uses the appropriate resolution path.
+
 ## Drift — Redirects
 
 **Drift** is a global redirect function applied before Sentinels:
@@ -243,6 +287,116 @@ Atlas(
 
 Without `onError`, Atlas shows a default 404 page.
 
+## AtlasObserver — Navigation Lifecycle
+
+**AtlasObserver** monitors all navigation events — ideal for analytics, logging, and debugging:
+
+```dart
+Atlas(
+  passages: [...],
+  observers: [AtlasLoggingObserver()],  // Built-in console logger
+)
+```
+
+### Custom Observer
+
+```dart
+class AnalyticsObserver extends AtlasObserver {
+  @override
+  void onNavigate(String path, Waypoint waypoint) {
+    analytics.trackPageView(path);
+  }
+
+  @override
+  void onGuardRedirect(String from, String to) {
+    analytics.trackEvent('guard_redirect', {'from': from, 'to': to});
+  }
+
+  @override
+  void onNotFound(String path) {
+    analytics.trackEvent('404', {'path': path});
+  }
+}
+```
+
+### Observer Hooks
+
+| Hook | When Fired |
+|------|-----------|
+| `onNavigate(path, waypoint)` | After successful navigation |
+| `onReplace(path)` | After route replacement |
+| `onPop()` | After going back |
+| `onReset(path)` | After stack reset |
+| `onGuardRedirect(from, to)` | When a Sentinel redirects |
+| `onDriftRedirect(from, to)` | When a Drift redirects |
+| `onNotFound(path)` | When no route matches |
+
+### Multiple Observers
+
+```dart
+Atlas(
+  passages: [...],
+  observers: [
+    AtlasLoggingObserver(),  // Debug logging
+    AnalyticsObserver(),     // Analytics tracking
+    PerformanceObserver(),   // Performance monitoring
+  ],
+)
+```
+
+## Per-Route Redirects
+
+Beyond global Drift and Sentinels, individual Passages can define their own redirect logic:
+
+```dart
+Atlas(
+  passages: [
+    // Always redirect
+    Passage('/old', (_) => Container(), redirect: (wp) => '/new'),
+
+    // Conditional redirect
+    Passage('/premium', (_) => PremiumScreen(),
+      redirect: (wp) => hasPremium ? null : '/upgrade',
+    ),
+
+    // Redirect based on Runes
+    Passage('/user/:id', (wp) => UserScreen(id: wp.runes['id']!),
+      redirect: (wp) => wp.runes['id'] == '0' ? '/users' : null,
+    ),
+  ],
+)
+```
+
+Redirect evaluation order: **Drift** → **Sentinel** → **Per-route redirect**.
+
+## Route Metadata
+
+Passages can carry arbitrary metadata accessible via Waypoint:
+
+```dart
+Atlas(
+  passages: [
+    Passage('/', (_) => HomeScreen(),
+      name: 'home',
+      metadata: {'title': 'Home', 'showAppBar': true},
+    ),
+    Passage('/settings', (_) => SettingsScreen(),
+      name: 'settings',
+      metadata: {'title': 'Settings', 'requiresAuth': true},
+    ),
+  ],
+)
+
+// Access in builder
+Passage('/page', (wp) {
+  final title = wp.metadata?['title'] as String?;
+  return Scaffold(
+    appBar: AppBar(title: Text(title ?? 'Untitled')),
+    body: PageContent(),
+  );
+})
+```
+
 ## Runes — Path Parameters
 
 Dynamic path segments prefixed with `:` are extracted as **Runes**:
@@ -256,6 +410,26 @@ Passage('/org/:orgId/repo/:repoId', (wp) {
   final org = wp.runes['orgId']!;
   final repo = wp.runes['repoId']!;
   return RepoScreen(org: org, repo: repo);
+})
+```
+
+### Type-Safe Rune Accessors
+
+Parse Runes and query parameters directly to the type you need:
+
+```dart
+Passage('/item/:id', (wp) {
+  // Path parameters
+  final id = wp.intRune('id');           // int?
+  final weight = wp.doubleRune('wt');    // double?
+  final flag = wp.boolRune('active');    // bool?
+
+  // Query parameters (/item/5?page=2&asc=true)
+  final page = wp.intQuery('page');      // int?
+  final min = wp.doubleQuery('min');     // double?
+  final asc = wp.boolQuery('asc');       // bool?
+
+  return ItemScreen(id: id ?? 0);
 })
 ```
 
@@ -307,12 +481,24 @@ void main() {
       Sanctum(
         shell: (child) => AppShell(child: child),
         passages: [
-          Passage('/', (_) => const HomeScreen(), name: 'home'),
-          Passage('/search', (_) => const SearchScreen(), name: 'search'),
+          Passage('/', (_) => const HomeScreen(),
+            name: 'home',
+            metadata: {'title': 'Home'},
+          ),
+          Passage('/search', (_) => const SearchScreen(),
+            name: 'search',
+            metadata: {'title': 'Search'},
+          ),
         ],
       ),
-      Passage('/profile/:id', (wp) => ProfileScreen(id: wp.runes['id']!)),
+      Passage('/profile/:id', (wp) {
+        final id = wp.intRune('id') ?? 0;
+        return ProfileScreen(id: id);
+      }),
       Passage('/login', (_) => const LoginScreen()),
+      Passage('/old-page', (_) => Container(),
+        redirect: (wp) => '/new-page',
+      ),
     ],
     sentinels: [
       Sentinel.except(
@@ -324,6 +510,7 @@ void main() {
       if (path == '/old') return '/';
       return null;
     },
+    observers: [AtlasLoggingObserver()],
     onError: (path) => NotFoundScreen(path: path),
   );
 
