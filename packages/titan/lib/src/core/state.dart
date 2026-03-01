@@ -29,6 +29,7 @@ import 'reactive.dart';
 /// comparison logic.
 class TitanState<T> extends ReactiveNode {
   T _value;
+  T? _previousValue;
   final bool Function(T previous, T next)? _equals;
   final String? _name;
 
@@ -53,16 +54,29 @@ class TitanState<T> extends ReactiveNode {
     return _value;
   }
 
+  /// The previous value before the most recent change.
+  ///
+  /// Returns `null` if the value has never been changed. Useful for
+  /// animations, transition effects, and "changed from X to Y" UI patterns.
+  ///
+  /// ```dart
+  /// final name = TitanState('Alice');
+  /// name.value = 'Bob';
+  /// print(name.previousValue); // 'Alice'
+  /// ```
+  T? get previousValue => _previousValue;
+
   /// Sets the value. If the new value differs from the current value
   /// (per the equality function), dependents and listeners are notified.
   set value(T newValue) {
     if (_isEqual(_value, newValue)) return;
 
     final oldValue = _value;
+    _previousValue = oldValue;
     _value = newValue;
 
-    // Notify global observer
-    TitanObserver.instance?.onStateChanged(
+    // Notify all observers
+    TitanObserver.notifyStateChanged(
       state: this,
       oldValue: oldValue,
       newValue: newValue,

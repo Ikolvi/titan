@@ -1,3 +1,4 @@
+import 'observer.dart';
 import 'reactive.dart';
 
 /// A reactive side effect that automatically tracks dependencies
@@ -31,6 +32,19 @@ import 'reactive.dart';
 /// final effect = TitanEffect(() {
 ///   final subscription = stream.listen(handler);
 ///   return () => subscription.cancel(); // cleanup
+/// });
+/// ```
+///
+/// ## Error Handling
+///
+/// Errors thrown during effect execution are captured via [TitanObserver]
+/// and do not crash the application. The error is reported to all registered
+/// observers.
+///
+/// ```dart
+/// final effect = TitanEffect(() {
+///   // If this throws, the error is captured and reported
+///   riskyOperation();
 /// });
 /// ```
 class TitanEffect extends ReactiveNode {
@@ -94,6 +108,11 @@ class TitanEffect extends ReactiveNode {
       if (result is Function()) {
         _cleanup = result;
       }
+      // Notify observers of successful effect execution
+      TitanObserver.notifyEffectRun(this);
+    } catch (e, s) {
+      // Capture effect errors via observer instead of crashing
+      TitanObserver.notifyEffectError(this, e, s);
     } finally {
       ReactiveScope.popTracker(previous);
       _isRunning = false;

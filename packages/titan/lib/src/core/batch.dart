@@ -1,3 +1,4 @@
+import 'observer.dart';
 import 'reactive.dart';
 
 /// Groups multiple state changes into a single notification cycle.
@@ -27,11 +28,13 @@ void titanBatch(void Function() updates) {
     return;
   }
 
+  TitanObserver.notifyBatchStart();
   ReactiveScope.beginBatch();
   try {
     updates();
   } finally {
     ReactiveScope.endBatch();
+    TitanObserver.notifyBatchEnd();
   }
 }
 
@@ -51,10 +54,12 @@ Future<void> titanBatchAsync(Future<void> Function() updates) async {
     return;
   }
 
+  TitanObserver.notifyBatchStart();
   ReactiveScope.beginBatch();
   try {
     await updates();
   } finally {
     ReactiveScope.endBatch();
+    TitanObserver.notifyBatchEnd();
   }
 }

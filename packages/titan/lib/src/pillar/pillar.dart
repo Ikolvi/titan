@@ -6,6 +6,7 @@ import '../core/batch.dart';
 import '../core/computed.dart';
 import '../core/effect.dart';
 import '../core/epoch.dart';
+import '../core/observer.dart';
 import '../core/reactive.dart';
 import '../core/state.dart';
 import '../data/codex.dart';
@@ -540,6 +541,7 @@ abstract class Pillar {
     if (_isInitialized) return;
     _isInitialized = true;
     onInit();
+    TitanObserver.notifyPillarInit(this);
   }
 
   /// Disposes the Pillar and all its managed reactive nodes.
@@ -549,6 +551,7 @@ abstract class Pillar {
     _isDisposed = true;
 
     onDispose();
+    TitanObserver.notifyPillarDispose(this);
 
     // Cancel Herald subscriptions first
     for (final subscription in _managedSubscriptions) {

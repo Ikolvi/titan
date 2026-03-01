@@ -77,6 +77,7 @@ class _TitanAsyncBuilderState<T> extends State<TitanAsyncBuilder<T>> {
       AsyncData<T>(:final data) => widget.data(context, data),
       AsyncLoading<T>() =>
         widget.loading?.call(context) ?? const SizedBox.shrink(),
+      AsyncRefreshing<T>(:final data) => widget.data(context, data),
       AsyncError<T>(:final error, :final stackTrace) =>
         widget.error?.call(context, error, stackTrace) ??
             const SizedBox.shrink(),
