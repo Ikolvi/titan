@@ -446,31 +446,9 @@ Legacy abstract base class for organized state containers.
 | `createComputed<T>(compute, {String? name})` | `TitanComputed<T>` | Create managed computed |
 | `createEffect(fn, {name?, fireImmediately?})` | `TitanEffect` | Create managed effect |
 | `createAsyncState<T>({String? name})` | `TitanAsyncState<T>` | Create managed async state |
-| `addMiddleware(TitanMiddleware)` | `void` | Add middleware |
 | `onInit()` | `void` | Lifecycle hook |
 | `onDispose()` | `void` | Lifecycle hook |
 | `dispose()` | `void` | Dispose store and all managed nodes |
-
-### TitanMiddleware
-
-```dart
-abstract class TitanMiddleware {
-  void onStateChange<T>(StateChangeEvent<T> event);
-  void onError(Object error, StackTrace stackTrace) {}
-}
-```
-
-### StateChangeEvent\<T\>
-
-```dart
-class StateChangeEvent<T> {
-  final String storeName;
-  final String stateName;
-  final T oldValue;
-  final T newValue;
-  final DateTime timestamp;
-}
-```
 
 ### TitanContainer
 

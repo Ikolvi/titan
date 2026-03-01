@@ -425,4 +425,4 @@ final counter = tester.element(find.byType(Text)).findAncestorWidgetOfExactType<
 
 ---
 
-[← Middleware](06-middleware.md) · [Advanced Patterns →](08-advanced-patterns.md)
+[← Oracle & Observation](06-middleware.md) · [Advanced Patterns →](08-advanced-patterns.md)

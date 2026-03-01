@@ -113,8 +113,7 @@ Titan ensures **glitch-free** updates through:
 │                                              │
 │  ┌──────────────────────────────────────┐   │
 │  │         Legacy Store Layer           │   │
-│  │  TitanStore (lifecycle, middleware) │   │
-│  │  TitanMiddleware (interception)     │   │
+│  │  TitanStore (lifecycle, effects)    │   │
 │  └──────────────────────────────────────┘   │
 │                                              │
 │  ┌──────────────────────────────────────┐   │
@@ -145,7 +144,7 @@ Titan ensures **glitch-free** updates through:
 | **Pillar** | `titan` | Structured state organization with lifecycle |
 | **Core** | `titan` | Reactive primitives and dependency tracking |
 | **API** | `titan` | Public type aliases and global registry |
-| **Legacy Store** | `titan` | TitanStore with middleware (legacy) |
+| **Legacy Store** | `titan` | TitanStore (legacy store pattern) |
 | **DI** | `titan` | Dependency injection containers and modules |
 | **Async** | `titan` | Asynchronous data modeling |
 | **Observer** | `titan` | Global debugging and monitoring |

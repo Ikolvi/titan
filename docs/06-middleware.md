@@ -1,12 +1,6 @@
-# Middleware & Observability
+# Oracle — State Observation & Monitoring
 
-Titan provides two complementary systems for cross-cutting concerns:
-- **Middleware** — Per-store interception of state changes (used with legacy TitanStore)
-- **Observer** — Global state change monitoring (works with all reactive nodes)
-
-## Observer (Recommended)
-
-The `TitanObserver` provides global visibility into ALL state changes across the entire application. This works with Pillars and standalone Cores alike.
+Titan's **Oracle** system (`TitanObserver`) provides global visibility into ALL state changes across the entire application. It works with Pillars, standalone Cores, and legacy TitanStores alike.
 
 ### Setting Up
 
@@ -83,98 +77,6 @@ TitanObserver.instance = CompositeObserver([
   CrashlyticsObserver(),
 ]);
 ```
-
----
-
-## Middleware (Legacy — TitanStore)
-
-Middleware intercepts state changes within a `TitanStore`. For new code using Pillars, prefer the Observer pattern above.
-
-### Creating Middleware
-
-```dart
-abstract class TitanMiddleware {
-  void onStateChange<T>(StateChangeEvent<T> event);
-  void onError(Object error, StackTrace stackTrace);
-}
-```
-
-### StateChangeEvent
-
-```dart
-class StateChangeEvent<T> {
-  final String storeName;
-  final String stateName;
-  final T oldValue;
-  final T newValue;
-  final DateTime timestamp;
-}
-```
-
-### Example: Logging Middleware
-
-```dart
-class LoggingMiddleware extends TitanMiddleware {
-  @override
-  void onStateChange<T>(StateChangeEvent<T> event) {
-    print('[${event.timestamp}] ${event.storeName}.${event.stateName}: '
-        '${event.oldValue} → ${event.newValue}');
-  }
-
-  @override
-  void onError(Object error, StackTrace stackTrace) {
-    print('[ERROR] $error\n$stackTrace');
-  }
-}
-```
-
-### Example: Persistence Middleware
-
-```dart
-class PersistenceMiddleware extends TitanMiddleware {
-  final SharedPreferences prefs;
-
-  PersistenceMiddleware(this.prefs);
-
-  @override
-  void onStateChange<T>(StateChangeEvent<T> event) {
-    final key = '${event.storeName}.${event.stateName}';
-    if (event.newValue is int) {
-      prefs.setInt(key, event.newValue as int);
-    } else if (event.newValue is String) {
-      prefs.setString(key, event.newValue as String);
-    } else if (event.newValue is bool) {
-      prefs.setBool(key, event.newValue as bool);
-    }
-  }
-
-  @override
-  void onError(Object error, StackTrace stackTrace) {}
-}
-```
-
-### Registering Middleware
-
-```dart
-class UserStore extends TitanStore {
-  UserStore() {
-    addMiddleware(LoggingMiddleware());
-    addMiddleware(PersistenceMiddleware(prefs));
-  }
-}
-```
-
----
-
-## Observer vs Middleware
-
-| Aspect | Observer | Middleware |
-|--------|----------|-----------|
-| Scope | Global (all state) | Per-store |
-| Works with | Pillars + Cores + Stores | TitanStore only |
-| Registration | `TitanObserver.instance = ...` | `store.addMiddleware(...)` |
-| Use case | Debugging, analytics, monitoring | Validation, persistence |
-| Recommended | ✅ Yes | Legacy pattern |
 
 ---
 

@@ -318,4 +318,4 @@ Need legacy TitanStore access?
 
 ---
 
-[← Pillars](04-stores.md) · [Middleware →](06-middleware.md)
+[← Pillars](04-stores.md) · [Oracle & Observation →](06-middleware.md)

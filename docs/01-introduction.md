@@ -27,7 +27,7 @@
 
 - ✅ **Fine-grained reactivity** — only rebuild what changed (auto-tracked)
 - ✅ **Minimal boilerplate** — no event classes, no state classes
-- ✅ **Structured scalability** — Pillars with lifecycle, middleware, DI
+- ✅ **Structured scalability** — Pillars with lifecycle, observation, DI
 - ✅ **Type-safe DI** — compile-time safety, scoped + global
 - ✅ **Pure Dart core** — test everything without Flutter
 - ✅ **Auto-tracking rebuilds** — Vestige detects exactly which Cores are used

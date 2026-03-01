@@ -64,7 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TitanEffect` — Reactive side effect with cleanup functions and `onNotify` callback
 - `titanBatch()` / `titanBatchAsync()` — Batch multiple state changes into a single notification cycle
 - `TitanStore` — Legacy abstract base class for organized state containers
-- `TitanMiddleware` — Abstract middleware for intercepting state changes
 - `TitanContainer` — Type-safe DI container with lazy singletons, scoped child containers, and auto-disposal
 - `TitanModule` / `TitanSimpleModule` — Module system for grouping DI registrations
 - `AsyncValue<T>` — Sealed class (`AsyncData`, `AsyncLoading`, `AsyncError`) with `when()` and `maybeWhen()`
