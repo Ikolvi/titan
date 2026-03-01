@@ -47,7 +47,7 @@
 /// - [TitanStore] — Legacy store pattern (superseded by Pillar)
 /// - [TitanContainer] — Scoped dependency injection
 /// - [AsyncValue] / [TitanAsyncState] — Async data handling
-/// - [TitanMiddleware] — State change interception
+/// - [TitanMiddleware] — State change interception (**deprecated**, use [TitanObserver])
 /// - [TitanObserver] — Global state monitoring
 library;
 
@@ -74,8 +74,8 @@ export 'src/core/observer.dart';
 
 // Store pattern (advanced / legacy)
 export 'src/store/store.dart';
-export 'src/store/middleware.dart';
-export 'src/store/event.dart';
+export 'src/store/middleware.dart'; // Deprecated — use TitanObserver
+export 'src/store/event.dart'; // Deprecated — use TitanObserver
 
 // Dependency injection
 export 'src/di/container.dart';

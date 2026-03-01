@@ -10,7 +10,11 @@ import 'middleware.dart';
 ///
 /// [TitanStore] provides a structured way to group related state,
 /// computed values, and business logic. It manages the lifecycle of
-/// all reactive primitives it creates and supports middleware.
+/// all reactive primitives it creates.
+///
+/// **Note**: For new code, prefer [Pillar] which provides a more modern API
+/// with additional features like `strike()`, `watch()`, `derived()`, and
+/// built-in error handling via [Vigil].
 ///
 /// ## Usage
 ///
@@ -49,6 +53,7 @@ import 'middleware.dart';
 abstract class TitanStore {
   final List<ReactiveNode> _managedNodes = [];
   final List<TitanEffect> _managedEffects = [];
+  // ignore: deprecated_member_use_from_same_package
   final List<TitanMiddleware> _middlewares = [];
   bool _isInitialized = false;
   bool _isDisposed = false;
@@ -129,11 +134,23 @@ abstract class TitanStore {
   }
 
   /// Adds a middleware to this store.
+  ///
+  /// **Deprecated**: [TitanMiddleware] hooks are never invoked.
+  /// Use [TitanObserver] for state-change observation.
+  @Deprecated('TitanMiddleware hooks are never invoked. '
+      'Use TitanObserver (Oracle) instead.')
+  // ignore: deprecated_member_use_from_same_package
   void addMiddleware(TitanMiddleware middleware) {
     _middlewares.add(middleware);
   }
 
   /// Removes a middleware from this store.
+  ///
+  /// **Deprecated**: [TitanMiddleware] hooks are never invoked.
+  /// Use [TitanObserver] for state-change observation.
+  @Deprecated('TitanMiddleware hooks are never invoked. '
+      'Use TitanObserver (Oracle) instead.')
+  // ignore: deprecated_member_use_from_same_package
   void removeMiddleware(TitanMiddleware middleware) {
     _middlewares.remove(middleware);
   }

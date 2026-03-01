@@ -1,7 +1,7 @@
 <p align="center">
   <div style="width:100%; height:220px; overflow:hidden;">
     <img 
-      src="assets/titan_banner.webp" 
+      src="https://raw.githubusercontent.com/Ikolvi/titan/main/assets/titan_banner.webp" 
       alt="Titan Banner" 
       style="width:100%; height:100%; object-fit:cover; object-position:center;"
     />

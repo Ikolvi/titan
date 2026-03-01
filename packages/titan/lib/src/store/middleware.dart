@@ -2,33 +2,22 @@ import 'event.dart';
 
 /// Base class for middleware that intercepts state changes in a [TitanStore].
 ///
-/// Middleware allows you to add cross-cutting concerns like logging,
-/// analytics, persistence, and validation without modifying store logic.
+/// **Deprecated**: This class was never wired into the reactive engine and
+/// its hooks (`onStateChange`, `onError`) are never invoked.
+/// Use [TitanObserver] (Oracle) for global state-change observation, or
+/// [Pillar.watch] / [Vigil] for per-Pillar side effects and error handling.
 ///
-/// ## Usage
-///
-/// ```dart
-/// class LoggingMiddleware extends TitanMiddleware {
-///   @override
-///   void onAction(TitanAction action) {
-///     print('Action: ${action.name}');
-///   }
-///
-///   @override
-///   void onStateChange(StateChangeEvent event) {
-///     print('${event.stateName}: ${event.oldValue} -> ${event.newValue}');
-///   }
-///
-///   @override
-///   void onError(Object error, StackTrace stackTrace) {
-///     print('Error: $error');
-///   }
-/// }
-/// ```
+/// Will be removed in a future major release.
+@Deprecated('Use TitanObserver (Oracle) instead. '
+    'TitanMiddleware hooks were never invoked by the reactive engine.')
 abstract class TitanMiddleware {
   /// Called when a state change occurs.
+  ///
+  /// **Note**: This method is never called by the framework.
   void onStateChange(StateChangeEvent event) {}
 
   /// Called when an error occurs during state processing.
+  ///
+  /// **Note**: This method is never called by the framework.
   void onError(Object error, StackTrace stackTrace) {}
 }

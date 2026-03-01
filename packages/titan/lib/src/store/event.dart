@@ -1,7 +1,11 @@
 /// Represents a state change event for middleware processing.
 ///
-/// Contains all information about a state mutation, including
-/// the state name, old and new values, and a timestamp.
+/// **Deprecated**: Part of the unused [TitanMiddleware] system.
+/// Use [TitanObserver] (Oracle) for state-change observation instead.
+///
+/// Will be removed in a future major release.
+@Deprecated('Part of unused TitanMiddleware system. '
+    'Use TitanObserver (Oracle) instead.')
 class StateChangeEvent {
   /// The name of the state that changed.
   final String stateName;

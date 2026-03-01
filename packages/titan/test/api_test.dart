@@ -296,26 +296,20 @@ void main() {
 
   group('Pillar — strikeAsync', () {
     test('strikeAsync() performs async mutation', () async {
-      final pillar = _TestCounterPillar();
+      final pillar = _TestAsyncPillar();
       pillar.initialize();
 
-      await pillar.strikeAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-        pillar.count.value = 99;
-      });
-
-      expect(pillar.count.value, 99);
+      await pillar.asyncIncrement();
+      expect(pillar.count.value, 1);
       pillar.dispose();
     });
 
     test('strikeAsync() captures error via Vigil and rethrows', () async {
-      final pillar = _TestCounterPillar();
+      final pillar = _TestAsyncPillar();
       pillar.initialize();
 
       expect(
-        () => pillar.strikeAsync(() async {
-          throw StateError('async failure');
-        }),
+        () => pillar.asyncFail(),
         throwsStateError,
       );
 
@@ -408,4 +402,17 @@ class _TestDeferredWatchPillar extends Pillar {
       watchLog.add('value: ${data.value}');
     }, immediate: false);
   }
+}
+
+class _TestAsyncPillar extends Pillar {
+  late final count = core(0);
+
+  Future<void> asyncIncrement() => strikeAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        count.value++;
+      });
+
+  Future<void> asyncFail() => strikeAsync(() async {
+        throw StateError('async failure');
+      });
 }

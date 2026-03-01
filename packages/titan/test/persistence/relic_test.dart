@@ -455,7 +455,6 @@ void main() {
 
     test('enableAutoSave() called twice does not double-subscribe', () async {
       final count = TitanState<int>(0);
-      var saveCount = 0;
 
       final trackingAdapter = InMemoryRelicAdapter();
 
