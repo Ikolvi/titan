@@ -103,14 +103,8 @@ void main() {
       });
 
       const wp = Waypoint(path: '/restricted', pattern: '/restricted');
-      expect(
-        await sentinel.evaluateAsync('/restricted', wp),
-        '/403',
-      );
-      expect(
-        await sentinel.evaluateAsync('/home', wp),
-        isNull,
-      );
+      expect(await sentinel.evaluateAsync('/restricted', wp), '/403');
+      expect(await sentinel.evaluateAsync('/home', wp), isNull);
     });
   });
 }

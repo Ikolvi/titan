@@ -28,10 +28,11 @@ void main() {
     });
 
     test('supports custom equality', () {
-      final state = TitanState<List<int>>(
-        [1, 2, 3],
-        equals: (a, b) => a.length == b.length,
-      );
+      final state = TitanState<List<int>>([
+        1,
+        2,
+        3,
+      ], equals: (a, b) => a.length == b.length);
       int notified = 0;
       state.addListener(() => notified++);
 
@@ -196,7 +197,7 @@ void main() {
 
 class _TestObserver extends TitanObserver {
   final void Function(TitanState state, dynamic oldValue, dynamic newValue)
-      onChanged;
+  onChanged;
 
   _TestObserver({required this.onChanged});
 

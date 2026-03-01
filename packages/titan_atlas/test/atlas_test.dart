@@ -161,8 +161,9 @@ void main() {
       expect(Atlas.canBack, isFalse); // stack is just [/]
     });
 
-    testWidgets('Atlas.go() navigates fresh when path not in stack',
-        (tester) async {
+    testWidgets('Atlas.go() navigates fresh when path not in stack', (
+      tester,
+    ) async {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
@@ -230,10 +231,7 @@ void main() {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
-          Passage(
-            '/profile/:id',
-            (wp) => Text('Profile: ${wp.runes['id']}'),
-          ),
+          Passage('/profile/:id', (wp) => Text('Profile: ${wp.runes['id']}')),
         ],
       );
 
@@ -272,10 +270,7 @@ void main() {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
-          Passage(
-            '/search',
-            (wp) => Text('q=${wp.query['q']}'),
-          ),
+          Passage('/search', (wp) => Text('q=${wp.query['q']}')),
         ],
       );
 
@@ -294,10 +289,7 @@ void main() {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
-          Passage(
-            '/detail',
-            (wp) => Text('Extra: ${wp.extra}'),
-          ),
+          Passage('/detail', (wp) => Text('Extra: ${wp.extra}')),
         ],
       );
 
@@ -334,16 +326,9 @@ void main() {
     });
 
     testWidgets('throws for unknown named route', (tester) async {
-      Atlas(
-        passages: [
-          Passage('/', (_) => const Text('Home')),
-        ],
-      );
+      Atlas(passages: [Passage('/', (_) => const Text('Home'))]);
 
-      expect(
-        () => Atlas.toNamed('nonexistent'),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => Atlas.toNamed('nonexistent'), throwsA(isA<StateError>()));
     });
   });
 
@@ -392,10 +377,7 @@ void main() {
           Passage('/public', (_) => const Text('Public')),
         ],
         sentinels: [
-          Sentinel.only(
-            paths: {'/admin'},
-            guard: (path, _) => '/login',
-          ),
+          Sentinel.only(paths: {'/admin'}, guard: (path, _) => '/login'),
         ],
       );
 
@@ -439,11 +421,7 @@ void main() {
 
   group('Atlas — 404 / error handling', () {
     testWidgets('shows default 404 for unknown route', (tester) async {
-      final atlas = Atlas(
-        passages: [
-          Passage('/', (_) => const Text('Home')),
-        ],
-      );
+      final atlas = Atlas(passages: [Passage('/', (_) => const Text('Home'))]);
 
       await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
       await tester.pumpAndSettle();
@@ -456,9 +434,7 @@ void main() {
 
     testWidgets('uses custom error page', (tester) async {
       final atlas = Atlas(
-        passages: [
-          Passage('/', (_) => const Text('Home')),
-        ],
+        passages: [Passage('/', (_) => const Text('Home'))],
         onError: (path) => Text('Custom 404: $path'),
       );
 
@@ -479,7 +455,10 @@ void main() {
           Passage('/', (_) => const Text('Home')),
           Sanctum(
             shell: (child) => Column(
-              children: [const Text('Shell'), Expanded(child: child)],
+              children: [
+                const Text('Shell'),
+                Expanded(child: child),
+              ],
             ),
             passages: [
               Passage('/tab1', (_) => const Text('Tab 1')),
@@ -555,12 +534,15 @@ void main() {
     testWidgets('context.atlas.to navigates', (tester) async {
       final atlas = Atlas(
         passages: [
-          Passage('/', (_) => Builder(
-                builder: (context) => ElevatedButton(
-                  onPressed: () => context.atlas.to('/target'),
-                  child: const Text('Go'),
-                ),
-              )),
+          Passage(
+            '/',
+            (_) => Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => context.atlas.to('/target'),
+                child: const Text('Go'),
+              ),
+            ),
+          ),
           Passage('/target', (_) => const Text('Target')),
         ],
       );

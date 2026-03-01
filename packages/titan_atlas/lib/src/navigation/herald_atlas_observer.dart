@@ -25,11 +25,7 @@ class AtlasRouteChanged {
   final AtlasNavigationType type;
 
   /// Creates an [AtlasRouteChanged] event.
-  const AtlasRouteChanged({
-    this.from,
-    required this.to,
-    required this.type,
-  });
+  const AtlasRouteChanged({this.from, required this.to, required this.type});
 
   @override
   String toString() =>
@@ -72,8 +68,7 @@ class AtlasGuardRedirect {
   });
 
   @override
-  String toString() =>
-      'AtlasGuardRedirect($originalPath → $redirectPath)';
+  String toString() => 'AtlasGuardRedirect($originalPath → $redirectPath)';
 }
 
 /// Emitted when a Drift (global redirect) redirects navigation.
@@ -97,8 +92,7 @@ class AtlasDriftRedirect {
   });
 
   @override
-  String toString() =>
-      'AtlasDriftRedirect($originalPath → $redirectPath)';
+  String toString() => 'AtlasDriftRedirect($originalPath → $redirectPath)';
 }
 
 /// Emitted when no Passage matches the requested path (404).
@@ -158,53 +152,46 @@ class HeraldAtlasObserver extends AtlasObserver {
 
   @override
   void onNavigate(Waypoint from, Waypoint to) {
-    _emit(AtlasRouteChanged(
-      from: from,
-      to: to,
-      type: AtlasNavigationType.push,
-    ));
+    _emit(
+      AtlasRouteChanged(from: from, to: to, type: AtlasNavigationType.push),
+    );
   }
 
   @override
   void onReplace(Waypoint from, Waypoint to) {
-    _emit(AtlasRouteChanged(
-      from: from,
-      to: to,
-      type: AtlasNavigationType.replace,
-    ));
+    _emit(
+      AtlasRouteChanged(from: from, to: to, type: AtlasNavigationType.replace),
+    );
   }
 
   @override
   void onPop(Waypoint from, Waypoint to) {
-    _emit(AtlasRouteChanged(
-      from: from,
-      to: to,
-      type: AtlasNavigationType.pop,
-    ));
+    _emit(AtlasRouteChanged(from: from, to: to, type: AtlasNavigationType.pop));
   }
 
   @override
   void onReset(Waypoint to) {
-    _emit(AtlasRouteChanged(
-      to: to,
-      type: AtlasNavigationType.reset,
-    ));
+    _emit(AtlasRouteChanged(to: to, type: AtlasNavigationType.reset));
   }
 
   @override
   void onGuardRedirect(String originalPath, String redirectPath) {
-    _emit(AtlasGuardRedirect(
-      originalPath: originalPath,
-      redirectPath: redirectPath,
-    ));
+    _emit(
+      AtlasGuardRedirect(
+        originalPath: originalPath,
+        redirectPath: redirectPath,
+      ),
+    );
   }
 
   @override
   void onDriftRedirect(String originalPath, String redirectPath) {
-    _emit(AtlasDriftRedirect(
-      originalPath: originalPath,
-      redirectPath: redirectPath,
-    ));
+    _emit(
+      AtlasDriftRedirect(
+        originalPath: originalPath,
+        redirectPath: redirectPath,
+      ),
+    );
   }
 
   @override

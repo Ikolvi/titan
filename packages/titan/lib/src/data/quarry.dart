@@ -118,14 +118,20 @@ class Quarry<T> {
     this.staleTime,
     this.retry = const QuarryRetry(maxAttempts: 0),
     String? name,
-  })  : _fetcher = fetcher,
-        data = TitanState<T?>(null, name: name != null ? '${name}_data' : null),
-        isLoading = TitanState<bool>(false,
-            name: name != null ? '${name}_loading' : null),
-        isFetching = TitanState<bool>(false,
-            name: name != null ? '${name}_fetching' : null),
-        error = TitanState<Object?>(null,
-            name: name != null ? '${name}_error' : null);
+  }) : _fetcher = fetcher,
+       data = TitanState<T?>(null, name: name != null ? '${name}_data' : null),
+       isLoading = TitanState<bool>(
+         false,
+         name: name != null ? '${name}_loading' : null,
+       ),
+       isFetching = TitanState<bool>(
+         false,
+         name: name != null ? '${name}_fetching' : null,
+       ),
+       error = TitanState<Object?>(
+         null,
+         name: name != null ? '${name}_error' : null,
+       );
 
   /// Whether the data exists.
   bool get hasData => data.value != null;
@@ -254,11 +260,11 @@ class Quarry<T> {
 
   /// All managed reactive nodes (for disposal by Pillar).
   List<TitanState<dynamic>> get managedNodes => [
-        data,
-        isLoading,
-        isFetching,
-        error,
-      ];
+    data,
+    isLoading,
+    isFetching,
+    error,
+  ];
 
   /// Dispose all managed state.
   void dispose() {

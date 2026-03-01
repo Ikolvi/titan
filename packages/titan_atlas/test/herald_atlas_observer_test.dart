@@ -12,12 +12,8 @@ void main() {
 
     tearDown(() => Herald.reset());
 
-    Waypoint makeWaypoint(String path) => Waypoint(
-          path: path,
-          pattern: path,
-          runes: const {},
-          query: const {},
-        );
+    Waypoint makeWaypoint(String path) =>
+        Waypoint(path: path, pattern: path, runes: const {}, query: const {});
 
     test('onNavigate emits AtlasRouteChanged with push type', () {
       final events = <AtlasRouteChanged>[];

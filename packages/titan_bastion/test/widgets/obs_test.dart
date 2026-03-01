@@ -60,7 +60,7 @@ void main() {
               () {
                 pillar = _CounterPillar();
                 return pillar;
-              }
+              },
             ],
             child: Vestige<_CounterPillar>(
               builder: (context, counter) =>
@@ -89,7 +89,7 @@ void main() {
               () {
                 pillar = _CounterPillar();
                 return pillar;
-              }
+              },
             ],
             child: Vestige<_CounterPillar>(
               builder: (context, counter) {
@@ -124,7 +124,7 @@ void main() {
               () {
                 pillar = _CounterPillar();
                 return pillar;
-              }
+              },
             ],
             child: Vestige<_CounterPillar>(
               builder: (context, counter) =>
@@ -175,7 +175,7 @@ void main() {
               () {
                 pillar = _CounterPillar();
                 return pillar;
-              }
+              },
             ],
             child: Column(
               children: [
@@ -225,7 +225,7 @@ void main() {
               () {
                 pillar = _LifecyclePillar();
                 return pillar;
-              }
+              },
             ],
             child: const Text('Hello'),
           ),
@@ -245,7 +245,7 @@ void main() {
               () {
                 pillar = _LifecyclePillar();
                 return pillar;
-              }
+              },
             ],
             child: const Text('Hello'),
           ),
@@ -255,9 +255,7 @@ void main() {
       expect(pillar.wasDisposed, false);
 
       // Remove Beacon from tree
-      await tester.pumpWidget(
-        const MaterialApp(home: Text('Goodbye')),
-      );
+      await tester.pumpWidget(const MaterialApp(home: Text('Goodbye')));
 
       expect(pillar.wasDisposed, true);
     });
@@ -270,13 +268,14 @@ void main() {
             child: Column(
               children: [
                 Vestige<_CounterPillar>(
-                  builder: (context, c) =>
-                      Text('Count: ${c.count.value}'),
+                  builder: (context, c) => Text('Count: ${c.count.value}'),
                 ),
-                Builder(builder: (context) {
-                  final lc = context.pillar<_LifecyclePillar>();
-                  return Text('Init: ${lc.wasInitialized}');
-                }),
+                Builder(
+                  builder: (context) {
+                    final lc = context.pillar<_LifecyclePillar>();
+                    return Text('Init: ${lc.wasInitialized}');
+                  },
+                ),
               ],
             ),
           ),
@@ -294,10 +293,12 @@ void main() {
         MaterialApp(
           home: Beacon(
             pillars: [_CounterPillar.new],
-            child: Builder(builder: (context) {
-              final c = context.pillar<_CounterPillar>();
-              return Text('Count: ${c.count.value}');
-            }),
+            child: Builder(
+              builder: (context) {
+                final c = context.pillar<_CounterPillar>();
+                return Text('Count: ${c.count.value}');
+              },
+            ),
           ),
         ),
       );
@@ -310,10 +311,12 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Builder(builder: (context) {
-            final c = context.pillar<_CounterPillar>();
-            return Text('Count: ${c.count.value}');
-          }),
+          home: Builder(
+            builder: (context) {
+              final c = context.pillar<_CounterPillar>();
+              return Text('Count: ${c.count.value}');
+            },
+          ),
         ),
       );
 
@@ -327,9 +330,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: VestigeRaw(
-            builder: (context) => Text('Count: ${count.value}'),
-          ),
+          home: VestigeRaw(builder: (context) => Text('Count: ${count.value}')),
         ),
       );
 

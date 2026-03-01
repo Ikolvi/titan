@@ -71,9 +71,7 @@ void main() {
     });
 
     test('creates module from factory list', () {
-      final module = TitanSimpleModule([
-        () => _CounterStore(),
-      ]);
+      final module = TitanSimpleModule([() => _CounterStore()]);
 
       module.register(container);
 

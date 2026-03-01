@@ -308,10 +308,7 @@ void main() {
       final pillar = _TestAsyncPillar();
       pillar.initialize();
 
-      expect(
-        () => pillar.asyncFail(),
-        throwsStateError,
-      );
+      expect(() => pillar.asyncFail(), throwsStateError);
 
       pillar.dispose();
     });
@@ -359,10 +356,10 @@ class _TestCounterPillar extends Pillar {
   void increment() => strike(() => count.value++);
 
   void incrementBy(int amount) => strike(() {
-        for (int i = 0; i < amount; i++) {
-          count.value++;
-        }
-      });
+    for (int i = 0; i < amount; i++) {
+      count.value++;
+    }
+  });
 }
 
 class _TestWatchPillar extends Pillar {
@@ -408,11 +405,11 @@ class _TestAsyncPillar extends Pillar {
   late final count = core(0);
 
   Future<void> asyncIncrement() => strikeAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-        count.value++;
-      });
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    count.value++;
+  });
 
   Future<void> asyncFail() => strikeAsync(() async {
-        throw StateError('async failure');
-      });
+    throw StateError('async failure');
+  });
 }

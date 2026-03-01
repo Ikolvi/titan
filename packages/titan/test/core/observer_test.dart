@@ -19,10 +19,7 @@ void main() {
       counter.value = 1;
       counter.value = 2;
 
-      expect(records, [
-        ('counter', 0, 1),
-        ('counter', 1, 2),
-      ]);
+      expect(records, [('counter', 0, 1), ('counter', 1, 2)]);
 
       counter.dispose();
     });
@@ -237,7 +234,7 @@ void main() {
 
 class _TestObserver extends TitanObserver {
   final void Function(TitanState state, dynamic oldValue, dynamic newValue)
-      onChanged;
+  onChanged;
 
   _TestObserver({required this.onChanged});
 

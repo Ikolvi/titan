@@ -67,10 +67,7 @@ void main() {
     });
 
     test('throws when store not registered', () {
-      expect(
-        () => container.get<_CounterStore>(),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => container.get<_CounterStore>(), throwsA(isA<StateError>()));
     });
 
     test('has() checks registration', () {

@@ -73,11 +73,7 @@ abstract class TitanStore {
     bool Function(T previous, T next)? equals,
   }) {
     _assertNotDisposed();
-    final state = TitanState<T>(
-      initialValue,
-      name: name,
-      equals: equals,
-    );
+    final state = TitanState<T>(initialValue, name: name, equals: equals);
     _managedNodes.add(state);
     return state;
   }
@@ -97,11 +93,7 @@ abstract class TitanStore {
     bool Function(T previous, T next)? equals,
   }) {
     _assertNotDisposed();
-    final computed = TitanComputed<T>(
-      compute,
-      name: name,
-      equals: equals,
-    );
+    final computed = TitanComputed<T>(compute, name: name, equals: equals);
     _managedNodes.add(computed);
     return computed;
   }

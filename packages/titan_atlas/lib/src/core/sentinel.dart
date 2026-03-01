@@ -31,8 +31,8 @@ import 'waypoint.dart';
 typedef SentinelGuard = String? Function(String path, Waypoint waypoint);
 
 /// Async version of [SentinelGuard].
-typedef AsyncSentinelGuard = Future<String?> Function(
-    String path, Waypoint waypoint);
+typedef AsyncSentinelGuard =
+    Future<String?> Function(String path, Waypoint waypoint);
 
 /// **Sentinel** — A route guard that protects Passages.
 ///
@@ -63,10 +63,10 @@ class Sentinel {
   /// })
   /// ```
   const Sentinel(SentinelGuard guard)
-      : _syncGuard = guard,
-        _asyncGuard = null,
-        _paths = null,
-        _excludePaths = null;
+    : _syncGuard = guard,
+      _asyncGuard = null,
+      _paths = null,
+      _excludePaths = null;
 
   /// Create a Sentinel that only guards specific paths.
   ///
@@ -79,10 +79,10 @@ class Sentinel {
   const Sentinel.only({
     required Set<String> paths,
     required SentinelGuard guard,
-  })  : _syncGuard = guard,
-        _asyncGuard = null,
-        _paths = paths,
-        _excludePaths = null;
+  }) : _syncGuard = guard,
+       _asyncGuard = null,
+       _paths = paths,
+       _excludePaths = null;
 
   /// Create a Sentinel that guards all paths except specified ones.
   ///
@@ -95,10 +95,10 @@ class Sentinel {
   const Sentinel.except({
     required Set<String> paths,
     required SentinelGuard guard,
-  })  : _syncGuard = guard,
-        _asyncGuard = null,
-        _paths = null,
-        _excludePaths = paths;
+  }) : _syncGuard = guard,
+       _asyncGuard = null,
+       _paths = null,
+       _excludePaths = paths;
 
   /// Create a Sentinel with an async guard.
   ///
@@ -109,10 +109,10 @@ class Sentinel {
   /// })
   /// ```
   const Sentinel.async(AsyncSentinelGuard guard)
-      : _syncGuard = null,
-        _asyncGuard = guard,
-        _paths = null,
-        _excludePaths = null;
+    : _syncGuard = null,
+      _asyncGuard = guard,
+      _paths = null,
+      _excludePaths = null;
 
   /// Whether this sentinel applies to the given path.
   bool appliesTo(String path) {

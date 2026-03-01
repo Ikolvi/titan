@@ -10,6 +10,7 @@ topics:
   - reactive
   - signals
   - dart
+  - architecture
 
 resolution: workspace
 

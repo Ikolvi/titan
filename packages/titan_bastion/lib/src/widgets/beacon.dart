@@ -104,11 +104,7 @@ class Beacon extends StatefulWidget {
   final Widget child;
 
   /// Creates a Beacon that provides Pillars to the widget subtree.
-  const Beacon({
-    super.key,
-    required this.pillars,
-    required this.child,
-  });
+  const Beacon({super.key, required this.pillars, required this.child});
 
   @override
   State<Beacon> createState() => _BeaconState();
@@ -142,10 +138,7 @@ class _BeaconState extends State<Beacon> {
 
   @override
   Widget build(BuildContext context) {
-    return _BeaconInherited(
-      pillars: _pillars,
-      child: widget.child,
-    );
+    return _BeaconInherited(pillars: _pillars, child: widget.child);
   }
 }
 
@@ -153,10 +146,7 @@ class _BeaconState extends State<Beacon> {
 class _BeaconInherited extends InheritedWidget {
   final Map<Type, Pillar> pillars;
 
-  const _BeaconInherited({
-    required this.pillars,
-    required super.child,
-  });
+  const _BeaconInherited({required this.pillars, required super.child});
 
   @override
   bool updateShouldNotify(_BeaconInherited oldWidget) {

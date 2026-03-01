@@ -28,10 +28,7 @@ class TitanConsumer<T extends TitanStore> extends StatefulWidget {
   final Widget Function(BuildContext context, T store) builder;
 
   /// Creates a Titan consumer widget.
-  const TitanConsumer({
-    super.key,
-    required this.builder,
-  });
+  const TitanConsumer({super.key, required this.builder});
 
   @override
   State<TitanConsumer<T>> createState() => _TitanConsumerState<T>();

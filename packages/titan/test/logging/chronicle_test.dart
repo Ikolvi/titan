@@ -207,8 +207,13 @@ void main() {
 
     test('call() logs at given level', () {
       final log = Chronicle('Test');
-      log.call(LogLevel.warning, 'custom',
-          data: {'x': 1}, error: 'err', stackTrace: StackTrace.empty);
+      log.call(
+        LogLevel.warning,
+        'custom',
+        data: {'x': 1},
+        error: 'err',
+        stackTrace: StackTrace.empty,
+      );
 
       final entry = sink.entries.single;
       expect(entry.level, LogLevel.warning);

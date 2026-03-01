@@ -153,12 +153,7 @@ class RouteTrie<T> {
     if (node.paramChild != null) {
       final paramRunes = Map<String, String>.from(runes);
       paramRunes[node.paramChild!.paramName!] = segment;
-      final result = _match(
-        node.paramChild!,
-        segments,
-        index + 1,
-        paramRunes,
-      );
+      final result = _match(node.paramChild!, segments, index + 1, paramRunes);
       if (result != null) return result;
     }
 
@@ -178,9 +173,6 @@ class RouteTrie<T> {
 
   /// Split a path into segments, ignoring empty segments.
   static List<String> _splitPath(String path) {
-    return path
-        .split('/')
-        .where((s) => s.isNotEmpty)
-        .toList(growable: false);
+    return path.split('/').where((s) => s.isNotEmpty).toList(growable: false);
   }
 }

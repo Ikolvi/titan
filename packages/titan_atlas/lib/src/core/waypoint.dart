@@ -62,7 +62,8 @@ class Waypoint {
   final String? name;
 
   /// The full URI including query string.
-  Uri get uri => Uri.parse(path).replace(queryParameters: query.isEmpty ? null : query);
+  Uri get uri =>
+      Uri.parse(path).replace(queryParameters: query.isEmpty ? null : query);
 
   const Waypoint({
     required this.path,
@@ -147,9 +148,7 @@ class Waypoint {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Waypoint &&
-          path == other.path &&
-          pattern == other.pattern;
+      other is Waypoint && path == other.path && pattern == other.pattern;
 
   @override
   int get hashCode => Object.hash(path, pattern);

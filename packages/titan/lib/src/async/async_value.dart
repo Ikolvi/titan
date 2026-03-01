@@ -69,8 +69,10 @@ sealed class AsyncValue<T> {
     return switch (this) {
       AsyncData<T>(:final data) => onData(data),
       AsyncLoading<T>() => onLoading(),
-      AsyncError<T>(:final error, :final stackTrace) =>
-        onError(error, stackTrace),
+      AsyncError<T>(:final error, :final stackTrace) => onError(
+        error,
+        stackTrace,
+      ),
     };
   }
 
@@ -82,10 +84,8 @@ sealed class AsyncValue<T> {
     required R Function() orElse,
   }) {
     return switch (this) {
-      AsyncData<T>(:final data) =>
-        onData != null ? onData(data) : orElse(),
-      AsyncLoading<T>() =>
-        onLoading != null ? onLoading() : orElse(),
+      AsyncData<T>(:final data) => onData != null ? onData(data) : orElse(),
+      AsyncLoading<T>() => onLoading != null ? onLoading() : orElse(),
       AsyncError<T>(:final error, :final stackTrace) =>
         onError != null ? onError(error, stackTrace) : orElse(),
     };
@@ -102,8 +102,7 @@ class AsyncData<T> extends AsyncValue<T> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is AsyncData<T> && other.data == data;
+      identical(this, other) || other is AsyncData<T> && other.data == data;
 
   @override
   int get hashCode => data.hashCode;
@@ -141,8 +140,7 @@ class AsyncError<T> extends AsyncValue<T> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is AsyncError<T> && other.error == error;
+      identical(this, other) || other is AsyncError<T> && other.error == error;
 
   @override
   int get hashCode => error.hashCode;

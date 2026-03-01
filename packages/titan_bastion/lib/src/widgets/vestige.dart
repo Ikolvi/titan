@@ -69,10 +69,7 @@ class Vestige<P extends Pillar> extends StatefulWidget {
   final Widget Function(BuildContext context, P pillar) builder;
 
   /// Creates a Vestige that consumes a [Pillar] of type [P].
-  const Vestige({
-    super.key,
-    required this.builder,
-  });
+  const Vestige({super.key, required this.builder});
 
   @override
   State<Vestige<P>> createState() => _VestigeState<P>();
@@ -177,10 +174,7 @@ class VestigeRaw extends StatefulWidget {
   final Widget Function(BuildContext context) builder;
 
   /// Creates a raw reactive builder.
-  const VestigeRaw({
-    super.key,
-    required this.builder,
-  });
+  const VestigeRaw({super.key, required this.builder});
 
   @override
   State<VestigeRaw> createState() => _VestigeRawState();

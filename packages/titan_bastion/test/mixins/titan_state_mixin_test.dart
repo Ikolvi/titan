@@ -56,11 +56,7 @@ void main() {
     testWidgets('watch triggers rebuild on state change', (tester) async {
       final counter = TitanState(0);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: _TestWidget(counter: counter),
-        ),
-      );
+      await tester.pumpWidget(MaterialApp(home: _TestWidget(counter: counter)));
 
       expect(find.text('0'), findsOneWidget);
 
@@ -71,17 +67,13 @@ void main() {
       counter.dispose();
     });
 
-    testWidgets('effects are disposed when widget is disposed',
-        (tester) async {
+    testWidgets('effects are disposed when widget is disposed', (tester) async {
       final counter = TitanState(0);
       final values = <int>[];
 
       await tester.pumpWidget(
         MaterialApp(
-          home: _EffectWidget(
-            counter: counter,
-            onEffect: values.add,
-          ),
+          home: _EffectWidget(counter: counter, onEffect: values.add),
         ),
       );
 
@@ -91,9 +83,7 @@ void main() {
       expect(values, [0, 1]);
 
       // Remove widget from tree → dispose
-      await tester.pumpWidget(
-        const MaterialApp(home: SizedBox.shrink()),
-      );
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
 
       // After dispose, changing state should NOT trigger effect
       counter.value = 2;
@@ -102,17 +92,13 @@ void main() {
       counter.dispose();
     });
 
-    testWidgets('titanEffect runs side effect without rebuild',
-        (tester) async {
+    testWidgets('titanEffect runs side effect without rebuild', (tester) async {
       final counter = TitanState(0);
       final values = <int>[];
 
       await tester.pumpWidget(
         MaterialApp(
-          home: _EffectWidget(
-            counter: counter,
-            onEffect: values.add,
-          ),
+          home: _EffectWidget(counter: counter, onEffect: values.add),
         ),
       );
 
@@ -146,9 +132,7 @@ void main() {
       expect(find.text('1 world'), findsOneWidget);
 
       // Dispose widget
-      await tester.pumpWidget(
-        const MaterialApp(home: SizedBox.shrink()),
-      );
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
 
       // Changes should have no effect after dispose
       a.value = 99;

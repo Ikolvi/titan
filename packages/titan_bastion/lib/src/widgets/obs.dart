@@ -66,8 +66,7 @@ class Obs extends StatefulWidget {
   /// ```dart
   /// Obs(() => Text('${count.value}'))
   /// ```
-  Obs(Widget Function() builder, {super.key})
-      : _builder = ((_) => builder());
+  Obs(Widget Function() builder, {super.key}) : _builder = ((_) => builder());
 
   /// Creates a reactive observer with access to [BuildContext].
   ///

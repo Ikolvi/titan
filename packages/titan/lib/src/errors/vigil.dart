@@ -60,11 +60,7 @@ class ErrorContext {
   final Map<String, dynamic>? metadata;
 
   /// Creates an [ErrorContext].
-  const ErrorContext({
-    this.source,
-    this.action,
-    this.metadata,
-  });
+  const ErrorContext({this.source, this.action, this.metadata});
 
   @override
   String toString() {
@@ -191,8 +187,7 @@ class ConsoleErrorHandler extends ErrorHandler {
         error.context!.metadata!.isNotEmpty) {
       buf.writeln('│ Metadata: ${error.context!.metadata}');
     }
-    buf.writeln(
-        '│ Time: ${error.timestamp.toIso8601String()}');
+    buf.writeln('│ Time: ${error.timestamp.toIso8601String()}');
 
     if (includeStackTrace && error.stackTrace != null) {
       buf.writeln('│ Stack trace:');
@@ -223,10 +218,7 @@ class FilteredErrorHandler extends ErrorHandler {
   final ErrorHandler handler;
 
   /// Creates a [FilteredErrorHandler].
-  FilteredErrorHandler({
-    required this.filter,
-    required this.handler,
-  });
+  FilteredErrorHandler({required this.filter, required this.handler});
 
   @override
   void handle(TitanError error) {

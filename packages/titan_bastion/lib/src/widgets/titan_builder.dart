@@ -41,10 +41,7 @@ class TitanBuilder extends StatefulWidget {
   final Widget Function(BuildContext context) builder;
 
   /// Creates a Titan builder widget.
-  const TitanBuilder({
-    super.key,
-    required this.builder,
-  });
+  const TitanBuilder({super.key, required this.builder});
 
   @override
   State<TitanBuilder> createState() => _TitanBuilderState();

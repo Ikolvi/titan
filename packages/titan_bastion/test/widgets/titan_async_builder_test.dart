@@ -57,8 +57,9 @@ void main() {
       async.dispose();
     });
 
-    testWidgets('falls back to SizedBox.shrink when loading builder is null',
-        (tester) async {
+    testWidgets('falls back to SizedBox.shrink when loading builder is null', (
+      tester,
+    ) async {
       final async = TitanAsyncState<String>();
 
       await tester.pumpWidget(
@@ -75,8 +76,9 @@ void main() {
       async.dispose();
     });
 
-    testWidgets('falls back to SizedBox.shrink when error builder is null',
-        (tester) async {
+    testWidgets('falls back to SizedBox.shrink when error builder is null', (
+      tester,
+    ) async {
       final async = TitanAsyncState<String>();
       async.setError(Exception('x'));
 
@@ -117,9 +119,7 @@ void main() {
     });
 
     testWidgets('transitions from data to error', (tester) async {
-      final async = TitanAsyncState<int>(
-        initialValue: const AsyncData(42),
-      );
+      final async = TitanAsyncState<int>(initialValue: const AsyncData(42));
 
       await tester.pumpWidget(
         MaterialApp(

@@ -66,10 +66,16 @@ class Scroll<T> extends TitanState<T> {
     String? Function(T value)? validator,
     super.name,
     super.equals,
-  })  : _initialValue = initialValue,
-        _validator = validator,
-        _error = TitanState<String?>(null, name: name != null ? '${name}_error' : null),
-        _touched = TitanState<bool>(false, name: name != null ? '${name}_touched' : null);
+  }) : _initialValue = initialValue,
+       _validator = validator,
+       _error = TitanState<String?>(
+         null,
+         name: name != null ? '${name}_error' : null,
+       ),
+       _touched = TitanState<bool>(
+         false,
+         name: name != null ? '${name}_touched' : null,
+       );
 
   // ---------------------------------------------------------------------------
   // Reactive getters — all auto-track in Derived/Vestige

@@ -47,11 +47,7 @@ class CodexRequest {
   final String? cursor;
 
   /// Creates a pagination request.
-  const CodexRequest({
-    required this.page,
-    required this.pageSize,
-    this.cursor,
-  });
+  const CodexRequest({required this.page, required this.pageSize, this.cursor});
 }
 
 /// **Codex** — Paginated data management with reactive state.
@@ -129,12 +125,27 @@ class Codex<T> {
     required Future<CodexPage<T>> Function(CodexRequest request) fetcher,
     this.pageSize = 20,
     String? name,
-  })  : _fetcher = fetcher,
-        items = TitanState<List<T>>([], name: name != null ? '${name}_items' : null),
-        isLoading = TitanState<bool>(false, name: name != null ? '${name}_loading' : null),
-        hasMore = TitanState<bool>(true, name: name != null ? '${name}_hasMore' : null),
-        currentPage = TitanState<int>(0, name: name != null ? '${name}_page' : null),
-        error = TitanState<Object?>(null, name: name != null ? '${name}_error' : null);
+  }) : _fetcher = fetcher,
+       items = TitanState<List<T>>(
+         [],
+         name: name != null ? '${name}_items' : null,
+       ),
+       isLoading = TitanState<bool>(
+         false,
+         name: name != null ? '${name}_loading' : null,
+       ),
+       hasMore = TitanState<bool>(
+         true,
+         name: name != null ? '${name}_hasMore' : null,
+       ),
+       currentPage = TitanState<int>(
+         0,
+         name: name != null ? '${name}_page' : null,
+       ),
+       error = TitanState<Object?>(
+         null,
+         name: name != null ? '${name}_error' : null,
+       );
 
   /// Whether the codex is empty and not loading.
   bool get isEmpty => items.value.isEmpty && !isLoading.value;
@@ -207,12 +218,12 @@ class Codex<T> {
 
   /// All managed reactive nodes (for disposal by Pillar).
   List<TitanState<dynamic>> get managedNodes => [
-        items,
-        isLoading,
-        hasMore,
-        currentPage,
-        error,
-      ];
+    items,
+    isLoading,
+    hasMore,
+    currentPage,
+    error,
+  ];
 
   /// Dispose all managed state.
   void dispose() {

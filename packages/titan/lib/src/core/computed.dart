@@ -49,9 +49,9 @@ class TitanComputed<T> extends ReactiveNode {
     T Function() compute, {
     String? name,
     bool Function(T previous, T next)? equals,
-  })  : _compute = compute,
-        _name = name,
-        _equals = equals;
+  }) : _compute = compute,
+       _name = name,
+       _equals = equals;
 
   /// The debug name, if provided.
   String? get name => _name;

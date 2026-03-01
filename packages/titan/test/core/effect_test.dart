@@ -89,10 +89,7 @@ void main() {
 
     test('can be manually run', () {
       int runs = 0;
-      final effect = TitanEffect(
-        () => runs++,
-        fireImmediately: false,
-      );
+      final effect = TitanEffect(() => runs++, fireImmediately: false);
 
       expect(runs, 0);
       effect.run();

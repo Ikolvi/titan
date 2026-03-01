@@ -6,7 +6,10 @@ void main() {
     late Scroll<String> field;
 
     setUp(() {
-      field = Scroll<String>('', validator: (v) => v.isEmpty ? 'Required' : null);
+      field = Scroll<String>(
+        '',
+        validator: (v) => v.isEmpty ? 'Required' : null,
+      );
     });
 
     tearDown(() {
@@ -107,9 +110,14 @@ void main() {
     late ScrollGroup group;
 
     setUp(() {
-      name = Scroll<String>('', validator: (v) => v.isEmpty ? 'Required' : null);
-      email = Scroll<String>('',
-          validator: (v) => v.contains('@') ? null : 'Invalid email');
+      name = Scroll<String>(
+        '',
+        validator: (v) => v.isEmpty ? 'Required' : null,
+      );
+      email = Scroll<String>(
+        '',
+        validator: (v) => v.contains('@') ? null : 'Invalid email',
+      );
       group = ScrollGroup([name, email]);
     });
 

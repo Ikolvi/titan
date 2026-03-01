@@ -279,10 +279,8 @@ void main() {
 
 class _PaginatedPillar extends Pillar {
   late final items = codex<String>(
-    (req) async => const CodexPage(
-      items: ['quest_1', 'quest_2'],
-      hasMore: false,
-    ),
+    (req) async =>
+        const CodexPage(items: ['quest_1', 'quest_2'], hasMore: false),
     pageSize: 10,
     name: 'quests',
   );

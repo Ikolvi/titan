@@ -70,8 +70,9 @@ class _TitanScopeState extends State<TitanScope> {
 
   void _initContainer() {
     // Look for parent scope to create child container
-    final parentContainer =
-        context.getInheritedWidgetOfExactType<_TitanInherited>()?.container;
+    final parentContainer = context
+        .getInheritedWidgetOfExactType<_TitanInherited>()
+        ?.container;
 
     _container = parentContainer != null
         ? parentContainer.createChild()
@@ -96,10 +97,7 @@ class _TitanScopeState extends State<TitanScope> {
 
   @override
   Widget build(BuildContext context) {
-    return _TitanInherited(
-      container: _container,
-      child: widget.child,
-    );
+    return _TitanInherited(container: _container, child: widget.child);
   }
 }
 
@@ -107,10 +105,7 @@ class _TitanScopeState extends State<TitanScope> {
 class _TitanInherited extends InheritedWidget {
   final TitanContainer container;
 
-  const _TitanInherited({
-    required this.container,
-    required super.child,
-  });
+  const _TitanInherited({required this.container, required super.child});
 
   @override
   bool updateShouldNotify(_TitanInherited oldWidget) {
@@ -119,8 +114,7 @@ class _TitanInherited extends InheritedWidget {
 
   /// Retrieves the nearest [TitanContainer] from the widget tree.
   static TitanContainer of(BuildContext context) {
-    final inherited =
-        context.getInheritedWidgetOfExactType<_TitanInherited>();
+    final inherited = context.getInheritedWidgetOfExactType<_TitanInherited>();
     if (inherited == null) {
       throw FlutterError(
         'TitanScope not found in the widget tree.\n'

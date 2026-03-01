@@ -61,8 +61,7 @@ class AtlasContextProxy {
     Map<String, String> runes = const {},
     Map<String, String> query = const {},
     Object? extra,
-  }) =>
-      Atlas.toNamed(name, runes: runes, query: query, extra: extra);
+  }) => Atlas.toNamed(name, runes: runes, query: query, extra: extra);
 
   /// Replace the current route.
   void replace(String path, {Object? extra}) =>
@@ -75,8 +74,7 @@ class AtlasContextProxy {
   void backTo(String path) => Atlas.backTo(path);
 
   /// Reset navigation to a single route.
-  void reset(String path, {Object? extra}) =>
-      Atlas.reset(path, extra: extra);
+  void reset(String path, {Object? extra}) => Atlas.reset(path, extra: extra);
 
   /// Get the current waypoint.
   Waypoint get waypoint => Atlas.current;

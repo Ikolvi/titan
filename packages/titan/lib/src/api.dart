@@ -249,9 +249,9 @@ abstract final class Titan {
   ///
   /// Useful for debug tools like [Lens] to display active registrations.
   static Set<Type> get registeredTypes => {
-        ..._instances.keys,
-        ..._factories.keys,
-      };
+    ..._instances.keys,
+    ..._factories.keys,
+  };
 
   /// Returns all currently instantiated instances.
   ///

@@ -79,10 +79,7 @@ class AtlasConfiguration {
   /// The navigation stack (for stack-based navigation).
   final List<Waypoint> stack;
 
-  const AtlasConfiguration({
-    required this.waypoint,
-    this.stack = const [],
-  });
+  const AtlasConfiguration({required this.waypoint, this.stack = const []});
 }
 
 // ---------------------------------------------------------------------------
@@ -166,12 +163,12 @@ class Atlas {
     Widget Function(String path)? onError,
     String initialPath = '/',
     Shift? defaultShift,
-  })  : _sentinels = sentinels,
-        _observers = observers,
-        _drift = drift,
-        _onError = onError,
-        _initialPath = initialPath,
-        _defaultShift = defaultShift {
+  }) : _sentinels = sentinels,
+       _observers = observers,
+       _drift = drift,
+       _onError = onError,
+       _initialPath = initialPath,
+       _defaultShift = defaultShift {
     // Register global Pillars via Titan DI
     for (final factory in pillars) {
       Titan.forge(factory());
@@ -198,10 +195,7 @@ class Atlas {
       switch (route) {
         case Passage():
           // Combine parent (Sanctum) pillars with Passage's own pillars
-          final combinedPillars = [
-            ...parentPillars,
-            ...route.pillars,
-          ];
+          final combinedPillars = [...parentPillars, ...route.pillars];
           final resolved = _ResolvedRoute(
             pattern: route.path,
             builder: route.builder,
@@ -278,8 +272,7 @@ class Atlas {
       }
       return _NavigationResult(
         waypoint: waypoint,
-        widget: _onError?.call(cleanPath) ??
-            _DefaultErrorPage(path: cleanPath),
+        widget: _onError?.call(cleanPath) ?? _DefaultErrorPage(path: cleanPath),
         shift: null,
         shell: null,
       );
@@ -371,8 +364,7 @@ class Atlas {
       }
       return _NavigationResult(
         waypoint: waypoint,
-        widget: _onError?.call(cleanPath) ??
-            _DefaultErrorPage(path: cleanPath),
+        widget: _onError?.call(cleanPath) ?? _DefaultErrorPage(path: cleanPath),
         shift: null,
         shell: null,
       );
@@ -436,9 +428,7 @@ class Atlas {
       routerDelegate: _delegate,
       routeInformationParser: _parser,
       routeInformationProvider: PlatformRouteInformationProvider(
-        initialRouteInformation: RouteInformation(
-          uri: Uri.parse(_initialPath),
-        ),
+        initialRouteInformation: RouteInformation(uri: Uri.parse(_initialPath)),
       ),
     );
   }
@@ -762,24 +752,23 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
   }
 
   List<Page<dynamic>> _buildPages() {
-    return _stack.map((result) {
-      Widget page = result.widget;
+    return _stack
+        .map((result) {
+          Widget page = result.widget;
 
-      // Wrap in shell if this route has one
-      if (result.shell != null) {
-        page = result.shell!(page);
-      }
+          // Wrap in shell if this route has one
+          if (result.shell != null) {
+            page = result.shell!(page);
+          }
 
-      // Apply shift (transition) or default MaterialPage
-      if (result.shift != null) {
-        return result.shift!.buildPage(page, result.waypoint);
-      }
+          // Apply shift (transition) or default MaterialPage
+          if (result.shift != null) {
+            return result.shift!.buildPage(page, result.waypoint);
+          }
 
-      return MaterialPage(
-        key: ValueKey(result.waypoint.path),
-        child: page,
-      );
-    }).toList(growable: false);
+          return MaterialPage(key: ValueKey(result.waypoint.path), child: page);
+        })
+        .toList(growable: false);
   }
 }
 
@@ -802,18 +791,12 @@ class AtlasParser extends RouteInformationParser<AtlasConfiguration> {
     final query = uri.queryParameters;
 
     return AtlasConfiguration(
-      waypoint: Waypoint(
-        path: path,
-        pattern: path,
-        query: query,
-      ),
+      waypoint: Waypoint(path: path, pattern: path, query: query),
     );
   }
 
   @override
-  RouteInformation? restoreRouteInformation(
-    AtlasConfiguration configuration,
-  ) {
+  RouteInformation? restoreRouteInformation(AtlasConfiguration configuration) {
     return RouteInformation(uri: configuration.waypoint.uri);
   }
 }

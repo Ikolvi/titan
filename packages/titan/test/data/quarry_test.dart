@@ -45,9 +45,7 @@ void main() {
     });
 
     test('fetch() captures error', () async {
-      final q = Quarry<String>(
-        fetcher: () async => throw Exception('fail'),
-      );
+      final q = Quarry<String>(fetcher: () async => throw Exception('fail'));
       await q.fetch();
       expect(q.hasError, true);
       expect(q.error.value, isA<Exception>());
@@ -164,26 +162,29 @@ void main() {
       q.dispose();
     });
 
-    test('stale-while-revalidate uses isFetching instead of isLoading', () async {
-      bool sawFetching = false;
-      bool sawLoading = false;
-      final q = Quarry<String>(fetcher: () async => 'data');
+    test(
+      'stale-while-revalidate uses isFetching instead of isLoading',
+      () async {
+        bool sawFetching = false;
+        bool sawLoading = false;
+        final q = Quarry<String>(fetcher: () async => 'data');
 
-      await q.fetch(); // Initial fetch
+        await q.fetch(); // Initial fetch
 
-      q.isFetching.addListener(() {
-        if (q.isFetching.value) sawFetching = true;
-      });
-      q.isLoading.addListener(() {
-        if (q.isLoading.value) sawLoading = true;
-      });
+        q.isFetching.addListener(() {
+          if (q.isFetching.value) sawFetching = true;
+        });
+        q.isLoading.addListener(() {
+          if (q.isLoading.value) sawLoading = true;
+        });
 
-      // Second fetch — data exists but is stale (staleTime is null)
-      await q.fetch();
-      expect(sawFetching, true); // Background refetch indicator
-      expect(sawLoading, false); // Not shown as loading
-      q.dispose();
-    });
+        // Second fetch — data exists but is stale (staleTime is null)
+        await q.fetch();
+        expect(sawFetching, true); // Background refetch indicator
+        expect(sawLoading, false); // Not shown as loading
+        q.dispose();
+      },
+    );
 
     test('retry with backoff retries on failure', () async {
       int attempts = 0;

@@ -66,10 +66,7 @@ void main() {
       const value = AsyncLoading<int>();
 
       expect(
-        value.maybeWhen(
-          onData: (v) => 'data',
-          orElse: () => 'fallback',
-        ),
+        value.maybeWhen(onData: (v) => 'data', orElse: () => 'fallback'),
         'fallback',
       );
     });
@@ -89,9 +86,7 @@ void main() {
     });
 
     test('starts with initial value if provided', () {
-      final async = TitanAsyncState<int>(
-        initialValue: const AsyncData(42),
-      );
+      final async = TitanAsyncState<int>(initialValue: const AsyncData(42));
       expect(async.hasData, true);
       expect(async.data, 42);
     });
@@ -120,9 +115,7 @@ void main() {
     });
 
     test('refresh does not show loading', () async {
-      final async = TitanAsyncState<int>(
-        initialValue: const AsyncData(1),
-      );
+      final async = TitanAsyncState<int>(initialValue: const AsyncData(1));
 
       // Track states during refresh
       final states = <bool>[];
@@ -144,9 +137,7 @@ void main() {
     });
 
     test('reset returns to loading', () {
-      final async = TitanAsyncState<int>(
-        initialValue: const AsyncData(42),
-      );
+      final async = TitanAsyncState<int>(initialValue: const AsyncData(42));
       async.reset();
       expect(async.isLoading, true);
     });

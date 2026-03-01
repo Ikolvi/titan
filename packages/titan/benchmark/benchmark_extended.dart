@@ -65,9 +65,8 @@ Future<void> _benchEpoch() async {
     }
     swEpoch.stop();
 
-    final overhead =
-        (swEpoch.elapsedMicroseconds / swPlain.elapsedMicroseconds)
-            .toStringAsFixed(2);
+    final overhead = (swEpoch.elapsedMicroseconds / swPlain.elapsedMicroseconds)
+        .toStringAsFixed(2);
     print(
       '│  History overhead ($mutations mutations): '
       '${_ms(swPlain)} plain, ${_ms(swEpoch)} epoch (${overhead}x)',
@@ -337,10 +336,8 @@ Future<void> _benchScrollValidation() async {
     for (final fieldCount in [10, 100, 1000]) {
       final fields = List.generate(
         fieldCount,
-        (i) => Scroll<String>(
-          '',
-          validator: (v) => v.isEmpty ? 'Required' : null,
-        ),
+        (i) =>
+            Scroll<String>('', validator: (v) => v.isEmpty ? 'Required' : null),
       );
       final group = ScrollGroup(fields);
 
@@ -356,8 +353,9 @@ Future<void> _benchScrollValidation() async {
       }
       sw.stop();
 
-      final perValidateAll =
-          (sw.elapsedMicroseconds / rounds).toStringAsFixed(1);
+      final perValidateAll = (sw.elapsedMicroseconds / rounds).toStringAsFixed(
+        1,
+      );
       print(
         '│  ScrollGroup ${_pad(fieldCount)} fields × $rounds: '
         '${_ms(sw)}  ($perValidateAll µs/validateAll)',
@@ -397,17 +395,13 @@ Future<void> _benchVigil() async {
 
     final sw = Stopwatch()..start();
     for (var i = 0; i < captures; i++) {
-      Vigil.capture(
-        'Error $i',
-        severity: ErrorSeverity.error,
-      );
+      Vigil.capture('Error $i', severity: ErrorSeverity.error);
     }
     sw.stop();
 
-    final throughput =
-        (captures / sw.elapsedMicroseconds * 1e6).toStringAsFixed(0);
-    final totalHandled =
-        handlers.fold<int>(0, (sum, h) => sum + h.count);
+    final throughput = (captures / sw.elapsedMicroseconds * 1e6)
+        .toStringAsFixed(0);
+    final totalHandled = handlers.fold<int>(0, (sum, h) => sum + h.count);
     print(
       '│  ${_pad(handlerCount)} handlers × $captures: '
       '${_ms(sw)}  ($throughput captures/sec, $totalHandled dispatched)',
@@ -426,8 +420,7 @@ Future<void> _benchVigil() async {
     }
     sw.stop();
 
-    final perCapture =
-        (sw.elapsedMicroseconds / captures).toStringAsFixed(2);
+    final perCapture = (sw.elapsedMicroseconds / captures).toStringAsFixed(2);
     print(
       '│  History (cap 1000, $captures): '
       '${_ms(sw)}  ($perCapture µs/capture, '
@@ -503,8 +496,8 @@ Future<void> _benchChronicle() async {
     }
     sw.stop();
 
-    final throughput =
-        (messages / sw.elapsedMicroseconds * 1e6).toStringAsFixed(0);
+    final throughput = (messages / sw.elapsedMicroseconds * 1e6)
+        .toStringAsFixed(0);
     final totalWritten = sinks.fold<int>(0, (sum, s) => sum + s.count);
     print(
       '│  ${_pad(sinkCount)} sinks × $messages: '
@@ -529,8 +522,8 @@ Future<void> _benchChronicle() async {
     }
     sw.stop();
 
-    final throughput =
-        (messages / sw.elapsedMicroseconds * 1e6).toStringAsFixed(0);
+    final throughput = (messages / sw.elapsedMicroseconds * 1e6)
+        .toStringAsFixed(0);
     print(
       '│  Level filter ($messages suppressed): '
       '${_ms(sw)}  ($throughput filtered/sec)',
@@ -629,8 +622,11 @@ Future<void> _benchTitanDI() async {
     }
     swMiss.stop();
 
-    final perHit = (swHit.elapsedMicroseconds / lookups * 1000).toStringAsFixed(1);
-    final perMiss = (swMiss.elapsedMicroseconds / lookups * 1000).toStringAsFixed(1);
+    final perHit = (swHit.elapsedMicroseconds / lookups * 1000).toStringAsFixed(
+      1,
+    );
+    final perMiss = (swMiss.elapsedMicroseconds / lookups * 1000)
+        .toStringAsFixed(1);
     print(
       '│  has() $lookups lookups: '
       '${_ms(swHit)} hit ($perHit ns), '

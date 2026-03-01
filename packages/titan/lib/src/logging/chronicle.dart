@@ -327,9 +327,13 @@ class Chronicle {
     Object? errorObj,
     StackTrace? stackTrace,
     Map<String, dynamic>? data,
-  ]) =>
-      _log(LogLevel.error, message,
-          error: errorObj, stackTrace: stackTrace, data: data);
+  ]) => _log(
+    LogLevel.error,
+    message,
+    error: errorObj,
+    stackTrace: stackTrace,
+    data: data,
+  );
 
   /// Log a fatal-level message with optional error and stack trace.
   void fatal(
@@ -337,9 +341,13 @@ class Chronicle {
     Object? errorObj,
     StackTrace? stackTrace,
     Map<String, dynamic>? data,
-  ]) =>
-      _log(LogLevel.fatal, message,
-          error: errorObj, stackTrace: stackTrace, data: data);
+  ]) => _log(
+    LogLevel.fatal,
+    message,
+    error: errorObj,
+    stackTrace: stackTrace,
+    data: data,
+  );
 
   /// Log a message at the given level.
   void call(
@@ -348,8 +356,7 @@ class Chronicle {
     Map<String, dynamic>? data,
     Object? error,
     StackTrace? stackTrace,
-  }) =>
-      _log(lvl, message, data: data, error: error, stackTrace: stackTrace);
+  }) => _log(lvl, message, data: data, error: error, stackTrace: stackTrace);
 
   // ---------------------------------------------------------------------------
   // Internal

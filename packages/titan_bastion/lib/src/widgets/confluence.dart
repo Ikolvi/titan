@@ -41,10 +41,7 @@ class Confluence2<A extends Pillar, B extends Pillar> extends StatefulWidget {
   final Widget Function(BuildContext context, A pillarA, B pillarB) builder;
 
   /// Creates a Confluence that combines two Pillars.
-  const Confluence2({
-    super.key,
-    required this.builder,
-  });
+  const Confluence2({super.key, required this.builder});
 
   @override
   State<Confluence2<A, B>> createState() => _Confluence2State<A, B>();
@@ -63,8 +60,7 @@ class _Confluence2State<A extends Pillar, B extends Pillar>
     super.initState();
     _effect = TitanEffect(
       () {
-        _cachedWidget =
-            widget.builder(context, _pillarA as A, _pillarB as B);
+        _cachedWidget = widget.builder(context, _pillarA as A, _pillarB as B);
       },
       onNotify: _onDependencyChanged,
       fireImmediately: false,
@@ -140,22 +136,18 @@ class _Confluence2State<A extends Pillar, B extends Pillar>
 class Confluence3<A extends Pillar, B extends Pillar, C extends Pillar>
     extends StatefulWidget {
   /// The builder that receives three typed Pillars.
-  final Widget Function(
-      BuildContext context, A pillarA, B pillarB, C pillarC) builder;
+  final Widget Function(BuildContext context, A pillarA, B pillarB, C pillarC)
+  builder;
 
   /// Creates a Confluence that combines three Pillars.
-  const Confluence3({
-    super.key,
-    required this.builder,
-  });
+  const Confluence3({super.key, required this.builder});
 
   @override
-  State<Confluence3<A, B, C>> createState() =>
-      _Confluence3State<A, B, C>();
+  State<Confluence3<A, B, C>> createState() => _Confluence3State<A, B, C>();
 }
 
-class _Confluence3State<A extends Pillar, B extends Pillar,
-    C extends Pillar> extends State<Confluence3<A, B, C>> {
+class _Confluence3State<A extends Pillar, B extends Pillar, C extends Pillar>
+    extends State<Confluence3<A, B, C>> {
   late TitanEffect _effect;
   A? _pillarA;
   B? _pillarB;
@@ -169,7 +161,11 @@ class _Confluence3State<A extends Pillar, B extends Pillar,
     _effect = TitanEffect(
       () {
         _cachedWidget = widget.builder(
-            context, _pillarA as A, _pillarB as B, _pillarC as C);
+          context,
+          _pillarA as A,
+          _pillarB as B,
+          _pillarC as C,
+        );
       },
       onNotify: _onDependencyChanged,
       fireImmediately: false,
@@ -238,25 +234,37 @@ class _Confluence3State<A extends Pillar, B extends Pillar,
 /// ```
 ///
 /// See [Confluence2] for details.
-class Confluence4<A extends Pillar, B extends Pillar, C extends Pillar,
-    D extends Pillar> extends StatefulWidget {
+class Confluence4<
+  A extends Pillar,
+  B extends Pillar,
+  C extends Pillar,
+  D extends Pillar
+>
+    extends StatefulWidget {
   /// The builder that receives four typed Pillars.
   final Widget Function(
-      BuildContext context, A pillarA, B pillarB, C pillarC, D pillarD) builder;
+    BuildContext context,
+    A pillarA,
+    B pillarB,
+    C pillarC,
+    D pillarD,
+  )
+  builder;
 
   /// Creates a Confluence that combines four Pillars.
-  const Confluence4({
-    super.key,
-    required this.builder,
-  });
+  const Confluence4({super.key, required this.builder});
 
   @override
   State<Confluence4<A, B, C, D>> createState() =>
       _Confluence4State<A, B, C, D>();
 }
 
-class _Confluence4State<A extends Pillar, B extends Pillar,
-        C extends Pillar, D extends Pillar>
+class _Confluence4State<
+  A extends Pillar,
+  B extends Pillar,
+  C extends Pillar,
+  D extends Pillar
+>
     extends State<Confluence4<A, B, C, D>> {
   late TitanEffect _effect;
   A? _pillarA;
@@ -271,8 +279,13 @@ class _Confluence4State<A extends Pillar, B extends Pillar,
     super.initState();
     _effect = TitanEffect(
       () {
-        _cachedWidget = widget.builder(context, _pillarA as A,
-            _pillarB as B, _pillarC as C, _pillarD as D);
+        _cachedWidget = widget.builder(
+          context,
+          _pillarA as A,
+          _pillarB as B,
+          _pillarC as C,
+          _pillarD as D,
+        );
       },
       onNotify: _onDependencyChanged,
       fireImmediately: false,

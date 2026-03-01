@@ -30,8 +30,7 @@ void main() {
   tearDown(() => Titan.reset());
 
   group('Confluence2 — Two-Pillar Consumer', () {
-    testWidgets('renders with two Pillars from Titan registry',
-        (tester) async {
+    testWidgets('renders with two Pillars from Titan registry', (tester) async {
       Titan.put(_CounterPillar());
       Titan.put(_NamePillar());
 
@@ -167,13 +166,18 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Confluence4<_CounterPillar, _NamePillar, _ThemePillar,
-              _SettingsPillar>(
-            builder: (context, counter, name, theme, settings) => Text(
-              '${name.name.value}:${counter.count.value}:'
-              '${theme.isDark.value}:${settings.locale.value}',
-            ),
-          ),
+          home:
+              Confluence4<
+                _CounterPillar,
+                _NamePillar,
+                _ThemePillar,
+                _SettingsPillar
+              >(
+                builder: (context, counter, name, theme, settings) => Text(
+                  '${name.name.value}:${counter.count.value}:'
+                  '${theme.isDark.value}:${settings.locale.value}',
+                ),
+              ),
         ),
       );
 

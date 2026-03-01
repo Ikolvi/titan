@@ -89,8 +89,8 @@ Future<void> _benchStateNotification() async {
     }
     sw.stop();
 
-    final throughput =
-        (mutations / sw.elapsedMicroseconds * 1e6).toStringAsFixed(0);
+    final throughput = (mutations / sw.elapsedMicroseconds * 1e6)
+        .toStringAsFixed(0);
     print(
       '│  ${_pad(listenerCount)} listeners × $mutations mutations: '
       '${_ms(sw)}  ($throughput mutations/sec)',
@@ -161,7 +161,8 @@ Future<void> _benchBatchVsUnbatched() async {
   swBatched.stop();
   final batchedRecomputes = recomputeCount;
 
-  final speedup = swUnbatched.elapsedMicroseconds / swBatched.elapsedMicroseconds;
+  final speedup =
+      swUnbatched.elapsedMicroseconds / swBatched.elapsedMicroseconds;
 
   print('│  Unbatched: ${_ms(swUnbatched)}  ($unbatchedRecomputes recomputes)');
   print('│  Batched:   ${_ms(swBatched)}  ($batchedRecomputes recomputes)');
@@ -186,9 +187,7 @@ Future<void> _benchComputedChainDepth() async {
 
   for (final depth in [10, 100, 500, 1000]) {
     final source = TitanState(0);
-    final chain = <TitanComputed<int>>[
-      TitanComputed(() => source.value + 1),
-    ];
+    final chain = <TitanComputed<int>>[TitanComputed(() => source.value + 1)];
 
     for (var i = 1; i < depth; i++) {
       final prev = chain[i - 1];
@@ -297,8 +296,9 @@ Future<void> _benchHeraldThroughput() async {
     }
     sw.stop();
 
-    final throughput =
-        (events / sw.elapsedMicroseconds * 1e6).toStringAsFixed(0);
+    final throughput = (events / sw.elapsedMicroseconds * 1e6).toStringAsFixed(
+      0,
+    );
     print(
       '│  ${_pad(listenerCount)} listeners × $events events: '
       '${_ms(sw)}  ($throughput events/sec)',
@@ -360,7 +360,9 @@ Future<void> _benchDiamondDependency() async {
     final a = TitanState(i);
     final b = TitanComputed(() => a.value * 2);
     final c = TitanComputed(() => a.value * 3);
-    final d = TitanComputed(() => b.value + c.value); // Should compute once per a change
+    final d = TitanComputed(
+      () => b.value + c.value,
+    ); // Should compute once per a change
     d.value; // Force initial computation
     sources.add(a);
     diamonds.add(d);

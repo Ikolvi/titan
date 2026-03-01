@@ -77,12 +77,7 @@ class Epoch<T> extends TitanState<T> {
   /// - [maxHistory] — Maximum undo depth (default 100).
   /// - [name] — Optional debug name.
   /// - [equals] — Custom equality function.
-  Epoch(
-    super.initialValue, {
-    this.maxHistory = 100,
-    super.name,
-    super.equals,
-  });
+  Epoch(super.initialValue, {this.maxHistory = 100, super.name, super.equals});
 
   /// Sets the value, recording the previous value for undo.
   ///

@@ -21,7 +21,8 @@ class Shift {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
     Widget child,
-  ) _transitionBuilder;
+  )
+  _transitionBuilder;
 
   final Duration _duration;
   final Duration _reverseDuration;
@@ -32,12 +33,13 @@ class Shift {
       Animation<double> animation,
       Animation<double> secondaryAnimation,
       Widget child,
-    ) transitionBuilder,
+    )
+    transitionBuilder,
     Duration duration = const Duration(milliseconds: 300),
     Duration? reverseDuration,
-  })  : _transitionBuilder = transitionBuilder,
-        _duration = duration,
-        _reverseDuration = reverseDuration ?? duration;
+  }) : _transitionBuilder = transitionBuilder,
+       _duration = duration,
+       _reverseDuration = reverseDuration ?? duration;
 
   /// Fade transition.
   ///
@@ -66,10 +68,7 @@ class Shift {
           begin: const Offset(1.0, 0.0),
           end: Offset.zero,
         ).chain(CurveTween(curve: Curves.easeInOut));
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
+        return SlideTransition(position: animation.drive(tween), child: child);
       },
     );
   }
@@ -89,10 +88,7 @@ class Shift {
           begin: const Offset(0.0, 1.0),
           end: Offset.zero,
         ).chain(CurveTween(curve: Curves.easeOut));
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
+        return SlideTransition(position: animation.drive(tween), child: child);
       },
     );
   }
@@ -102,16 +98,16 @@ class Shift {
   /// ```dart
   /// Passage('/detail', (_) => Detail(), shift: Shift.scale())
   /// ```
-  factory Shift.scale({
-    Duration duration = const Duration(milliseconds: 300),
-  }) {
+  factory Shift.scale({Duration duration = const Duration(milliseconds: 300)}) {
     return Shift._(
       duration: duration,
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return ScaleTransition(
           scale: animation.drive(
-            Tween(begin: 0.8, end: 1.0)
-                .chain(CurveTween(curve: Curves.easeOut)),
+            Tween(
+              begin: 0.8,
+              end: 1.0,
+            ).chain(CurveTween(curve: Curves.easeOut)),
           ),
           child: FadeTransition(opacity: animation, child: child),
         );
@@ -149,7 +145,8 @@ class Shift {
       Animation<double> animation,
       Animation<double> secondaryAnimation,
       Widget child,
-    ) builder,
+    )
+    builder,
     Duration duration = const Duration(milliseconds: 300),
     Duration? reverseDuration,
   }) {

@@ -10,6 +10,7 @@ topics:
   - routing
   - flutter
   - state-management
+  - deep-linking
 
 resolution: workspace
 

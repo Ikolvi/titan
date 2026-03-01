@@ -36,13 +36,10 @@ class TitanState<T> extends ReactiveNode {
   ///
   /// - [name] — Optional debug name for logging/devtools.
   /// - [equals] — Custom equality function. Defaults to `==`.
-  TitanState(
-    T value, {
-    String? name,
-    bool Function(T previous, T next)? equals,
-  })  : _value = value,
-        _name = name,
-        _equals = equals;
+  TitanState(T value, {String? name, bool Function(T previous, T next)? equals})
+    : _value = value,
+      _name = name,
+      _equals = equals;
 
   /// The debug name of this state, if provided.
   String? get name => _name;

@@ -56,9 +56,9 @@ class TitanEffect extends ReactiveNode {
     String? name,
     void Function()? onNotify,
     bool fireImmediately = true,
-  })  : _fn = fn,
-        _name = name,
-        _onNotify = onNotify {
+  }) : _fn = fn,
+       _name = name,
+       _onNotify = onNotify {
     if (fireImmediately) {
       _execute();
     }

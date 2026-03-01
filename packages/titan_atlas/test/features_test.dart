@@ -100,11 +100,7 @@ void main() {
     });
 
     test('stores name', () {
-      const wp = Waypoint(
-        path: '/home',
-        pattern: '/home',
-        name: 'home',
-      );
+      const wp = Waypoint(path: '/home', pattern: '/home', name: 'home');
       expect(wp.name, 'home');
     });
 
@@ -126,11 +122,7 @@ void main() {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
-          Passage(
-            '/old',
-            (_) => const Text('Old'),
-            redirect: (wp) => '/new',
-          ),
+          Passage('/old', (_) => const Text('Old'), redirect: (wp) => '/new'),
           Passage('/new', (_) => const Text('New')),
         ],
       );
@@ -321,8 +313,7 @@ void main() {
       final events = <String>[];
 
       final observer = _TestObserver(
-        onGuardRedirectFn: (from, to) =>
-            events.add('guard:$from->$to'),
+        onGuardRedirectFn: (from, to) => events.add('guard:$from->$to'),
       );
 
       final atlas = Atlas(
@@ -357,9 +348,7 @@ void main() {
       );
 
       final atlas = Atlas(
-        passages: [
-          Passage('/', (_) => const Text('Home')),
-        ],
+        passages: [Passage('/', (_) => const Text('Home'))],
         observers: [observer],
       );
 

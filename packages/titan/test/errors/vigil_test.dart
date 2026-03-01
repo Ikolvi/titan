@@ -29,8 +29,8 @@ class FailingPillar extends Pillar {
   late final value = core(0);
 
   Future<void> failAsync() => strikeAsync(() async {
-        throw StateError('async boom');
-      });
+    throw StateError('async boom');
+  });
 
   void manualCapture() {
     try {
@@ -46,11 +46,7 @@ class FailingPillar extends Pillar {
   }
 
   void captureWithSeverity(ErrorSeverity severity) {
-    captureError(
-      'test error',
-      severity: severity,
-      action: 'testAction',
-    );
+    captureError('test error', severity: severity, action: 'testAction');
   }
 }
 
@@ -211,10 +207,12 @@ void main() {
   group('Vigil — FilteredErrorHandler', () {
     test('only forwards matching errors', () {
       final inner = _RecordingHandler();
-      Vigil.addHandler(FilteredErrorHandler(
-        filter: (e) => e.severity == ErrorSeverity.fatal,
-        handler: inner,
-      ));
+      Vigil.addHandler(
+        FilteredErrorHandler(
+          filter: (e) => e.severity == ErrorSeverity.fatal,
+          handler: inner,
+        ),
+      );
 
       Vigil.capture('info', severity: ErrorSeverity.info);
       Vigil.capture('warning', severity: ErrorSeverity.warning);
@@ -257,10 +255,8 @@ void main() {
     });
 
     test('bySource filters correctly', () {
-      Vigil.capture('a',
-          context: ErrorContext(source: FailingPillar));
-      Vigil.capture('b',
-          context: ErrorContext(source: FailingPillar));
+      Vigil.capture('a', context: ErrorContext(source: FailingPillar));
+      Vigil.capture('b', context: ErrorContext(source: FailingPillar));
       Vigil.capture('c', context: ErrorContext(source: String));
 
       expect(Vigil.bySource(FailingPillar), hasLength(2));
@@ -299,9 +295,8 @@ void main() {
 
     test('captureAndRethrow captures then rethrows', () async {
       expect(
-        () => Vigil.captureAndRethrow<int>(
-          () async => throw StateError('fail'),
-        ),
+        () =>
+            Vigil.captureAndRethrow<int>(() async => throw StateError('fail')),
         throwsA(isA<StateError>()),
       );
 
@@ -358,10 +353,7 @@ void main() {
     test('strikeAsync rethrows after capture', () async {
       final pillar = FailingPillar()..initialize();
 
-      expect(
-        () => pillar.failAsync(),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => pillar.failAsync(), throwsA(isA<StateError>()));
     });
 
     test('captureError tags with Pillar runtimeType', () {
@@ -413,10 +405,7 @@ void main() {
     test('toString includes source and action', () {
       final err = TitanError(
         error: 'oops',
-        context: ErrorContext(
-          source: FailingPillar,
-          action: 'loadData',
-        ),
+        context: ErrorContext(source: FailingPillar, action: 'loadData'),
       );
       expect(err.toString(), contains('FailingPillar'));
       expect(err.toString(), contains('loadData'));
@@ -445,12 +434,10 @@ void main() {
       );
 
       // Should not print (below minSeverity)
-      handler.handle(TitanError(
-          error: 'info', severity: ErrorSeverity.info));
+      handler.handle(TitanError(error: 'info', severity: ErrorSeverity.info));
 
       // Should print (meets minSeverity)
-      handler.handle(TitanError(
-          error: 'fatal', severity: ErrorSeverity.fatal));
+      handler.handle(TitanError(error: 'fatal', severity: ErrorSeverity.fatal));
     });
   });
 

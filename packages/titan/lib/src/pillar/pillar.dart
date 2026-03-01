@@ -370,17 +370,9 @@ abstract class Pillar {
   /// }
   /// ```
   @protected
-  TitanEffect watch(
-    Function() fn, {
-    String? name,
-    bool immediate = true,
-  }) {
+  TitanEffect watch(Function() fn, {String? name, bool immediate = true}) {
     _assertNotDisposed();
-    final effect = TitanEffect(
-      fn,
-      name: name,
-      fireImmediately: immediate,
-    );
+    final effect = TitanEffect(fn, name: name, fireImmediately: immediate);
     _managedEffects.add(effect);
     return effect;
   }

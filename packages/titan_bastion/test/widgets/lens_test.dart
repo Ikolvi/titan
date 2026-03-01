@@ -20,12 +20,7 @@ void main() {
   group('Lens — Debug Overlay', () {
     testWidgets('renders child when disabled', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Lens(
-            enabled: false,
-            child: Text('app'),
-          ),
-        ),
+        const MaterialApp(home: Lens(enabled: false, child: Text('app'))),
       );
 
       expect(find.text('app'), findsOneWidget);
@@ -35,11 +30,7 @@ void main() {
 
     testWidgets('renders child and FAB when enabled', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Lens(
-            child: Text('app'),
-          ),
-        ),
+        const MaterialApp(home: Lens(child: Text('app'))),
       );
 
       expect(find.text('app'), findsOneWidget);
@@ -48,11 +39,7 @@ void main() {
 
     testWidgets('FAB toggles panel visibility', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Lens(
-            child: Text('app'),
-          ),
-        ),
+        const MaterialApp(home: Lens(child: Text('app'))),
       );
 
       // Panel not visible initially
@@ -79,11 +66,7 @@ void main() {
       Titan.put(_TestPillar());
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Lens(
-            child: Text('app'),
-          ),
-        ),
+        const MaterialApp(home: Lens(child: Text('app'))),
       );
 
       // Open panel
@@ -96,11 +79,7 @@ void main() {
 
     testWidgets('shows Vigil errors', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Lens(
-            child: Text('app'),
-          ),
-        ),
+        const MaterialApp(home: Lens(child: Text('app'))),
       );
 
       // Capture an error in Vigil
@@ -117,11 +96,7 @@ void main() {
 
     testWidgets('static show/hide/toggle work', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Lens(
-            child: Text('app'),
-          ),
-        ),
+        const MaterialApp(home: Lens(child: Text('app'))),
       );
 
       // Panel not visible
@@ -145,11 +120,7 @@ void main() {
 
     testWidgets('LensLogSink captures Chronicle entries', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Lens(
-            child: Text('app'),
-          ),
-        ),
+        const MaterialApp(home: Lens(child: Text('app'))),
       );
 
       // Log something
@@ -167,11 +138,7 @@ void main() {
 
     testWidgets('shows "No Herald events" when empty', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Lens(
-            child: Text('app'),
-          ),
-        ),
+        const MaterialApp(home: Lens(child: Text('app'))),
       );
 
       await tester.tap(find.byIcon(Icons.bug_report));
@@ -184,19 +151,11 @@ void main() {
 
     testWidgets('disposes cleanly', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Lens(
-            child: Text('app'),
-          ),
-        ),
+        const MaterialApp(home: Lens(child: Text('app'))),
       );
 
       // Navigate away to trigger dispose
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Text('other'),
-        ),
-      );
+      await tester.pumpWidget(const MaterialApp(home: Text('other')));
 
       // Should not throw
       expect(find.text('other'), findsOneWidget);
@@ -206,12 +165,14 @@ void main() {
   group('LensLogSink — Unit', () {
     test('captures log entries', () {
       final sink = LensLogSink();
-      sink.write(LogEntry(
-        loggerName: 'test',
-        level: LogLevel.info,
-        message: 'hello',
-        timestamp: DateTime.now(),
-      ));
+      sink.write(
+        LogEntry(
+          loggerName: 'test',
+          level: LogLevel.info,
+          message: 'hello',
+          timestamp: DateTime.now(),
+        ),
+      );
       expect(sink.entries.length, 1);
       expect(sink.entries.first.message, 'hello');
     });
@@ -219,12 +180,14 @@ void main() {
     test('respects maxEntries limit', () {
       final sink = LensLogSink(maxEntries: 3);
       for (var i = 0; i < 5; i++) {
-        sink.write(LogEntry(
-          loggerName: 'test',
-          level: LogLevel.info,
-          message: 'msg_$i',
-          timestamp: DateTime.now(),
-        ));
+        sink.write(
+          LogEntry(
+            loggerName: 'test',
+            level: LogLevel.info,
+            message: 'msg_$i',
+            timestamp: DateTime.now(),
+          ),
+        );
       }
       expect(sink.entries.length, 3);
       expect(sink.entries.first.message, 'msg_2');
@@ -232,12 +195,14 @@ void main() {
 
     test('clear() removes all entries', () {
       final sink = LensLogSink();
-      sink.write(LogEntry(
-        loggerName: 'test',
-        level: LogLevel.info,
-        message: 'hello',
-        timestamp: DateTime.now(),
-      ));
+      sink.write(
+        LogEntry(
+          loggerName: 'test',
+          level: LogLevel.info,
+          message: 'hello',
+          timestamp: DateTime.now(),
+        ),
+      );
       sink.clear();
       expect(sink.entries, isEmpty);
     });
@@ -246,12 +211,14 @@ void main() {
       final sink = LensLogSink();
       int count = 0;
       sink.onEntry = () => count++;
-      sink.write(LogEntry(
-        loggerName: 'test',
-        level: LogLevel.info,
-        message: 'hello',
-        timestamp: DateTime.now(),
-      ));
+      sink.write(
+        LogEntry(
+          loggerName: 'test',
+          level: LogLevel.info,
+          message: 'hello',
+          timestamp: DateTime.now(),
+        ),
+      );
       expect(count, 1);
     });
   });

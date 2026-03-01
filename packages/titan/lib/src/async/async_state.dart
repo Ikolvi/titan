@@ -28,13 +28,11 @@ class TitanAsyncState<T> {
   ///
   /// - [name] — Optional debug name.
   /// - [initialValue] — Initial async value. Defaults to [AsyncLoading].
-  TitanAsyncState({
-    String? name,
-    AsyncValue<T>? initialValue,
-  }) : _state = TitanState<AsyncValue<T>>(
-          initialValue ?? const AsyncLoading(),
-          name: name,
-        );
+  TitanAsyncState({String? name, AsyncValue<T>? initialValue})
+    : _state = TitanState<AsyncValue<T>>(
+        initialValue ?? const AsyncLoading(),
+        name: name,
+      );
 
   /// The underlying reactive state.
   TitanState<AsyncValue<T>> get state => _state;

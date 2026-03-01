@@ -313,10 +313,7 @@ void main() {
       emitter.initialize();
       emitter.dispose();
 
-      expect(
-        () => emitter.login('fail'),
-        throwsA(isA<AssertionError>()),
-      );
+      expect(() => emitter.login('fail'), throwsA(isA<AssertionError>()));
     });
 
     test('listenOnce receives exactly one event', () {
@@ -484,7 +481,11 @@ void main() {
       final hasThird = Herald.last<_ThirdEvent>() != null;
 
       // Exactly 2 should be present
-      final presentCount = [hasLogin, hasLogout, hasThird].where((b) => b).length;
+      final presentCount = [
+        hasLogin,
+        hasLogout,
+        hasThird,
+      ].where((b) => b).length;
       expect(presentCount, 2);
       // The most recently emitted should always be present
       expect(hasThird, isTrue);

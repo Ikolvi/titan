@@ -51,11 +51,8 @@ class DebouncedState<T> extends TitanState<T> {
   late final void Function() _unsubscribe;
 
   /// Creates a debounced state that follows [source] with the given [duration].
-  DebouncedState(
-    this._source,
-    this._duration, {
-    super.name,
-  }) : super(_source.peek()) {
+  DebouncedState(this._source, this._duration, {super.name})
+    : super(_source.peek()) {
     _unsubscribe = _source.listen((_) => _onSourceChanged());
   }
 
@@ -108,11 +105,8 @@ class ThrottledState<T> extends TitanState<T> {
   late final void Function() _unsubscribe;
 
   /// Creates a throttled state that follows [source] with the given [duration].
-  ThrottledState(
-    this._source,
-    this._duration, {
-    super.name,
-  }) : super(_source.peek()) {
+  ThrottledState(this._source, this._duration, {super.name})
+    : super(_source.peek()) {
     _unsubscribe = _source.listen((_) => _onSourceChanged());
   }
 

@@ -88,8 +88,8 @@ class TitanHistoryObserver extends TitanObserver {
   ///
   /// - [maxHistory] — Maximum number of records to keep. Defaults to 1000.
   TitanHistoryObserver({int maxHistory = 1000})
-      : _maxHistory = maxHistory,
-        _buffer = List<StateChangeRecord?>.filled(maxHistory, null);
+    : _maxHistory = maxHistory,
+      _buffer = List<StateChangeRecord?>.filled(maxHistory, null);
 
   /// The recorded state change history (oldest first).
   List<StateChangeRecord> get history {

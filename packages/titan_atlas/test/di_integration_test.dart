@@ -57,13 +57,12 @@ void main() {
   tearDown(() => Titan.reset());
 
   group('Atlas global pillars', () {
-    testWidgets('registers global Pillars via Titan.put on construction',
-        (tester) async {
+    testWidgets('registers global Pillars via Titan.put on construction', (
+      tester,
+    ) async {
       final atlas = Atlas(
         pillars: [AuthPillar.new],
-        passages: [
-          Passage('/', (_) => const Text('Home')),
-        ],
+        passages: [Passage('/', (_) => const Text('Home'))],
       );
 
       await tester.pumpWidget(_app(atlas));
@@ -78,9 +77,7 @@ void main() {
     testWidgets('multiple global Pillars all accessible', (tester) async {
       final atlas = Atlas(
         pillars: [AuthPillar.new, DashboardPillar.new],
-        passages: [
-          Passage('/', (_) => const Text('Home')),
-        ],
+        passages: [Passage('/', (_) => const Text('Home'))],
       );
 
       await tester.pumpWidget(_app(atlas));
@@ -90,8 +87,9 @@ void main() {
       expect(Titan.has<DashboardPillar>(), isTrue);
     });
 
-    testWidgets('global Pillars accessible in Passage builders',
-        (tester) async {
+    testWidgets('global Pillars accessible in Passage builders', (
+      tester,
+    ) async {
       final atlas = Atlas(
         pillars: [AuthPillar.new],
         passages: [
@@ -108,8 +106,7 @@ void main() {
       expect(find.text('User: guest'), findsOneWidget);
     });
 
-    testWidgets('global Pillars accessible in Sentinel guards',
-        (tester) async {
+    testWidgets('global Pillars accessible in Sentinel guards', (tester) async {
       final atlas = Atlas(
         pillars: [AuthPillar.new],
         passages: [
@@ -254,13 +251,17 @@ void main() {
       expect(checkoutRef.disposed, isTrue);
     });
 
-    testWidgets('multiple route-scoped Pillars on same Passage',
-        (tester) async {
+    testWidgets('multiple route-scoped Pillars on same Passage', (
+      tester,
+    ) async {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
-          Passage('/checkout', (_) => const Text('Checkout'),
-              pillars: [CheckoutPillar.new, SettingsPillar.new]),
+          Passage(
+            '/checkout',
+            (_) => const Text('Checkout'),
+            pillars: [CheckoutPillar.new, SettingsPillar.new],
+          ),
         ],
       );
 
@@ -282,16 +283,17 @@ void main() {
   });
 
   group('Shell-scoped Pillars (Sanctum)', () {
-    testWidgets('creates Pillar when entering Sanctum passage',
-        (tester) async {
+    testWidgets('creates Pillar when entering Sanctum passage', (tester) async {
       final atlas = Atlas(
         passages: [
           Sanctum(
             pillars: [DashboardPillar.new],
-            shell: (child) => Column(children: [
-              const Text('Shell'),
-              Expanded(child: child),
-            ]),
+            shell: (child) => Column(
+              children: [
+                const Text('Shell'),
+                Expanded(child: child),
+              ],
+            ),
             passages: [
               Passage('/', (_) {
                 final dash = Titan.get<DashboardPillar>();
@@ -309,8 +311,9 @@ void main() {
       expect(find.text('Tab: 0'), findsOneWidget);
     });
 
-    testWidgets(
-        'Sanctum Pillars combined with Passage Pillars', (tester) async {
+    testWidgets('Sanctum Pillars combined with Passage Pillars', (
+      tester,
+    ) async {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
@@ -318,8 +321,11 @@ void main() {
             pillars: [DashboardPillar.new],
             shell: (child) => child,
             passages: [
-              Passage('/settings', (_) => const Text('Settings'),
-                  pillars: [SettingsPillar.new]),
+              Passage(
+                '/settings',
+                (_) => const Text('Settings'),
+                pillars: [SettingsPillar.new],
+              ),
             ],
           ),
         ],
@@ -345,8 +351,9 @@ void main() {
   });
 
   group('Combined: global + route-scoped', () {
-    testWidgets('global survives route pops, route-scoped does not',
-        (tester) async {
+    testWidgets('global survives route pops, route-scoped does not', (
+      tester,
+    ) async {
       late CheckoutPillar checkoutRef;
 
       final atlas = Atlas(
@@ -378,8 +385,9 @@ void main() {
       expect(checkoutRef.disposed, isTrue);
     });
 
-    testWidgets('global Pillars usable in route-scoped Pillar builders',
-        (tester) async {
+    testWidgets('global Pillars usable in route-scoped Pillar builders', (
+      tester,
+    ) async {
       final atlas = Atlas(
         pillars: [AuthPillar.new],
         passages: [

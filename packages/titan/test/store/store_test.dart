@@ -3,10 +3,7 @@ import 'package:titan/titan.dart';
 
 class _TestStore extends TitanStore {
   late final count = createState(0, name: 'count');
-  late final doubled = createComputed(
-    () => count.value * 2,
-    name: 'doubled',
-  );
+  late final doubled = createComputed(() => count.value * 2, name: 'doubled');
 
   void increment() => count.value++;
   void decrement() => count.value--;

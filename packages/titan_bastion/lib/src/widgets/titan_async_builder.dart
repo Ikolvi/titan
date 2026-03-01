@@ -31,7 +31,8 @@ class TitanAsyncBuilder<T> extends StatefulWidget {
     BuildContext context,
     Object error,
     StackTrace? stackTrace,
-  )? error;
+  )?
+  error;
 
   /// Creates a Titan async builder.
   const TitanAsyncBuilder({

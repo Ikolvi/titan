@@ -51,7 +51,9 @@ A signal-based reactive state management engine for Dart & Flutter — fine-grai
 ## Quick Start
 
 ```bash
-flutter pub add titan
+dart pub add titan
+# or for Flutter projects:
+# flutter pub add titan
 ```
 
 Or see the latest version on [pub.dev](https://pub.dev/packages/titan/install).

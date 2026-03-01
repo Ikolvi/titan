@@ -82,11 +82,7 @@ class Lens extends StatefulWidget {
   final bool enabled;
 
   /// Creates a debug overlay wrapping [child].
-  const Lens({
-    super.key,
-    required this.child,
-    this.enabled = true,
-  });
+  const Lens({super.key, required this.child, this.enabled = true});
 
   // -------------------------------------------------------------------------
   // Static control — allows programmatic toggle from anywhere
@@ -181,10 +177,7 @@ class _LensState extends State<Lens> {
           Positioned(
             right: 16,
             bottom: 80,
-            child: _LensFab(
-              onPressed: _toggle,
-              isOpen: _visible,
-            ),
+            child: _LensFab(onPressed: _toggle, isOpen: _visible),
           ),
           // Debug panel
           if (_visible)

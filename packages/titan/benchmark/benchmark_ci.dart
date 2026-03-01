@@ -28,15 +28,16 @@ void main() {
   _benchVigilCapture();
 
   // Output JSON
-  print(jsonEncode({'benchmarks': _results, 'timestamp': DateTime.now().toIso8601String()}));
+  print(
+    jsonEncode({
+      'benchmarks': _results,
+      'timestamp': DateTime.now().toIso8601String(),
+    }),
+  );
 }
 
 void _record(String name, String unit, double value) {
-  _results.add({
-    'name': name,
-    'value': value,
-    'unit': unit,
-  });
+  _results.add({'name': name, 'value': value, 'unit': unit});
 }
 
 // ---------------------------------------------------------------------------
@@ -134,9 +135,7 @@ void _benchBatchSpeedup() {
 void _benchComputedChain() {
   const depth = 1000;
   final source = TitanState(0);
-  final chain = <TitanComputed<int>>[
-    TitanComputed(() => source.value + 1),
-  ];
+  final chain = <TitanComputed<int>>[TitanComputed(() => source.value + 1)];
   for (var i = 1; i < depth; i++) {
     final prev = chain[i - 1];
     chain.add(TitanComputed(() => prev.value + 1));
@@ -166,7 +165,10 @@ void _benchComputedChain() {
 void _benchWideFanOut() {
   const width = 10000;
   final source = TitanState(0);
-  final deps = List.generate(width, (i) => TitanComputed(() => source.value + i));
+  final deps = List.generate(
+    width,
+    (i) => TitanComputed(() => source.value + i),
+  );
   for (final d in deps) {
     d.value;
   }

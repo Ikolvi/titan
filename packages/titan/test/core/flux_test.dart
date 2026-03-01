@@ -12,9 +12,7 @@ void main() {
     group('DebouncedState', () {
       test('delays value propagation', () async {
         final source = TitanState<String>('');
-        final debounced = source.debounce(
-          const Duration(milliseconds: 50),
-        );
+        final debounced = source.debounce(const Duration(milliseconds: 50));
 
         source.value = 'h';
         source.value = 'he';
@@ -36,9 +34,7 @@ void main() {
 
       test('resets timer on each change', () async {
         final source = TitanState<int>(0);
-        final debounced = source.debounce(
-          const Duration(milliseconds: 80),
-        );
+        final debounced = source.debounce(const Duration(milliseconds: 80));
 
         source.value = 1;
         await Future.delayed(const Duration(milliseconds: 40));
@@ -60,9 +56,7 @@ void main() {
 
       test('notifies listeners', () async {
         final source = TitanState<int>(0);
-        final debounced = source.debounce(
-          const Duration(milliseconds: 30),
-        );
+        final debounced = source.debounce(const Duration(milliseconds: 30));
 
         final values = <int>[];
         debounced.listen((v) => values.add(v));
@@ -81,9 +75,7 @@ void main() {
 
       test('throws on direct value set', () {
         final source = TitanState<int>(0);
-        final debounced = source.debounce(
-          const Duration(milliseconds: 50),
-        );
+        final debounced = source.debounce(const Duration(milliseconds: 50));
 
         expect(() => debounced.value = 5, throwsUnsupportedError);
 
@@ -93,9 +85,7 @@ void main() {
 
       test('stops on dispose', () async {
         final source = TitanState<int>(0);
-        final debounced = source.debounce(
-          const Duration(milliseconds: 30),
-        );
+        final debounced = source.debounce(const Duration(milliseconds: 30));
 
         source.value = 1;
         debounced.dispose();
@@ -115,9 +105,7 @@ void main() {
     group('ThrottledState', () {
       test('limits update frequency', () async {
         final source = TitanState<int>(0);
-        final throttled = source.throttle(
-          const Duration(milliseconds: 50),
-        );
+        final throttled = source.throttle(const Duration(milliseconds: 50));
 
         source.value = 1;
         source.value = 2;
@@ -138,9 +126,7 @@ void main() {
 
       test('allows next update after window', () async {
         final source = TitanState<int>(0);
-        final throttled = source.throttle(
-          const Duration(milliseconds: 30),
-        );
+        final throttled = source.throttle(const Duration(milliseconds: 30));
 
         source.value = 1;
         await Future.delayed(const Duration(milliseconds: 50));
@@ -156,9 +142,7 @@ void main() {
 
       test('throws on direct value set', () {
         final source = TitanState<int>(0);
-        final throttled = source.throttle(
-          const Duration(milliseconds: 50),
-        );
+        final throttled = source.throttle(const Duration(milliseconds: 50));
 
         expect(() => throttled.value = 5, throwsUnsupportedError);
 
@@ -168,9 +152,7 @@ void main() {
 
       test('stops on dispose', () async {
         final source = TitanState<int>(0);
-        final throttled = source.throttle(
-          const Duration(milliseconds: 30),
-        );
+        final throttled = source.throttle(const Duration(milliseconds: 30));
 
         source.value = 1;
         throttled.dispose();
