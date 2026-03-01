@@ -1,3 +1,4 @@
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:titan/titan.dart';
 
@@ -97,7 +98,15 @@ class _ObsState extends State<Obs> {
   }
 
   void _onDependencyChanged() {
-    if (mounted) {
+    if (!mounted) return;
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() => _needsRebuild = true);
+        }
+      });
+    } else {
       setState(() => _needsRebuild = true);
     }
   }

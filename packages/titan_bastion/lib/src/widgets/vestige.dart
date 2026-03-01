@@ -1,3 +1,4 @@
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:titan/titan.dart';
 
@@ -125,7 +126,18 @@ class _VestigeState<P extends Pillar> extends State<Vestige<P>> {
   }
 
   void _onDependencyChanged() {
-    if (mounted) {
+    if (!mounted) return;
+    // Defer setState when Flutter is in the build/layout/paint phase
+    // to avoid "setState called during build" errors (e.g. when a
+    // reactive value changes synchronously inside an itemBuilder).
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() => _needsRebuild = true);
+        }
+      });
+    } else {
       setState(() => _needsRebuild = true);
     }
   }
@@ -192,7 +204,15 @@ class _VestigeRawState extends State<VestigeRaw> {
   }
 
   void _onDependencyChanged() {
-    if (mounted) {
+    if (!mounted) return;
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() => _needsRebuild = true);
+        }
+      });
+    } else {
       setState(() => _needsRebuild = true);
     }
   }
