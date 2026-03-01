@@ -1,0 +1,78 @@
+/// Titan — Total Integrated Transfer Architecture Network
+///
+/// A uniquely powerful reactive state management architecture for Dart & Flutter.
+///
+/// ## The Titan Lexicon
+///
+/// | Concept | Titan Name | Why |
+/// |---------|------------|-----|
+/// | Store / Bloc | **Pillar** | Titans held up the sky; Pillars hold up your app |
+/// | Dispatch / Add | **Strike** | Fast, decisive, powerful |
+/// | State | **Core** | The indestructible center of the Pillar |
+/// | Consumer | **Vestige** | The UI — a visible trace of underlying power |
+/// | Provider | **Beacon** | Shines state down to all children |
+///
+/// ## Quick Start
+///
+/// ```dart
+/// import 'package:titan_bastion/titan_bastion.dart';
+///
+/// class CounterPillar extends Pillar {
+///   late final count = core(0);
+///   late final doubled = derived(() => count.value * 2);
+///   void increment() => strike(() => count.value++);
+/// }
+///
+/// // Register globally
+/// Titan.put(CounterPillar());
+///
+/// // Use in UI
+/// Vestige<CounterPillar>(
+///   builder: (context, counter) => Text('${counter.count.value}'),
+/// )
+/// ```
+///
+/// ## Primary API
+///
+/// - [Pillar] — Structured state module with lifecycle
+/// - [Core] / [core] — Reactive mutable state
+/// - [Derived] / [derived] — Reactive computed values
+/// - [strike] — Batched state mutations
+/// - [Titan] — Global Pillar registry & DI
+///
+/// ## Advanced API
+///
+/// - [TitanStore] — Legacy store pattern (superseded by Pillar)
+/// - [TitanContainer] — Scoped dependency injection
+/// - [AsyncValue] / [TitanAsyncState] — Async data handling
+/// - [TitanMiddleware] — State change interception
+/// - [TitanObserver] — Global state monitoring
+library;
+
+// Primary API — Titan architecture
+export 'src/api.dart';
+export 'src/pillar/pillar.dart';
+
+// Core reactive primitives
+export 'src/core/reactive.dart';
+export 'src/core/state.dart';
+export 'src/core/computed.dart';
+export 'src/core/effect.dart';
+export 'src/core/batch.dart';
+export 'src/core/observer.dart';
+
+// Store pattern (advanced / legacy)
+export 'src/store/store.dart';
+export 'src/store/middleware.dart';
+export 'src/store/event.dart';
+
+// Dependency injection
+export 'src/di/container.dart';
+export 'src/di/module.dart';
+
+// Async support
+export 'src/async/async_value.dart';
+export 'src/async/async_state.dart';
+
+// Utilities
+export 'src/utils/titan_config.dart';

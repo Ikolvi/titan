@@ -1,0 +1,161 @@
+import 'package:meta/meta.dart';
+
+/// Global reactive tracking scope.
+///
+/// Manages dependency tracking between reactive nodes. When a [TitanComputed]
+/// or [TitanEffect] evaluates, it pushes itself as the current tracker.
+/// Any [TitanState] read during evaluation automatically registers itself
+/// as a dependency of the tracker.
+class ReactiveScope {
+  ReactiveScope._();
+
+  static ReactiveNode? _currentTracker;
+  static bool _isBatching = false;
+  static final Set<ReactiveNode> _pendingNodes = {};
+
+  /// Returns the currently active tracker, if any.
+  static ReactiveNode? get currentTracker => _currentTracker;
+
+  /// Whether updates are currently being batched.
+  static bool get isBatching => _isBatching;
+
+  /// Pushes a new tracker onto the tracking stack.
+  @internal
+  static ReactiveNode? pushTracker(ReactiveNode? tracker) {
+    final previous = _currentTracker;
+    _currentTracker = tracker;
+    return previous;
+  }
+
+  /// Pops the current tracker, restoring the previous one.
+  @internal
+  static void popTracker(ReactiveNode? previous) {
+    _currentTracker = previous;
+  }
+
+  /// Begins a batching scope. State changes within a batch will be
+  /// deferred until the batch completes.
+  @internal
+  static void beginBatch() {
+    _isBatching = true;
+  }
+
+  /// Ends a batching scope and flushes all pending notifications.
+  @internal
+  static void endBatch() {
+    _isBatching = false;
+    _flushPending();
+  }
+
+  /// Schedules a node for notification when the current batch ends.
+  @internal
+  static void schedulePending(ReactiveNode node) {
+    _pendingNodes.add(node);
+  }
+
+  static void _flushPending() {
+    // Copy to avoid concurrent modification
+    final nodes = _pendingNodes.toList();
+    _pendingNodes.clear();
+    for (final node in nodes) {
+      node.notifyDependents();
+    }
+  }
+}
+
+/// Callback signature for listening to reactive node changes.
+typedef ReactiveListener = void Function();
+
+/// Base class for all reactive primitives in Titan.
+///
+/// A [ReactiveNode] participates in the reactive dependency graph.
+/// It can track dependents (nodes that depend on it) and be tracked
+/// as a dependency when read within a reactive scope.
+abstract class ReactiveNode {
+  final Set<ReactiveNode> _dependents = {};
+  final List<ReactiveListener> _listeners = [];
+  bool _isDisposed = false;
+
+  /// Whether this node has been disposed.
+  bool get isDisposed => _isDisposed;
+
+  /// The number of active dependents.
+  int get dependentCount => _dependents.length;
+
+  /// The number of active listeners.
+  int get listenerCount => _listeners.length;
+
+  /// Registers the current tracker (if any) as a dependent of this node.
+  ///
+  /// Called automatically when a reactive value is read inside a
+  /// [TitanComputed] or [TitanEffect].
+  @protected
+  void track() {
+    final tracker = ReactiveScope.currentTracker;
+    if (tracker != null && tracker != this) {
+      _dependents.add(tracker);
+      tracker.onTracked(this);
+    }
+  }
+
+  /// Called when this node is registered as tracking [source].
+  ///
+  /// Override in subclasses to maintain a dependency set for cleanup.
+  @protected
+  void onTracked(ReactiveNode source) {}
+
+  /// Notifies all dependents and listeners that this node changed.
+  @protected
+  void notifyDependents() {
+    if (_isDisposed) return;
+
+    if (ReactiveScope.isBatching) {
+      ReactiveScope.schedulePending(this);
+      return;
+    }
+
+    // Notify dependent reactive nodes
+    final deps = _dependents.toList();
+    for (final dep in deps) {
+      if (!dep.isDisposed) {
+        dep.onDependencyChanged(this);
+      }
+    }
+
+    // Notify imperative listeners
+    final listeners = _listeners.toList();
+    for (final listener in listeners) {
+      listener();
+    }
+  }
+
+  /// Called when a dependency of this node has changed.
+  ///
+  /// Override to implement custom update logic (e.g., recomputation).
+  @protected
+  void onDependencyChanged(ReactiveNode dependency) {}
+
+  /// Adds an imperative listener that is called when this node changes.
+  void addListener(ReactiveListener listener) {
+    _listeners.add(listener);
+  }
+
+  /// Removes a previously added listener.
+  void removeListener(ReactiveListener listener) {
+    _listeners.remove(listener);
+  }
+
+  /// Removes a specific dependent from this node.
+  @internal
+  void removeDependent(ReactiveNode dependent) {
+    _dependents.remove(dependent);
+  }
+
+  /// Disposes this node, clearing all dependents and listeners.
+  @mustCallSuper
+  void dispose() {
+    _isDisposed = true;
+    _dependents.clear();
+    _listeners.clear();
+  }
+}

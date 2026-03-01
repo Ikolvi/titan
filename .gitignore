@@ -1,2 +1,14 @@
 # Copilot instructions (local only)
 .github/copilot-instructions.md
+.github/instructions/
+
+# Generated
+.dart_tool/
+.idea/
+*.iml
+.metadata
+build/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
