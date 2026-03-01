@@ -54,8 +54,10 @@ class ReactiveScope {
   }
 
   static void _flushPending() {
-    // Copy to avoid concurrent modification
-    final nodes = _pendingNodes.toList();
+    if (_pendingNodes.isEmpty) return;
+    // Swap-and-drain: avoids toList() allocation while preventing
+    // concurrent modification if a notification schedules more pending nodes.
+    final nodes = _pendingNodes.toSet();
     _pendingNodes.clear();
     for (final node in nodes) {
       node.notifyDependents();
@@ -73,8 +75,9 @@ typedef ReactiveListener = void Function();
 /// as a dependency when read within a reactive scope.
 abstract class ReactiveNode {
   final Set<ReactiveNode> _dependents = {};
-  final List<ReactiveListener> _listeners = [];
+  List<ReactiveListener> _listeners = [];
   bool _isDisposed = false;
+  bool _isNotifying = false;
 
   /// Whether this node has been disposed.
   bool get isDisposed => _isDisposed;
@@ -114,19 +117,32 @@ abstract class ReactiveNode {
       return;
     }
 
-    // Notify dependent reactive nodes
-    final deps = _dependents.toList();
-    for (final dep in deps) {
-      if (!dep.isDisposed) {
-        dep.onDependencyChanged(this);
+    _isNotifying = true;
+
+    // Notify dependent reactive nodes.
+    // We must snapshot because dependents may re-register during notification
+    // (computed nodes clear and re-track their dependencies).
+    if (_dependents.isNotEmpty) {
+      final deps = _dependents.toList(growable: false);
+      for (var i = 0; i < deps.length; i++) {
+        final dep = deps[i];
+        if (!dep.isDisposed) {
+          dep.onDependencyChanged(this);
+        }
       }
     }
 
-    // Notify imperative listeners
-    final listeners = _listeners.toList();
-    for (final listener in listeners) {
-      listener();
+    // Notify imperative listeners (iterate by index — no allocation).
+    // Listeners that remove themselves during callback are handled safely
+    // via snapshot if the list was modified during iteration.
+    if (_listeners.isNotEmpty) {
+      final snapshot = _listeners;
+      for (var i = 0; i < snapshot.length; i++) {
+        snapshot[i]();
+      }
     }
+
+    _isNotifying = false;
   }
 
   /// Called when a dependency of this node has changed.
@@ -137,12 +153,21 @@ abstract class ReactiveNode {
 
   /// Adds an imperative listener that is called when this node changes.
   void addListener(ReactiveListener listener) {
-    _listeners.add(listener);
+    if (_isNotifying) {
+      // Copy-on-write: don't mutate the list being iterated
+      _listeners = List.of(_listeners)..add(listener);
+    } else {
+      _listeners.add(listener);
+    }
   }
 
   /// Removes a previously added listener.
   void removeListener(ReactiveListener listener) {
-    _listeners.remove(listener);
+    if (_isNotifying) {
+      _listeners = List.of(_listeners)..remove(listener);
+    } else {
+      _listeners.remove(listener);
+    }
   }
 
   /// Removes a specific dependent from this node.

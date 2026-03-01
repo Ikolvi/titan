@@ -37,7 +37,8 @@ class TitanComputed<T> extends ReactiveNode {
 
   late T _value;
   bool _isDirty = true;
-  final Set<ReactiveNode> _dependencies = {};
+  Set<ReactiveNode> _dependencies = {};
+  bool _hasEverComputed = false;
 
   /// Creates a computed reactive value.
   ///
@@ -76,31 +77,66 @@ class TitanComputed<T> extends ReactiveNode {
   }
 
   void _recompute() {
-    // Clear old dependency registrations
-    _clearDependencies();
+    if (_hasEverComputed) {
+      // Fast path: re-evaluate without clearing dependencies.
+      // Track new dependencies in a temporary set, then diff.
+      final oldDeps = _dependencies;
+      _dependencies = {};
 
-    // Push this node as the current tracker
-    final previous = ReactiveScope.pushTracker(this);
+      final previous = ReactiveScope.pushTracker(this);
+      try {
+        final newValue = _compute();
+        _value = newValue;
+        _isDirty = false;
+      } catch (e, stackTrace) {
+        _isDirty = false;
+        // Restore old deps on error to avoid leaking
+        _dependencies = oldDeps;
+        Vigil.capture(
+          e,
+          stackTrace: stackTrace,
+          context: ErrorContext(
+            source: TitanComputed,
+            action: 'recompute',
+            metadata: {'name': _name ?? 'unnamed'},
+          ),
+        );
+        rethrow;
+      } finally {
+        ReactiveScope.popTracker(previous);
+      }
 
-    try {
-      final newValue = _compute();
-      _value = newValue;
-      _isDirty = false;
-    } catch (e, stackTrace) {
-      _isDirty = false;
-      // Capture to Vigil if active, then rethrow so consumers still see the error
-      Vigil.capture(
-        e,
-        stackTrace: stackTrace,
-        context: ErrorContext(
-          source: TitanComputed,
-          action: 'recompute',
-          metadata: {'name': _name ?? 'unnamed'},
-        ),
-      );
-      rethrow;
-    } finally {
-      ReactiveScope.popTracker(previous);
+      // Remove stale dependencies only (ones in old but not in new)
+      for (final dep in oldDeps) {
+        if (!_dependencies.contains(dep)) {
+          dep.removeDependent(this);
+        }
+      }
+      // Add new dependencies only (ones in new but not in old)
+      // Already registered via onTracked during _compute()
+    } else {
+      // First computation: no dependencies to diff against
+      _hasEverComputed = true;
+      final previous = ReactiveScope.pushTracker(this);
+      try {
+        final newValue = _compute();
+        _value = newValue;
+        _isDirty = false;
+      } catch (e, stackTrace) {
+        _isDirty = false;
+        Vigil.capture(
+          e,
+          stackTrace: stackTrace,
+          context: ErrorContext(
+            source: TitanComputed,
+            action: 'recompute',
+            metadata: {'name': _name ?? 'unnamed'},
+          ),
+        );
+        rethrow;
+      } finally {
+        ReactiveScope.popTracker(previous);
+      }
     }
   }
 
