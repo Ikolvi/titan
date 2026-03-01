@@ -10,4 +10,5 @@ dev_dependencies:
 workspace:
   - packages/titan
   - packages/titan_bastion
+  - packages/titan_atlas
   - packages/titan_example

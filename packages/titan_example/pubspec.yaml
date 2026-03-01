@@ -34,6 +34,8 @@ dependencies:
     sdk: flutter
   titan_bastion:
     path: ../titan_bastion
+  titan_atlas:
+    path: ../titan_atlas
   cupertino_icons: ^1.0.8
 
 dev_dependencies:

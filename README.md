@@ -19,6 +19,14 @@ A uniquely powerful reactive state management architecture for Flutter — struc
 | State | **Core** | The indestructible center of the Pillar |
 | Consumer | **Vestige** | The UI — a visible trace of the underlying power |
 | Provider | **Beacon** | Shines state down to all children |
+| Router | **Atlas** | Maps all paths, bears the world |
+| Route | **Passage** | A way through to a destination |
+| Shell Route | **Sanctum** | Inner chamber — persistent layout |
+| Route Guard | **Sentinel** | Protects passage |
+| Transition | **Shift** | Change of form/phase |
+| Route State | **Waypoint** | Current position in the journey |
+| Parameters | **Runes** | Ancient symbols carrying meaning |
+| Redirect | **Drift** | Navigation shifts course |
 
 ---
 
@@ -273,6 +281,47 @@ test('auth pillar works', () {
 
 ---
 
+## Atlas — Routing & Navigation
+
+```yaml
+dependencies:
+  titan_atlas: ^0.0.1
+```
+
+```dart
+import 'package:titan_atlas/titan_atlas.dart';
+
+final atlas = Atlas(
+  passages: [
+    Passage('/', (_) => HomeScreen()),
+    Passage('/profile/:id', (wp) => ProfileScreen(id: wp.runes['id']!)),
+    Sanctum(
+      shell: (child) => AppShell(child: child),
+      passages: [
+        Passage('/feed', (_) => FeedScreen()),
+        Passage('/explore', (_) => ExploreScreen()),
+      ],
+    ),
+  ],
+  sentinels: [
+    Sentinel((path, _) => isLoggedIn ? null : '/login'),
+  ],
+);
+
+void main() => runApp(
+  MaterialApp.router(routerConfig: atlas.config),
+);
+
+// Navigate anywhere
+Atlas.to('/profile/42');
+context.atlas.to('/profile/42');
+Atlas.back();
+```
+
+See [Atlas Routing docs](docs/12-atlas-routing.md) for full guide.
+
+---
+
 ## Advanced Features
 
 Titan also includes advanced patterns for large-scale apps:
@@ -290,6 +339,7 @@ See the [full documentation](docs/) for details.
 |---------|-------------|
 | [`titan`](packages/titan/) | Core reactive engine (pure Dart) |
 | [`titan_bastion`](packages/titan_bastion/) | Flutter widgets & extensions |
+| [`titan_atlas`](packages/titan_atlas/) | Routing & navigation (Atlas) |
 | [`titan_example`](packages/titan_example/) | Example application |
 
 ## Documentation
@@ -307,6 +357,7 @@ See the [full documentation](docs/) for details.
 | [API Reference](docs/09-api-reference.md) | Complete API reference |
 | [Migration Guide](docs/10-migration-guide.md) | Migrate from Provider/Bloc/Riverpod/GetX |
 | [Architecture](docs/11-architecture.md) | Internal design for contributors |
+| [Atlas Routing](docs/12-atlas-routing.md) | Navigation with Passages, Sentinels, and Shifts |
 
 ## Development
 

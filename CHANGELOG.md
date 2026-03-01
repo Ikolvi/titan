@@ -5,6 +5,28 @@ All notable changes to the Titan packages will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.2] - 2025-07-12
+
+### Added
+
+#### Atlas — Routing & Navigation (`titan_atlas`)
+- **Atlas** — Declarative router with Navigator 2.0, deep linking, and zero-boilerplate API
+- **Passage** — Route definitions with static, dynamic (`:param`), and wildcard (`*`) patterns
+- **Sanctum** — Shell routes for persistent layouts (tab bars, nav rails, drawers)
+- **Sentinel** — Route guards with sync/async, `only()`, and `except()` modes
+- **Shift** — Page transitions: `fade()`, `slide()`, `slideUp()`, `scale()`, `none()`, `custom()`
+- **Waypoint** — Route state with Runes (path params), query params, and extra data
+- **Drift** — Global redirect function applied before Sentinels
+- **Runes** — Extracted path parameters (`:id` → `wp.runes['id']`)
+- **RouteTrie** — O(k) trie-based route matcher with static > dynamic > wildcard priority
+- **AtlasContext** — `context.atlas.to()` / `.back()` / `.replace()` BuildContext extension
+- **Named routes** — `Atlas.toNamed('name', runes: {...})` navigation
+- **Stack navigation** — `Atlas.to()`, `.back()`, `.backTo()`, `.replace()`, `.reset()`
+- **404 handling** — Default and custom error pages via `onError`
+- 46 tests covering trie matching, waypoint, sentinel, and full widget integration
+
+---
+
 ## [0.0.1] - 2025-07-11
 
 ### Added

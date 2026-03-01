@@ -1,10 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:titan_atlas/titan_atlas.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 
 import 'pillars/counter_pillar.dart';
 import 'pillars/todos_pillar.dart';
 
 void main() {
+  // Create the Atlas router — Titan's navigation system
+  final atlas = Atlas(
+    passages: [
+      // Sanctum provides a persistent shell (bottom nav) for its passages
+      Sanctum(
+        shell: (child) => _AppShell(child: child),
+        passages: [
+          Passage('/', (_) => const CounterPage(), name: 'counter'),
+          Passage('/todos', (_) => const TodoPage(), name: 'todos'),
+        ],
+      ),
+      // Standalone pages outside the shell
+      Passage(
+        '/counter/details',
+        (_) => const CounterDetailPage(),
+        shift: Shift.slideUp(),
+      ),
+      Passage(
+        '/about',
+        (_) => const AboutPage(),
+        shift: Shift.fade(),
+        name: 'about',
+      ),
+    ],
+  );
+
   runApp(
     // Beacon shines Pillar state down to all children
     Beacon(
@@ -12,47 +39,61 @@ void main() {
         CounterPillar.new,
         TodosPillar.new,
       ],
-      child: const App(),
+      // Use MaterialApp.router with Atlas config
+      child: MaterialApp.router(
+        title: 'Titan Example',
+        theme: ThemeData(
+          colorSchemeSeed: Colors.deepPurple,
+          useMaterial3: true,
+        ),
+        routerConfig: atlas.config,
+      ),
     ),
   );
 }
 
-class App extends StatelessWidget {
-  const App({super.key});
+// ---------------------------------------------------------------------------
+// App Shell — Sanctum's persistent layout (bottom nav)
+// ---------------------------------------------------------------------------
+
+class _AppShell extends StatelessWidget {
+  final Widget child;
+  const _AppShell({required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Titan Example',
-      theme: ThemeData(
-        colorSchemeSeed: Colors.deepPurple,
-        useMaterial3: true,
-      ),
-      home: const HomePage(),
-    );
-  }
-}
+    final path = Atlas.current.path;
+    final index = path == '/todos' ? 1 : 0;
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Titan'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.add_circle), text: 'Counter'),
-              Tab(icon: Icon(Icons.checklist), text: 'Todos'),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Titan'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () => context.atlas.to('/about'),
           ),
-        ),
-        body: const TabBarView(
-          children: [CounterPage(), TodoPage()],
-        ),
+        ],
+      ),
+      body: child,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (i) {
+          final paths = ['/', '/todos'];
+          context.atlas.to(paths[i]);
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.add_circle_outline),
+            selectedIcon: Icon(Icons.add_circle),
+            label: 'Counter',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.checklist_outlined),
+            selectedIcon: Icon(Icons.checklist),
+            label: 'Todos',
+          ),
+        ],
       ),
     );
   }
@@ -117,7 +158,54 @@ class CounterPage extends StatelessWidget {
               ],
             );
           }),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => context.atlas.to('/counter/details'),
+            child: const Text('View Details'),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Counter Detail Page — navigated via Atlas with slideUp Shift
+// ---------------------------------------------------------------------------
+
+class CounterDetailPage extends StatelessWidget {
+  const CounterDetailPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Counter Details'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.atlas.back(),
+        ),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Vestige<CounterPillar>(
+              builder: (context, c) => Column(
+                children: [
+                  Text('Count: ${c.count.value}',
+                      style: Theme.of(context).textTheme.headlineMedium),
+                  const SizedBox(height: 8),
+                  Text('Doubled: ${c.doubled.value}'),
+                  const SizedBox(height: 8),
+                  Text('Even: ${c.isEven.value}'),
+                  const SizedBox(height: 8),
+                  Text('Label: ${c.label.value}'),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -232,6 +320,43 @@ class _TodoPageState extends State<TodoPage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// About Page — navigated via Atlas with fade Shift
+// ---------------------------------------------------------------------------
+
+class AboutPage extends StatelessWidget {
+  const AboutPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('About'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.atlas.back(),
+        ),
+      ),
+      body: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Titan', style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
+            Text('Total Integrated Transfer Architecture Network'),
+            SizedBox(height: 24),
+            Text('State management: Pillar / Core / Vestige / Beacon'),
+            SizedBox(height: 8),
+            Text('Navigation: Atlas / Passage / Sanctum / Sentinel'),
+            SizedBox(height: 24),
+            Text('Built by Ikolvi', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      ),
     );
   }
 }
