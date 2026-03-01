@@ -86,6 +86,7 @@ abstract class Pillar {
   final List<ReactiveNode> _managedNodes = [];
   final List<TitanEffect> _managedEffects = [];
   final List<StreamSubscription<dynamic>> _managedSubscriptions = [];
+  final List<StrikeMiddleware> _middleware = [];
   bool _isInitialized = false;
   bool _isDisposed = false;
 
@@ -298,12 +299,48 @@ abstract class Pillar {
   // Strike — batched, tracked mutations
   // ---------------------------------------------------------------------------
 
+  /// Adds a [StrikeMiddleware] to this Pillar's middleware chain.
+  ///
+  /// Middleware intercepts every [strike] and [strikeAsync] call, enabling
+  /// cross-cutting concerns like logging, analytics, rate-limiting, and
+  /// auth token refresh.
+  ///
+  /// Middleware is executed in the order it was added (FIFO).
+  ///
+  /// ```dart
+  /// @override
+  /// void onInit() {
+  ///   addMiddleware(StrikeMiddleware(
+  ///     before: (pillar) => log.debug('Strike starting'),
+  ///     after: (pillar) => log.debug('Strike complete'),
+  ///     onError: (pillar, error, stackTrace) {
+  ///       log.error('Strike failed', error, stackTrace);
+  ///     },
+  ///   ));
+  /// }
+  /// ```
+  @protected
+  void addMiddleware(StrikeMiddleware middleware) {
+    _assertNotDisposed();
+    _middleware.add(middleware);
+  }
+
+  /// Removes a previously added middleware.
+  @protected
+  void removeMiddleware(StrikeMiddleware middleware) {
+    _middleware.remove(middleware);
+  }
+
   /// Executes a **Strike** — a batched, tracked state mutation.
   ///
   /// **Strikes are fast, decisive, and powerful.**
   ///
   /// All [Core] mutations inside a Strike are batched into a single
   /// notification cycle, preventing unnecessary intermediate rebuilds.
+  ///
+  /// If middleware is registered, each middleware's [StrikeMiddleware.before]
+  /// is called before the action, and [StrikeMiddleware.after] is called
+  /// after. On error, [StrikeMiddleware.onError] is called.
   ///
   /// ```dart
   /// void increment() => strike(() => count.value++);
@@ -316,7 +353,25 @@ abstract class Pillar {
   @protected
   void strike(void Function() action) {
     _assertNotDisposed();
-    titanBatch(action);
+    if (_middleware.isEmpty) {
+      titanBatch(action);
+      return;
+    }
+    // Execute middleware chain
+    for (final m in _middleware) {
+      m.before?.call(this);
+    }
+    try {
+      titanBatch(action);
+      for (final m in _middleware) {
+        m.after?.call(this);
+      }
+    } catch (e, s) {
+      for (final m in _middleware) {
+        m.onError?.call(this, e, s);
+      }
+      rethrow;
+    }
   }
 
   /// Async version of [strike].
@@ -334,9 +389,18 @@ abstract class Pillar {
   @protected
   Future<void> strikeAsync(Future<void> Function() action) async {
     _assertNotDisposed();
+    for (final m in _middleware) {
+      m.before?.call(this);
+    }
     try {
       await titanBatchAsync(action);
+      for (final m in _middleware) {
+        m.after?.call(this);
+      }
     } catch (e, s) {
+      for (final m in _middleware) {
+        m.onError?.call(this, e, s);
+      }
       captureError(e, stackTrace: s, action: 'strikeAsync');
       rethrow;
     }
@@ -575,4 +639,52 @@ abstract class Pillar {
   void _assertNotDisposed() {
     assert(!_isDisposed, '$runtimeType has already been disposed.');
   }
+}
+
+/// Middleware that intercepts [Pillar.strike] and [Pillar.strikeAsync] calls.
+///
+/// Enables cross-cutting concerns like logging, analytics, rate-limiting,
+/// and auth token refresh around state mutations.
+///
+/// ## Usage
+///
+/// ```dart
+/// class AuthPillar extends Pillar {
+///   @override
+///   void onInit() {
+///     addMiddleware(StrikeMiddleware(
+///       before: (pillar) => print('Strike starting on $pillar'),
+///       after: (pillar) => print('Strike complete on $pillar'),
+///       onError: (pillar, error, stackTrace) {
+///         print('Strike failed: $error');
+///       },
+///     ));
+///   }
+/// }
+/// ```
+///
+/// ## Analytics Middleware
+///
+/// ```dart
+/// final analyticsMiddleware = StrikeMiddleware(
+///   after: (pillar) {
+///     analytics.track('state_mutation', {
+///       'pillar': pillar.runtimeType.toString(),
+///     });
+///   },
+/// );
+/// ```
+class StrikeMiddleware {
+  /// Called before the strike action executes.
+  final void Function(Pillar pillar)? before;
+
+  /// Called after the strike action completes successfully.
+  final void Function(Pillar pillar)? after;
+
+  /// Called when the strike action throws an error.
+  final void Function(Pillar pillar, Object error, StackTrace stackTrace)?
+      onError;
+
+  /// Creates a strike middleware.
+  const StrikeMiddleware({this.before, this.after, this.onError});
 }

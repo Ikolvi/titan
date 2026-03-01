@@ -100,11 +100,66 @@ class Beacon extends StatefulWidget {
   /// ```
   final List<Pillar Function()> pillars;
 
+  /// Pre-existing Pillar instances to provide.
+  ///
+  /// Unlike [pillars], these are NOT created by the Beacon and are
+  /// NOT disposed when the Beacon unmounts. Use this for externally
+  /// managed Pillars (e.g., from tests, from parent navigation).
+  ///
+  /// ```dart
+  /// Beacon.value(
+  ///   values: [existingPillar],
+  ///   child: child,
+  /// )
+  /// ```
+  final List<Pillar> values;
+
+  /// Pillar overrides for testing.
+  ///
+  /// Replaces Pillars of the same [runtimeType] that would normally
+  /// be created by [pillars] factories. This enables dependency
+  /// injection in tests without modifying production code.
+  ///
+  /// ```dart
+  /// // In tests:
+  /// Beacon(
+  ///   pillars: [AuthPillar.new],
+  ///   overrides: [MockAuthPillar()],
+  ///   child: child,
+  /// )
+  /// ```
+  final List<Pillar>? overrides;
+
   /// The widget subtree that can access the Pillars via [Vestige].
   final Widget child;
 
   /// Creates a Beacon that provides Pillars to the widget subtree.
-  const Beacon({super.key, required this.pillars, required this.child});
+  const Beacon({
+    super.key,
+    required this.pillars,
+    required this.child,
+    this.overrides,
+  }) : values = const [];
+
+  /// Creates a Beacon with pre-existing Pillar instances.
+  ///
+  /// These Pillars are NOT created or disposed by the Beacon.
+  /// They must be initialized and managed externally.
+  ///
+  /// ```dart
+  /// final counter = CounterPillar()..initialize();
+  ///
+  /// Beacon.value(
+  ///   values: [counter],
+  ///   child: MyWidget(),
+  /// )
+  /// ```
+  const Beacon.value({
+    super.key,
+    required this.values,
+    required this.child,
+    this.overrides,
+  }) : pillars = const [];
 
   @override
   State<Beacon> createState() => _BeaconState();
@@ -112,6 +167,7 @@ class Beacon extends StatefulWidget {
 
 class _BeaconState extends State<Beacon> {
   final Map<Type, Pillar> _pillars = {};
+  final Set<Type> _ownedTypes = {}; // Types created by us (not values)
 
   @override
   void initState() {
@@ -120,19 +176,48 @@ class _BeaconState extends State<Beacon> {
   }
 
   void _createPillars() {
+    // Build override map for fast lookup
+    final overrideMap = <Type, Pillar>{};
+    if (widget.overrides != null) {
+      for (final override in widget.overrides!) {
+        overrideMap[override.runtimeType] = override;
+      }
+    }
+
+    // Create Pillars from factories (or substitute overrides)
     for (final factory in widget.pillars) {
       final pillar = factory();
+      final type = pillar.runtimeType;
+
+      if (overrideMap.containsKey(type)) {
+        // Use the override instead — dispose the factory-created one
+        final override = overrideMap[type]!;
+        _pillars[type] = override;
+        _ownedTypes.add(type);
+        override.initialize();
+      } else {
+        _pillars[type] = pillar;
+        _ownedTypes.add(type);
+        pillar.initialize();
+      }
+    }
+
+    // Register value Pillars (not owned by this Beacon)
+    for (final pillar in widget.values) {
       _pillars[pillar.runtimeType] = pillar;
-      pillar.initialize();
+      // Don't add to _ownedTypes — we don't dispose these
     }
   }
 
   @override
   void dispose() {
-    for (final pillar in _pillars.values) {
-      pillar.dispose();
+    for (final entry in _pillars.entries) {
+      if (_ownedTypes.contains(entry.key)) {
+        entry.value.dispose();
+      }
     }
     _pillars.clear();
+    _ownedTypes.clear();
     super.dispose();
   }
 
