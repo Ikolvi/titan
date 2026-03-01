@@ -22,6 +22,7 @@
 library;
 
 import 'package:flutter/widgets.dart';
+import 'package:titan/titan.dart';
 import 'shift.dart';
 import 'waypoint.dart';
 
@@ -77,6 +78,19 @@ class Passage extends AtlasRoute {
   /// ```
   final String? Function(Waypoint waypoint)? redirect;
 
+  /// Route-scoped Pillar factories.
+  ///
+  /// These Pillars are auto-created when this route is pushed onto
+  /// the navigation stack and auto-disposed when the route leaves.
+  /// Accessible via `Titan.get<T>()` or `context.pillar<T>()`.
+  ///
+  /// ```dart
+  /// Passage('/checkout', (wp) => CheckoutScreen(),
+  ///   pillars: [CheckoutPillar.new, PaymentPillar.new],
+  /// )
+  /// ```
+  final List<Pillar Function()> pillars;
+
   /// Create a Passage.
   ///
   /// ```dart
@@ -96,6 +110,7 @@ class Passage extends AtlasRoute {
     this.name,
     this.metadata,
     this.redirect,
+    this.pillars = const [],
   });
 }
 
@@ -124,6 +139,21 @@ class Sanctum extends AtlasRoute {
   /// Optional shift for the shell itself.
   final Shift? shift;
 
+  /// Shell-scoped Pillar factories.
+  ///
+  /// These Pillars are auto-created when any passage within this
+  /// Sanctum is first entered and auto-disposed when all passages
+  /// in this Sanctum leave the stack.
+  ///
+  /// ```dart
+  /// Sanctum(
+  ///   pillars: [DashboardPillar.new],
+  ///   shell: (child) => DashboardLayout(child: child),
+  ///   passages: [...],
+  /// )
+  /// ```
+  final List<Pillar Function()> pillars;
+
   /// Create a Sanctum.
   ///
   /// ```dart
@@ -142,5 +172,6 @@ class Sanctum extends AtlasRoute {
     required this.shell,
     required this.passages,
     this.shift,
+    this.pillars = const [],
   });
 }

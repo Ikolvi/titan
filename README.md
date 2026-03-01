@@ -287,15 +287,17 @@ test('auth pillar works', () {
 flutter pub add titan_atlas
 ```
 
-Or see the latest version on [pub.dev](https://pub.dev/packages/titan_atlas/install).
-
 ```dart
 import 'package:titan_atlas/titan_atlas.dart';
 
 final atlas = Atlas(
+  pillars: [AuthPillar.new],             // Global DI — no Beacon wrapper needed
   passages: [
     Passage('/', (_) => HomeScreen()),
-    Passage('/profile/:id', (wp) => ProfileScreen(id: wp.runes['id']!)),
+    Passage('/profile/:id', (wp) => ProfileScreen(id: wp.intRune('id')!)),
+    Passage('/checkout', (_) => CheckoutScreen(),
+      pillars: [CheckoutPillar.new],     // Route-scoped — auto-disposed on leave
+    ),
     Sanctum(
       shell: (child) => AppShell(child: child),
       passages: [
@@ -305,8 +307,12 @@ final atlas = Atlas(
     ),
   ],
   sentinels: [
-    Sentinel((path, _) => isLoggedIn ? null : '/login'),
+    Sentinel((path, _) {
+      final auth = Titan.get<AuthPillar>();
+      return auth.isLoggedIn.value ? null : '/login';
+    }),
   ],
+  observers: [AtlasLoggingObserver()],
 );
 
 void main() => runApp(

@@ -32,6 +32,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:titan/titan.dart';
 
 import '../core/atlas_observer.dart';
 import '../core/passage.dart';
@@ -52,6 +53,7 @@ class _ResolvedRoute {
   final String? name;
   final Map<String, dynamic>? metadata;
   final String? Function(Waypoint waypoint)? redirect;
+  final List<Pillar Function()> pillarFactories;
 
   const _ResolvedRoute({
     required this.pattern,
@@ -61,6 +63,7 @@ class _ResolvedRoute {
     this.name,
     this.metadata,
     this.redirect,
+    this.pillarFactories = const [],
   });
 }
 
@@ -146,6 +149,7 @@ class Atlas {
   ///
   /// ```dart
   /// final atlas = Atlas(
+  ///   pillars: [AuthPillar.new, AppPillar.new],
   ///   passages: [
   ///     Passage('/', (_) => Home()),
   ///     Passage('/about', (_) => About()),
@@ -155,6 +159,7 @@ class Atlas {
   /// ```
   Atlas({
     required List<AtlasRoute> passages,
+    List<Pillar Function()> pillars = const [],
     List<Sentinel> sentinels = const [],
     List<AtlasObserver> observers = const [],
     String? Function(String path, Waypoint waypoint)? drift,
@@ -167,8 +172,13 @@ class Atlas {
         _onError = onError,
         _initialPath = initialPath,
         _defaultShift = defaultShift {
+    // Register global Pillars via Titan DI
+    for (final factory in pillars) {
+      Titan.forge(factory());
+    }
+
     // Flatten and register all routes in the trie
-    _registerRoutes(passages, null);
+    _registerRoutes(passages, null, const []);
 
     // Initialize Navigator 2.0 components
     _delegate = AtlasDelegate(this);
@@ -182,10 +192,16 @@ class Atlas {
   void _registerRoutes(
     List<AtlasRoute> routes,
     Widget Function(Widget child)? parentShell,
+    List<Pillar Function()> parentPillars,
   ) {
     for (final route in routes) {
       switch (route) {
         case Passage():
+          // Combine parent (Sanctum) pillars with Passage's own pillars
+          final combinedPillars = [
+            ...parentPillars,
+            ...route.pillars,
+          ];
           final resolved = _ResolvedRoute(
             pattern: route.path,
             builder: route.builder,
@@ -194,6 +210,7 @@ class Atlas {
             name: route.name,
             metadata: route.metadata,
             redirect: route.redirect,
+            pillarFactories: combinedPillars,
           );
           _trie.insert(route.path, resolved);
           if (route.name != null) {
@@ -201,11 +218,14 @@ class Atlas {
           }
           // Register nested passages
           if (route.passages.isNotEmpty) {
-            _registerRoutes(route.passages, parentShell);
+            _registerRoutes(route.passages, parentShell, combinedPillars);
           }
 
         case Sanctum():
-          _registerRoutes(route.passages, route.shell);
+          _registerRoutes(route.passages, route.shell, [
+            ...parentPillars,
+            ...route.pillars,
+          ]);
       }
     }
   }
@@ -287,6 +307,14 @@ class Atlas {
       }
     }
 
+    // Create route-scoped Pillars BEFORE calling the builder
+    final ownedPillars = <Pillar>[];
+    for (final factory in resolved.pillarFactories) {
+      final pillar = factory();
+      Titan.forge(pillar);
+      ownedPillars.add(pillar);
+    }
+
     final widget = resolved.builder(waypoint);
 
     return _NavigationResult(
@@ -294,6 +322,7 @@ class Atlas {
       widget: widget,
       shift: resolved.shift ?? _defaultShift,
       shell: resolved.shell,
+      ownedPillars: ownedPillars,
     );
   }
 
@@ -369,6 +398,14 @@ class Atlas {
       }
     }
 
+    // Create route-scoped Pillars BEFORE calling the builder
+    final ownedPillars = <Pillar>[];
+    for (final factory in resolved.pillarFactories) {
+      final pillar = factory();
+      Titan.forge(pillar);
+      ownedPillars.add(pillar);
+    }
+
     final widget = resolved.builder(waypoint);
 
     return _NavigationResult(
@@ -376,6 +413,7 @@ class Atlas {
       widget: widget,
       shift: resolved.shift ?? _defaultShift,
       shell: resolved.shell,
+      ownedPillars: ownedPillars,
     );
   }
 
@@ -516,12 +554,24 @@ class _NavigationResult {
   final Shift? shift;
   final Widget Function(Widget child)? shell;
 
-  const _NavigationResult({
+  /// Pillar instances owned by this route entry.
+  /// Created during resolution, disposed when route leaves the stack.
+  final List<Pillar> ownedPillars;
+
+  _NavigationResult({
     required this.waypoint,
     required this.widget,
     this.shift,
     this.shell,
+    this.ownedPillars = const [],
   });
+
+  /// Remove and dispose route-scoped Pillars from Titan.
+  void disposePillars() {
+    for (final pillar in ownedPillars) {
+      Titan.removeByType(pillar.runtimeType);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -538,7 +588,7 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   AtlasDelegate(this._atlas) {
-    // Resolve initial path
+    // Resolve initial path (pillars are created inside _resolve)
     final result = _atlas._resolve(_atlas._initialPath);
     _stack.add(result);
   }
@@ -568,8 +618,11 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
 
   void _replace(String path, {Object? extra}) {
     final from = _currentWaypoint;
+    if (_stack.isNotEmpty) {
+      _stack.last.disposePillars();
+      _stack.removeLast();
+    }
     final result = _atlas._resolve(path, extra: extra);
-    if (_stack.isNotEmpty) _stack.removeLast();
     _stack.add(result);
     for (final observer in _atlas._observers) {
       observer.onReplace(from, result.waypoint);
@@ -580,6 +633,7 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
   void _pop() {
     if (_stack.length > 1) {
       final from = _currentWaypoint;
+      _stack.last.disposePillars();
       _stack.removeLast();
       for (final observer in _atlas._observers) {
         observer.onPop(from, _currentWaypoint);
@@ -591,6 +645,7 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
   void _popUntil(String path) {
     final from = _currentWaypoint;
     while (_stack.length > 1 && _stack.last.waypoint.path != path) {
+      _stack.last.disposePillars();
       _stack.removeLast();
     }
     for (final observer in _atlas._observers) {
@@ -600,6 +655,10 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
   }
 
   void _reset(String path, {Object? extra}) {
+    // Dispose all route-scoped pillars
+    for (final entry in _stack) {
+      entry.disposePillars();
+    }
     final result = _atlas._resolve(path, extra: extra);
     _stack
       ..clear()
@@ -619,6 +678,10 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
     // Handle URL changes (browser, deep links)
     final path = configuration.waypoint.path;
     if (_stack.isEmpty || _stack.last.waypoint.path != path) {
+      // Dispose all existing route-scoped pillars
+      for (final entry in _stack) {
+        entry.disposePillars();
+      }
       final result = _atlas._resolve(path);
       _stack
         ..clear()
@@ -633,6 +696,7 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
       pages: _buildPages(),
       onDidRemovePage: (page) {
         if (_stack.length > 1) {
+          _stack.last.disposePillars();
           _stack.removeLast();
         }
       },

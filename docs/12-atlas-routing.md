@@ -444,28 +444,92 @@ Atlas uses a **trie-based route matcher** for O(k) path resolution where k is th
 
 ## Integration with Titan State
 
-Atlas works seamlessly with Pillar, Vestige, and Beacon:
+Atlas integrates directly with Titan's DI — Pillars can be registered at three scopes with zero boilerplate.
+
+### Global Pillars
+
+Registered when Atlas is created, accessible everywhere, persist for the app's lifetime:
+
+```dart
+Atlas(
+  pillars: [AuthPillar.new, AppPillar.new],
+  passages: [...],
+)
+
+// Access anywhere — in builders, Sentinels, observers
+final auth = Titan.get<AuthPillar>();
+```
+
+### Route-Scoped Pillars
+
+Auto-created when the route is pushed, auto-disposed when it leaves the stack:
+
+```dart
+Passage('/checkout', (wp) {
+  final checkout = Titan.get<CheckoutPillar>();
+  return CheckoutScreen(total: checkout.total.value);
+}, pillars: [CheckoutPillar.new, PaymentPillar.new])
+```
+
+Navigate to `/checkout` → `CheckoutPillar` and `PaymentPillar` are created.
+Navigate away → both are disposed and removed from Titan.
+
+### Shell-Scoped Pillars
+
+Attached to a Sanctum — live as long as any passage within the shell is on the stack:
+
+```dart
+Sanctum(
+  pillars: [DashboardPillar.new],
+  shell: (child) => DashboardLayout(child: child),
+  passages: [
+    Passage('/overview', (_) => OverviewScreen()),
+    Passage('/analytics', (_) => AnalyticsScreen()),
+  ],
+)
+```
+
+### Combined — Zero Boilerplate
 
 ```dart
 void main() {
   final atlas = Atlas(
-    passages: [...],
+    pillars: [AuthPillar.new],           // Global — entire app
+    passages: [
+      Sanctum(
+        pillars: [DashboardPillar.new],  // Shell-scoped
+        shell: (child) => AppShell(child: child),
+        passages: [
+          Passage('/', (_) => HomeScreen()),
+          Passage('/search', (_) => SearchScreen()),
+        ],
+      ),
+      Passage('/checkout', (wp) => CheckoutScreen(),
+        pillars: [CheckoutPillar.new],   // Route-scoped
+      ),
+    ],
     sentinels: [
       Sentinel((path, _) {
-        // Access Pillars via Titan DI
         final auth = Titan.get<AuthPillar>();
         return auth.isLoggedIn.value ? null : '/login';
       }),
     ],
   );
 
-  runApp(
-    Beacon(
-      pillars: [AuthPillar.new, AppPillar.new],
-      child: MaterialApp.router(routerConfig: atlas.config),
-    ),
-  );
+  // No Beacon wrapper needed — Atlas handles all DI
+  runApp(MaterialApp.router(routerConfig: atlas.config));
 }
+```
+
+This replaces:
+```dart
+// OLD — manual Beacon wrapping
+runApp(
+  Beacon(
+    pillars: [AuthPillar.new, AppPillar.new],
+    child: MaterialApp.router(routerConfig: atlas.config),
+  ),
+);
 ```
 
 ## Full Example
@@ -473,10 +537,10 @@ void main() {
 ```dart
 import 'package:flutter/material.dart';
 import 'package:titan_atlas/titan_atlas.dart';
-import 'package:titan_bastion/titan_bastion.dart';
 
 void main() {
   final atlas = Atlas(
+    pillars: [AuthPillar.new],
     passages: [
       Sanctum(
         shell: (child) => AppShell(child: child),
@@ -495,6 +559,9 @@ void main() {
         final id = wp.intRune('id') ?? 0;
         return ProfileScreen(id: id);
       }),
+      Passage('/checkout', (wp) => CheckoutScreen(),
+        pillars: [CheckoutPillar.new],
+      ),
       Passage('/login', (_) => const LoginScreen()),
       Passage('/old-page', (_) => Container(),
         redirect: (wp) => '/new-page',
@@ -503,7 +570,10 @@ void main() {
     sentinels: [
       Sentinel.except(
         paths: {'/login', '/'},
-        guard: (path, _) => isLoggedIn ? null : '/login',
+        guard: (path, _) {
+          final auth = Titan.get<AuthPillar>();
+          return auth.isLoggedIn.value ? null : '/login';
+        },
       ),
     ],
     drift: (path, _) {
@@ -514,11 +584,6 @@ void main() {
     onError: (path) => NotFoundScreen(path: path),
   );
 
-  runApp(
-    Beacon(
-      pillars: [AuthPillar.new],
-      child: MaterialApp.router(routerConfig: atlas.config),
-    ),
-  );
+  runApp(MaterialApp.router(routerConfig: atlas.config));
 }
 ```

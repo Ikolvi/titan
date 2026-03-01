@@ -144,6 +144,22 @@ abstract final class Titan {
     }
   }
 
+  /// Register a [Pillar] using its runtime type.
+  ///
+  /// Unlike [put], which uses the compile-time generic type `T`,
+  /// this uses the actual `runtimeType` of the Pillar. Essential
+  /// for dynamic registration (e.g., route-scoped Pillars in Atlas).
+  ///
+  /// ```dart
+  /// Pillar pillar = AuthPillar();
+  /// Titan.forge(pillar); // Registered as AuthPillar, not Pillar
+  /// Titan.get<AuthPillar>(); // Works!
+  /// ```
+  static void forge(Pillar pillar) {
+    _instances[pillar.runtimeType] = pillar;
+    pillar.initialize();
+  }
+
   /// Register a lazy factory. Instance is created on first [get].
   ///
   /// If the created instance is a [Pillar], it will be auto-initialized.
@@ -198,6 +214,26 @@ abstract final class Titan {
       instance.dispose();
     }
     return instance as T?;
+  }
+
+  /// Remove an instance by its runtime [Type].
+  ///
+  /// Used for cases where the type is known at runtime but not at
+  /// compile time (e.g., route-scoped Pillar management in Atlas).
+  ///
+  /// If the instance is a [Pillar], it will be disposed automatically.
+  ///
+  /// ```dart
+  /// Titan.put(AuthPillar());
+  /// Titan.removeByType(AuthPillar); // Same as Titan.remove<AuthPillar>()
+  /// ```
+  static dynamic removeByType(Type type) {
+    _factories.remove(type);
+    final instance = _instances.remove(type);
+    if (instance is Pillar) {
+      instance.dispose();
+    }
+    return instance;
   }
 
   /// Reset all registrations. Disposes all [Pillar] instances.

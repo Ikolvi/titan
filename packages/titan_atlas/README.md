@@ -210,16 +210,62 @@ final title = waypoint.metadata?['title'];
 
 ## Works with Titan State
 
+Atlas integrates directly with Titan's DI — no extra wiring needed.
+
+### Global Pillars
+
+Register app-wide Pillars that persist for the entire app lifecycle:
+
+```dart
+Atlas(
+  pillars: [AuthPillar.new, AppPillar.new],
+  passages: [...],
+)
+
+// Access anywhere
+final auth = Titan.get<AuthPillar>();
+```
+
+### Route-Scoped Pillars
+
+Pillars auto-created when a route is entered, auto-disposed when it leaves:
+
+```dart
+Passage('/checkout', (wp) => CheckoutScreen(),
+  pillars: [CheckoutPillar.new, PaymentPillar.new],
+)
+```
+
+### Shell-Scoped Pillars
+
+Pillars that live as long as any passage within the Sanctum is active:
+
+```dart
+Sanctum(
+  pillars: [DashboardPillar.new],
+  shell: (child) => DashboardLayout(child: child),
+  passages: [
+    Passage('/overview', (_) => OverviewScreen()),
+    Passage('/analytics', (_) => AnalyticsScreen()),
+  ],
+)
+```
+
+### Zero-Boilerplate Setup
+
 ```dart
 void main() {
-  final atlas = Atlas(passages: [...]);
-  
-  runApp(
-    Beacon(
-      pillars: [AuthPillar.new],
-      child: MaterialApp.router(routerConfig: atlas.config),
-    ),
+  final atlas = Atlas(
+    pillars: [AuthPillar.new],  // Global DI — no Beacon wrapper needed
+    passages: [
+      Passage('/', (_) => HomeScreen()),
+      Passage('/checkout', (_) => CheckoutScreen(),
+        pillars: [CheckoutPillar.new],  // Route-scoped
+      ),
+    ],
   );
+
+  runApp(MaterialApp.router(routerConfig: atlas.config));
 }
 ```
 

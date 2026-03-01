@@ -18,7 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Per-route redirects** — `Passage('/old', ..., redirect: (wp) => '/new')`
 - **Route metadata** — `Passage('/admin', ..., metadata: {'title': 'Admin'})` accessible via `waypoint.metadata`
 - **Route name on Waypoint** — `waypoint.name` returns the Passage's named identifier
-- 21 new tests (67 total)
+
+#### DI Integration
+- **Global Pillars** — `Atlas(pillars: [AuthPillar.new])` registers Pillars via `Titan.forge()` on construction
+- **Route-scoped Pillars** — `Passage('/checkout', ..., pillars: [CheckoutPillar.new])` auto-creates on push, auto-disposes on pop
+- **Shell-scoped Pillars** — `Sanctum(pillars: [DashboardPillar.new], ...)` Pillars live with the shell
+- **`Titan.forge()`** — Registers a Pillar by its runtime type (for dynamic registration)
+- **`Titan.removeByType()`** — Removes a Pillar by runtime Type (no generic parameter needed)
+- 37 new tests (83 total)
 
 ---
 

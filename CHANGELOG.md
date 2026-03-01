@@ -24,7 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Type-safe Rune accessors** — `waypoint.intRune('id')`, `doubleRune()`, `boolRune()`, + query equivalents
 - **Per-route redirects** — `Passage('/old', ..., redirect: (wp) => '/new')`
 - **Route metadata** — `Passage('/admin', ..., metadata: {'title': 'Admin'})` via `waypoint.metadata`
-- 67 tests (trie, waypoint, sentinel, observer, metadata, redirects, full widget integration)
+
+#### Atlas DI Integration
+- **Global Pillars** — `Atlas(pillars: [AuthPillar.new])` — zero-boilerplate DI, no Beacon wrapper needed
+- **Route-scoped Pillars** — `Passage('/checkout', ..., pillars: [CheckoutPillar.new])` — auto-created on push, auto-disposed on pop
+- **Shell-scoped Pillars** — `Sanctum(pillars: [...])` — Pillars scoped to shell lifetime
+
+#### Titan Core (`titan`)
+- **`Titan.forge()`** — Register Pillar by runtime type (for dynamic registration)
+- **`Titan.removeByType()`** — Remove Pillar by runtime Type (no generic parameter needed)
+- 186 tests across all packages
 
 ---
 
