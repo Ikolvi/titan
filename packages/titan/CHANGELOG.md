@@ -5,6 +5,21 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2026-03-02
+
+### Added
+- **Atlas.go()** navigation support — declarative stack-based navigation
+- Pub.dev publish preparation — example file, topics, analysis fixes
+- 20 additional tests (gap coverage: Relic, Codex, Quarry, Scroll, Epoch, API)
+
+### Removed
+- **TitanMiddleware** — dead code removed (use TitanObserver/Oracle instead)
+- **StateChangeEvent** — removed alongside middleware
+
+### Fixed
+- `dart format` applied across all source files
+- CHANGELOG headers standardized to Keep a Changelog format
+
 ## [0.0.3] - 2025-07-12
 
 ### Added
