@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:titan/titan.dart';
@@ -104,6 +106,9 @@ import 'package:titan_bastion/src/widgets/beacon.dart';
 ///
 /// ### Titan Integration
 /// - [usePillar] — Access a [Pillar] from the nearest [Beacon]
+///
+/// ### Async
+/// - [useStream] — Subscribe to a [Stream], returns [AsyncValue] snapshot
 ///
 /// ## Rules
 ///
@@ -978,5 +983,140 @@ class _PillarHookState<P extends Pillar> extends _HookState<void> {
     // Uses BeaconScope.of which checks Beacon (widget tree) first,
     // then falls back to Titan global DI, and throws if not found.
     pillar = BeaconScope.of<P>(_context);
+  }
+}
+
+// =============================================================================
+// useStream — Subscribe to a Stream with auto-cleanup
+// =============================================================================
+
+/// Subscribes to a [Stream] and returns the latest [AsyncValue] snapshot.
+///
+/// The subscription is created on the first build and auto-cancelled when
+/// the [Spark] widget is disposed. If [keys] change, the previous
+/// subscription is cancelled and a new one is created for the current stream.
+///
+/// Returns an [AsyncValue] with the current state of the stream:
+/// - [AsyncValue.loading] — no data yet (initial state)
+/// - [AsyncValue.data] — latest emitted value
+/// - [AsyncValue.error] — stream error
+///
+/// The Spark automatically rebuilds when the stream emits a new value,
+/// an error, or completes.
+///
+/// ```dart
+/// class LiveFeed extends Spark {
+///   @override
+///   Widget ignite(BuildContext context) {
+///     final snapshot = useStream(myStream);
+///
+///     return switch (snapshot) {
+///       AsyncData(:final data) => Text('Value: $data'),
+///       AsyncError(:final error) => Text('Error: $error'),
+///       _ => CircularProgressIndicator(),
+///     };
+///   }
+/// }
+/// ```
+///
+/// Use [keys] to re-subscribe when the stream source changes:
+///
+/// ```dart
+/// class UserStream extends Spark {
+///   const UserStream({required this.userId});
+///   final String userId;
+///
+///   @override
+///   Widget ignite(BuildContext context) {
+///     final snapshot = useStream(
+///       fetchUserStream(userId),
+///       keys: [userId],
+///     );
+///     return Text(snapshot.dataOrNull?.name ?? 'Loading...');
+///   }
+/// }
+/// ```
+///
+/// Provide [initialData] to avoid a loading state on first build:
+///
+/// ```dart
+/// final snapshot = useStream(stream, initialData: 'default');
+/// // snapshot starts as AsyncData('default') instead of AsyncLoading
+/// ```
+AsyncValue<T> useStream<T>(
+  Stream<T> stream, {
+  T? initialData,
+  List<Object?>? keys,
+}) {
+  final state = SparkState.current!;
+  final hook = state.use(
+    () => _StreamHookState<T>(stream, initialData: initialData, keys: keys),
+  );
+  hook.maybeResubscribe(stream, keys);
+  return hook.snapshot;
+}
+
+/// Hook state for [useStream].
+///
+/// Manages a [StreamSubscription] that auto-cancels on dispose or
+/// when [keys] change (triggering a re-subscription).
+class _StreamHookState<T> extends _HookState<T> {
+  _StreamHookState(this._stream, {T? initialData, List<Object?>? keys})
+    : _keys = keys,
+      snapshot = initialData != null
+          ? AsyncValue<T>.data(initialData)
+          : AsyncValue<T>.loading();
+
+  Stream<T> _stream;
+  List<Object?>? _keys;
+  AsyncValue<T> snapshot;
+  StreamSubscription<T>? _subscription;
+
+  @override
+  void init() {
+    _subscribe();
+  }
+
+  /// Re-subscribes if [keys] have changed since the last build.
+  void maybeResubscribe(Stream<T> stream, List<Object?>? newKeys) {
+    if (newKeys == null) return; // null keys = subscribe once, never change
+    if (_keys == null) return;
+    if (_keys!.length != newKeys.length || _keysChanged(_keys!, newKeys)) {
+      _keys = newKeys;
+      _stream = stream;
+      _cancelSubscription();
+      snapshot = AsyncValue<T>.loading();
+      _subscribe();
+    }
+  }
+
+  void _subscribe() {
+    _subscription = _stream.listen(
+      (data) {
+        snapshot = AsyncValue<T>.data(data);
+        _state.rebuild();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        snapshot = AsyncValue<T>.error(error, stackTrace);
+        _state.rebuild();
+      },
+    );
+  }
+
+  void _cancelSubscription() {
+    _subscription?.cancel();
+    _subscription = null;
+  }
+
+  static bool _keysChanged(List<Object?> old, List<Object?> current) {
+    for (var i = 0; i < old.length; i++) {
+      if (old[i] != current[i]) return true;
+    }
+    return false;
+  }
+
+  @override
+  void dispose() {
+    _cancelSubscription();
   }
 }

@@ -48,6 +48,7 @@ A signal-based reactive state management engine for Dart & Flutter — fine-grai
 | Middleware | **Conduit** | Core-level pipeline — transform, validate, reject |
 | State Selector | **Prism** | Fine-grained, memoized state projections |
 | Reactive Collection | **Nexus** | In-place reactive List, Map, Set with change records |
+| Hooks Widget | **Spark** | Hooks-style widget — `useCore`, `useEffect`, auto-lifecycle |
 
 ---
 

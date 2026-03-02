@@ -137,6 +137,38 @@ Lens(
 
 Shows real-time Pillar registrations, Herald events, Vigil errors, and Chronicle logs. Toggle with `Lens.show()`, `Lens.hide()`, `Lens.toggle()`.
 
+### Spark — Hooks-Style Widget
+
+Eliminate `StatefulWidget` boilerplate with hooks. No `createState`, no `dispose`, no ceremony.
+
+```dart
+class CounterWidget extends Spark {
+  @override
+  Widget ignite(BuildContext context) {
+    final count = useCore(0);
+    final controller = useTextController();
+
+    useEffect(() {
+      print('Count changed: ${count.value}');
+      return null;
+    }, [count.value]);
+
+    return Column(children: [
+      TextField(controller: controller),
+      Text('Count: ${count.value}'),
+      ElevatedButton(
+        onPressed: () => count.value++,
+        child: Text('Increment'),
+      ),
+    ]);
+  }
+}
+```
+
+**Available hooks:** `useCore`, `useDerived`, `useEffect`, `useMemo`, `useRef`, `useStream`, `useTextController`, `useAnimationController`, `useFocusNode`, `useScrollController`, `useTabController`, `usePageController`, `usePillar`.
+
+All controllers auto-dispose. All reactive state auto-tracks and rebuilds. Reads `.value` during `ignite()` → auto-tracked via `TitanEffect`, just like `Vestige`.
+
 ### Context Extension
 
 ```dart
@@ -234,6 +266,7 @@ void main() => runApp(
 | [Chapter XVIII: The Conduit Flows](../../docs/story/chapter-18-the-conduit-flows.md) | Core-level middleware |
 | [Chapter XIX: The Prism Reveals](../../docs/story/chapter-19-the-prism-reveals.md) | Fine-grained state projections |
 | [Chapter XX: The Nexus Connects](../../docs/story/chapter-20-the-nexus-connects.md) | Reactive collections |
+| [Chapter XXI: The Spark Ignites](../../docs/story/chapter-21-the-spark-ignites.md) | Hooks-style widgets |
 
 ## License
 

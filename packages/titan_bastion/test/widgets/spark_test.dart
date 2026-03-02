@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:titan_bastion/titan_bastion.dart';
@@ -712,9 +714,7 @@ void main() {
     testWidgets('rebuilds when standalone Core changes', (tester) async {
       // A Core read directly (not via usePillar) is also auto-tracked
       final counter = Core(0);
-      await tester.pumpWidget(
-        _app(_StandaloneCoreSpark(counter: counter)),
-      );
+      await tester.pumpWidget(_app(_StandaloneCoreSpark(counter: counter)));
       expect(find.text('Count: 0'), findsOneWidget);
 
       counter.value = 42;
@@ -760,9 +760,7 @@ void main() {
 
     testWidgets('stops tracking after dispose', (tester) async {
       final counter = Core(0);
-      await tester.pumpWidget(
-        _app(_StandaloneCoreSpark(counter: counter)),
-      );
+      await tester.pumpWidget(_app(_StandaloneCoreSpark(counter: counter)));
       expect(find.text('Count: 0'), findsOneWidget);
 
       // Remove the Spark widget
@@ -776,8 +774,9 @@ void main() {
       expect(find.text('Count: 99'), findsNothing);
     });
 
-    testWidgets('useCore local state and auto-tracked external Core coexist',
-        (tester) async {
+    testWidgets('useCore local state and auto-tracked external Core coexist', (
+      tester,
+    ) async {
       final external = Core('external');
       final localValues = <int>[];
       await tester.pumpWidget(
@@ -883,6 +882,167 @@ void main() {
       expect(() => anim!.forward(), throwsA(anything));
     });
   });
+
+  group('useStream', () {
+    testWidgets('starts with AsyncLoading', (tester) async {
+      final controller = StreamController<int>(sync: true);
+      AsyncValue<int>? snapshot;
+
+      await tester.pumpWidget(
+        _app(
+          _StreamSpark(
+            stream: controller.stream,
+            onSnapshot: (s) => snapshot = s,
+          ),
+        ),
+      );
+
+      expect(snapshot, isA<AsyncLoading<int>>());
+      expect(find.text('loading'), findsOneWidget);
+
+      controller.close();
+    });
+
+    testWidgets('starts with initialData if provided', (tester) async {
+      final controller = StreamController<int>(sync: true);
+
+      await tester.pumpWidget(
+        _app(
+          _StreamSpark(
+            stream: controller.stream,
+            initialData: 42,
+            onSnapshot: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.text('data: 42'), findsOneWidget);
+
+      controller.close();
+    });
+
+    testWidgets('updates when stream emits data', (tester) async {
+      final controller = StreamController<int>(sync: true);
+
+      await tester.pumpWidget(
+        _app(_StreamSpark(stream: controller.stream, onSnapshot: (_) {})),
+      );
+      expect(find.text('loading'), findsOneWidget);
+
+      controller.add(1);
+      await tester.pump();
+      expect(find.text('data: 1'), findsOneWidget);
+
+      controller.add(2);
+      await tester.pump();
+      expect(find.text('data: 2'), findsOneWidget);
+
+      controller.close();
+    });
+
+    testWidgets('handles stream errors', (tester) async {
+      final controller = StreamController<int>(sync: true);
+
+      await tester.pumpWidget(
+        _app(_StreamSpark(stream: controller.stream, onSnapshot: (_) {})),
+      );
+
+      controller.addError('boom');
+      await tester.pump();
+      expect(find.text('error: boom'), findsOneWidget);
+
+      controller.close();
+    });
+
+    testWidgets('cancels subscription on dispose', (tester) async {
+      final controller = StreamController<int>(sync: true);
+
+      await tester.pumpWidget(
+        _app(_StreamSpark(stream: controller.stream, onSnapshot: (_) {})),
+      );
+
+      // Remove the widget
+      await tester.pumpWidget(_app(const SizedBox()));
+
+      // Stream should still be open but listener removed
+      expect(controller.hasListener, isFalse);
+
+      controller.close();
+    });
+
+    testWidgets('re-subscribes when keys change', (tester) async {
+      final controller1 = StreamController<String>(sync: true);
+      final controller2 = StreamController<String>(sync: true);
+
+      await tester.pumpWidget(
+        _app(_KeyedStreamSpark(stream: controller1.stream, streamKey: 'a')),
+      );
+      expect(find.text('loading'), findsOneWidget);
+
+      controller1.add('hello');
+      await tester.pump();
+      expect(find.text('data: hello'), findsOneWidget);
+
+      // Change keys → re-subscribe to a new stream
+      await tester.pumpWidget(
+        _app(_KeyedStreamSpark(stream: controller2.stream, streamKey: 'b')),
+      );
+      await tester.pump();
+      // Should be back to loading after re-subscribe
+      expect(find.text('loading'), findsOneWidget);
+
+      controller2.add('world');
+      await tester.pump();
+      expect(find.text('data: world'), findsOneWidget);
+
+      // Old stream listener should be cancelled
+      expect(controller1.hasListener, isFalse);
+
+      controller1.close();
+      controller2.close();
+    });
+
+    testWidgets('works with broadcast streams', (tester) async {
+      final controller = StreamController<int>.broadcast(sync: true);
+
+      await tester.pumpWidget(
+        _app(_StreamSpark(stream: controller.stream, onSnapshot: (_) {})),
+      );
+
+      controller.add(99);
+      await tester.pump();
+      expect(find.text('data: 99'), findsOneWidget);
+
+      controller.close();
+    });
+
+    testWidgets('multiple data emissions rebuild correctly', (tester) async {
+      final controller = StreamController<int>(sync: true);
+      final buildCount = <int>[];
+
+      await tester.pumpWidget(
+        _app(
+          _StreamBuildCountSpark(
+            stream: controller.stream,
+            buildCount: buildCount,
+          ),
+        ),
+      );
+      // Initial build (loading)
+      final initialBuilds = buildCount.length;
+
+      for (var i = 1; i <= 5; i++) {
+        controller.add(i);
+        await tester.pump();
+      }
+
+      expect(find.text('data: 5'), findsOneWidget);
+      // Should have rebuilt for each emission
+      expect(buildCount.length, initialBuilds + 5);
+
+      controller.close();
+    });
+  });
 }
 
 /// Spark for tracking disposal of multiple hook types.
@@ -940,8 +1100,10 @@ class _MultiTrackSpark extends Spark {
   Widget ignite(BuildContext context) {
     final sum = a.value + b.value;
     buildCount.add(sum);
-    return Text('${a.value} + ${b.value} = $sum',
-        textDirection: TextDirection.ltr);
+    return Text(
+      '${a.value} + ${b.value} = $sum',
+      textDirection: TextDirection.ltr,
+    );
   }
 }
 
@@ -955,7 +1117,70 @@ class _MixedTrackingSpark extends Spark {
   Widget ignite(BuildContext context) {
     final local = useCore(0);
     onLocal(local.value);
-    return Text('${external.value}: ${local.value}',
-        textDirection: TextDirection.ltr);
+    return Text(
+      '${external.value}: ${local.value}',
+      textDirection: TextDirection.ltr,
+    );
+  }
+}
+
+/// Spark that uses useStream for testing.
+class _StreamSpark extends Spark {
+  const _StreamSpark({
+    required this.stream,
+    required this.onSnapshot,
+    this.initialData,
+  });
+  final Stream<int> stream;
+  final void Function(AsyncValue<int>) onSnapshot;
+  final int? initialData;
+
+  @override
+  Widget ignite(BuildContext context) {
+    final snapshot = useStream(stream, initialData: initialData);
+    onSnapshot(snapshot);
+    return Text(switch (snapshot) {
+      AsyncData(:final data) => 'data: $data',
+      AsyncError(:final error) => 'error: $error',
+      _ => 'loading',
+    }, textDirection: TextDirection.ltr);
+  }
+}
+
+/// Spark that uses useStream with keys for re-subscription testing.
+class _KeyedStreamSpark extends Spark {
+  const _KeyedStreamSpark({required this.stream, required this.streamKey});
+  final Stream<String> stream;
+  final String streamKey;
+
+  @override
+  Widget ignite(BuildContext context) {
+    final snapshot = useStream(stream, keys: [streamKey]);
+    return Text(switch (snapshot) {
+      AsyncData(:final data) => 'data: $data',
+      AsyncError(:final error) => 'error: $error',
+      _ => 'loading',
+    }, textDirection: TextDirection.ltr);
+  }
+}
+
+/// Spark that tracks build count with useStream.
+class _StreamBuildCountSpark extends Spark {
+  const _StreamBuildCountSpark({
+    required this.stream,
+    required this.buildCount,
+  });
+  final Stream<int> stream;
+  final List<int> buildCount;
+
+  @override
+  Widget ignite(BuildContext context) {
+    final snapshot = useStream(stream);
+    buildCount.add(buildCount.length);
+    return Text(switch (snapshot) {
+      AsyncData(:final data) => 'data: $data',
+      AsyncError(:final error) => 'error: $error',
+      _ => 'loading',
+    }, textDirection: TextDirection.ltr);
   }
 }
