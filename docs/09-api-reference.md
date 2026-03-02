@@ -675,6 +675,97 @@ Atlas(sentinels: auth.sentinels, refreshListenable: auth.refresh, ...);
 
 ---
 
+## Authentication & Authorization (package:titan_argus)
+
+### Argus
+
+Abstract base class for auth Pillars. Provides `isLoggedIn` Core, `signIn`/`signOut` lifecycle contract, and `guard()` convenience.
+
+```dart
+class AuthPillar extends Argus {
+  late final username = core<String?>(null);
+
+  @override
+  Future<void> signIn([Map<String, dynamic>? credentials]) async {
+    await strikeAsync('sign-in', () async {
+      username.value = credentials?['name'] as String?;
+      isLoggedIn.value = true;
+    });
+  }
+
+  @override
+  void signOut() {
+    strike('sign-out', () {
+      username.value = null;
+      super.signOut();
+    });
+  }
+}
+```
+
+#### Properties & Methods
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `isLoggedIn` | `Core<bool>` | Reactive auth state (starts `false`) |
+| `authCores` | `List<ReactiveNode>` | Nodes that trigger route re-evaluation (default: `[isLoggedIn]`) |
+| `signIn([credentials])` | `Future<void>` | Override to implement sign-in |
+| `signOut()` | `void` | Override to implement sign-out (call `super.signOut()`) |
+| `guard(...)` | `GarrisonAuth` | Creates sentinels + refresh in one call |
+
+### Argus.guard()
+
+Convenience method that creates `authGuard` + `guestOnly` Sentinels and a `CoreRefresh` from `authCores`:
+
+```dart
+final (:sentinels, :refreshListenable) = auth.guard(
+  loginPath: '/login',
+  publicPaths: {'/login', '/register'},
+  guestPaths: {'/login'},
+);
+
+Atlas(sentinels: sentinels, refreshListenable: refreshListenable, ...);
+```
+
+### Cartograph
+
+Static utility for deep link parsing, URL building, and named route mapping.
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `name(routeName, path)` | `void` | Register a named route |
+| `nameAll(Map)` | `void` | Register multiple named routes |
+| `build(name, {runes, query})` | `String` | Build URL from named route |
+| `buildFromTemplate(template, {runes, query})` | `String` | Build URL from template |
+| `parse(Uri)` | `CartographMatch?` | Match URI against registered patterns |
+| `handleDeepLink(Uri)` | `bool` | Parse + invoke registered handler |
+| `link(template, [handler])` | `void` | Register deep link handler |
+| `reset()` | `void` | Clear all registrations |
+
+### Obs
+
+Ultra-simple auto-tracking reactive widget. Rebuilds only when tracked values change.
+
+```dart
+Obs(() => Text('${count.value}'))
+Obs.builder((context) => Text('${count.value}'))
+```
+
+### Rampart
+
+Responsive layout builder that adapts to screen width using Material 3 breakpoints.
+
+| Class | Purpose |
+|-------|---------|
+| `Rampart` | Main responsive builder with `compact`/`medium`/`expanded` builders |
+| `RampartBreakpoints` | Configurable breakpoint thresholds |
+| `RampartLayout` | Enum: `compact`, `medium`, `expanded` |
+| `RampartValue<T>` | Tier-dependent value with `resolve(layout)` |
+| `RampartVisibility` | Show/hide child based on layout tier |
+| `RampartContext` | Extension: `context.rampartLayout`, `context.isCompact`, etc. |
+
+---
+
 ## Performance Monitoring (package:titan_colossus)
 
 ### Colossus
@@ -1003,6 +1094,50 @@ ShadeListener(
   child: MaterialApp(...),
 )
 ```
+
+### ShadeVault
+
+Session persistence and auto-replay configuration for Shade recordings.
+
+```dart
+final vault = ShadeVault(directory: '/path/to/sessions');
+
+// Save / load sessions
+await vault.save(session);
+final summaries = await vault.listSessions(); // List<ShadeSessionSummary>
+final loaded = await vault.load(summaries.first.id);
+
+// Auto-replay config
+await vault.setAutoReplayConfig(ShadeAutoReplayConfig(
+  enabled: true,
+  sessionId: session.id,
+  speed: 2.0,
+));
+```
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `save(session)` | `Future<void>` | Persist a session to disk |
+| `load(id)` | `Future<ShadeSession?>` | Load a session by ID |
+| `listSessions()` | `Future<List<ShadeSessionSummary>>` | List all saved sessions |
+| `delete(id)` | `Future<void>` | Delete a session |
+| `setAutoReplayConfig(config)` | `Future<void>` | Set auto-replay configuration |
+| `getAutoReplayConfig()` | `Future<ShadeAutoReplayConfig?>` | Get current config |
+
+### ShadeTextController
+
+Auto-recording `TextEditingController` that registers with Shade for direct text replay.
+
+```dart
+final controller = ShadeTextController(
+  shade: shade,
+  fieldId: 'hero_name',
+);
+
+TextField(controller: controller)
+```
+
+During replay, Phantom injects text directly via `setValueSilently()`, bypassing the keyboard.
 
 ---
 
@@ -1857,6 +1992,8 @@ class MySpark extends Spark {
 
 **Available Hooks:**
 
+**Reactive Hooks:**
+
 | Hook | Returns | Purpose |
 |------|---------|---------|
 | `useCore<T>(initial)` | `Core<T>` | Reactive state, auto-rebuilds |
@@ -1864,14 +2001,44 @@ class MySpark extends Spark {
 | `useEffect(fn, [keys])` | `void` | Side effect with cleanup |
 | `useMemo<T>(fn, [keys])` | `T` | Memoized computation |
 | `useRef<T>(initial)` | `SparkRef<T>` | Mutable ref, no rebuild |
+| `usePillar<P>(context)` | `P` | Find Pillar from Beacon/Titan |
+| `useStream<T>(stream)` | `AsyncValue<T>` | Subscribe to stream, returns Ether snapshot |
+| `useFuture<T>(future)` | `AsyncValue<T>` | Subscribe to Future, returns Ether snapshot |
+| `useCallback<T>(fn, [keys])` | `T` | Memoized callback, stable identity |
+| `useReducer<S,A>(reducer, init)` | `SparkStore<S,A>` | Redux-style reducer with `state` + `dispatch` |
+
+**Value Hooks:**
+
+| Hook | Returns | Purpose |
+|------|---------|---------|
+| `usePrevious<T>(value)` | `T?` | Previous value from last build |
+| `useValueListenable<T>(vn)` | `T` | Subscribe to ValueListenable |
+| `useValueChanged<T,R>(value, cb)` | `R?` | Callback when value changes |
+| `useValueNotifier<T>(initial)` | `ValueNotifier<T>` | Auto-disposed ValueNotifier |
+| `useDebounced<T>(value, duration)` | `T` | Debounced value, updates after delay |
+| `useListenable(listenable)` | `void` | Subscribe to any Listenable |
+| `useIsMounted()` | `bool Function()` | Closure checking if widget is mounted |
+
+**Controller Hooks:**
+
+| Hook | Returns | Purpose |
+|------|---------|---------|
 | `useTextController()` | `TextEditingController` | Auto-disposed |
 | `useAnimationController()` | `AnimationController` | Auto-disposed, built-in vsync |
 | `useFocusNode()` | `FocusNode` | Auto-disposed |
 | `useScrollController()` | `ScrollController` | Auto-disposed |
 | `useTabController(length:)` | `TabController` | Auto-disposed, built-in vsync |
 | `usePageController()` | `PageController` | Auto-disposed |
-| `usePillar<P>(context)` | `P` | Find Pillar from Beacon/Titan |
-| `useStream<T>(stream)` | `AsyncValue<T>` | Subscribe to stream, returns Ether snapshot |
+| `useStreamController<T>()` | `StreamController<T>` | Auto-disposed |
+
+**Lifecycle Hooks:**
+
+| Hook | Returns | Purpose |
+|------|---------|---------|
+| `useAnimation(controller)` | `double` | Subscribe to animation, rebuilds on tick |
+| `useAppLifecycleState()` | `AppLifecycleState?` | Current app lifecycle state |
+| `useOnAppLifecycleStateChange(cb)` | `void` | Callback on lifecycle transitions |
+| `useAutomaticKeepAlive({want: true})` | `void` | Keep widget alive in lazy lists |
 
 ---
 

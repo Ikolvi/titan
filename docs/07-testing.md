@@ -425,4 +425,72 @@ final counter = tester.element(find.byType(Text)).findAncestorWidgetOfExactType<
 
 ---
 
+## Testing Harnesses
+
+Titan provides dedicated testing utilities for structured, repeatable tests.
+
+### Crucible — Test Utilities
+
+`Crucible` provides convenience methods for common test setups:
+
+```dart
+import 'package:titan/titan.dart';
+
+test('crucible test', () {
+  final crucible = Crucible();
+
+  // Create and track a Pillar for auto-cleanup
+  final pillar = crucible.create(() => CounterPillar());
+
+  pillar.increment();
+  expect(pillar.count.value, 1);
+
+  // Dispose all tracked resources
+  crucible.dispose();
+});
+```
+
+### Snapshot — State Capture
+
+Capture and compare Pillar state at different points:
+
+```dart
+test('snapshot comparison', () {
+  final pillar = CounterPillar();
+
+  final before = Snapshot.of(pillar);
+  pillar.increment();
+  pillar.increment();
+  final after = Snapshot.of(pillar);
+
+  expect(before['count'], 0);
+  expect(after['count'], 2);
+
+  pillar.dispose();
+});
+```
+
+`PillarSnapshot` captures all Core values as a `Map<String, dynamic>` for comparison and serialization.
+
+### Bulwark — Test Harness
+
+`Bulwark` provides a structured test harness for Pillars with setup/teardown lifecycle:
+
+```dart
+test('bulwark structured test', () {
+  final harness = Bulwark<CounterPillar>(
+    create: CounterPillar.new,
+  );
+
+  harness.setUp();
+
+  harness.pillar.increment();
+  expect(harness.pillar.count.value, 1);
+
+  harness.tearDown(); // disposes automatically
+});
+```
+
+---
+
 [← Oracle & Observation](06-middleware.md) · [Advanced Patterns →](08-advanced-patterns.md)

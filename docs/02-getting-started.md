@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-- **Dart SDK** ≥ 3.10.0
-- **Flutter** ≥ 3.38.0 (for `titan_bastion`)
+- **Dart SDK** ^3.10.3
+- **Flutter** >=3.10.0 (for `titan_bastion`)
 
 ## Installation
 
@@ -11,7 +11,7 @@
 
 ```yaml
 dependencies:
-  titan_bastion: ^0.0.1
+  titan_bastion: ^1.0.0
 ```
 
 `titan_bastion` re-exports `titan` — you don't need both.
@@ -20,10 +20,19 @@ dependencies:
 
 ```yaml
 dependencies:
-  titan_atlas: ^0.0.1
+  titan_atlas: ^1.0.0
 ```
 
 `titan_atlas` re-exports `titan` — add `titan_bastion` separately if you need Vestige/Beacon widgets outside of Atlas routes.
+
+### Authentication & Authorization
+
+```yaml
+dependencies:
+  titan_argus: ^1.0.0
+```
+
+`titan_argus` provides auth Pillar base class (Argus), route guards (Garrison), and reactive route re-evaluation (CoreRefresh). Re-exports `titan_atlas`.
 
 ### Performance Monitoring
 
@@ -38,7 +47,7 @@ dependencies:
 
 ```yaml
 dependencies:
-  titan: ^0.0.1
+  titan: ^1.0.0
 ```
 
 ## Your First Titan App
@@ -255,7 +264,7 @@ lib/
 ## Next Steps
 
 - [Core Concepts](03-core-concepts.md) — Deep dive into Core, Derived, Strike
-- [Pillars](04-stores.md) — Structured state management
+- [Pillars](04-pillars.md) — Structured state management
 - [Flutter Integration](05-flutter-integration.md) — Vestige, Beacon, extensions
 
 ---

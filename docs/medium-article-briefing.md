@@ -28,8 +28,10 @@ dependencies:
 | Package | pub.dev | What it does |
 |---------|---------|--------------|
 | [`titan`](https://pub.dev/packages/titan) | [![pub](https://img.shields.io/pub/v/titan.svg)](https://pub.dev/packages/titan) | Core Dart engine — Pillar, Core, Derived, Strike, Watch, and 15+ reactive primitives |
-| [`titan_bastion`](https://pub.dev/packages/titan_bastion) | [![pub](https://img.shields.io/pub/v/titan_bastion.svg)](https://pub.dev/packages/titan_bastion) | Flutter widgets — Vestige, Beacon, Confluence, Lens, Spark (hooks) |
-| [`titan_atlas`](https://pub.dev/packages/titan_atlas) | [![pub](https://img.shields.io/pub/v/titan_atlas.svg)](https://pub.dev/packages/titan_atlas) | Routing — Atlas, Passage, Sanctum, Sentinel, Shift |
+| [`titan_bastion`](https://pub.dev/packages/titan_bastion) | [![pub](https://img.shields.io/pub/v/titan_bastion.svg)](https://pub.dev/packages/titan_bastion) | Flutter widgets — Vestige, Beacon, Confluence, Lens, Spark (28 hooks), Obs, Rampart |
+| [`titan_atlas`](https://pub.dev/packages/titan_atlas) | [![pub](https://img.shields.io/pub/v/titan_atlas.svg)](https://pub.dev/packages/titan_atlas) | Routing — Atlas, Passage, Sanctum, Sentinel, Shift, Cartograph |
+| [`titan_argus`](https://pub.dev/packages/titan_argus) | [![pub](https://img.shields.io/pub/v/titan_argus.svg)](https://pub.dev/packages/titan_argus) | Auth — Argus, Garrison, CoreRefresh |
+| [`titan_colossus`](https://pub.dev/packages/titan_colossus) | [![pub](https://img.shields.io/pub/v/titan_colossus.svg)](https://pub.dev/packages/titan_colossus) | Enterprise performance — Colossus, Pulse, Shade, Decree, Inscribe |
 
 **Repository**: [github.com/Ikolvi/titan](https://github.com/Ikolvi/titan) · **License**: MIT · **Organization**: [Ikolvi](https://ikolvi.com)
 
@@ -128,7 +130,7 @@ class SearchWidget extends Spark {
 }
 ```
 
-13 hooks available: `useCore`, `useDerived`, `useEffect`, `useMemo`, `useRef`, `useStream`, `usePillar`, `useTextController`, `useAnimationController`, `useFocusNode`, `useScrollController`, `useTabController`, `usePageController`.
+13 hooks available: `useCore`, `useDerived`, `useEffect`, `useMemo`, `useRef`, `useStream`, `usePillar`, `useFuture`, `useCallback`, `useValueListenable`, `usePrevious`, `useReducer`, `useDebounced`, `useListenable`, `useAnimation`, `useIsMounted`, `useAppLifecycleState`, `useOnAppLifecycleStateChange`, `useAutomaticKeepAlive`, `useValueChanged`, `useValueNotifier`, `useStreamController`, `useTextController`, `useAnimationController`, `useFocusNode`, `useScrollController`, `useTabController`, `usePageController` — 28 hooks total.
 
 ### Reactive Collections with Nexus
 
@@ -187,10 +189,12 @@ Atlas(
 
 | Metric | Value |
 |--------|-------|
-| Total tests | **1,130+** |
+| Total tests | **1,474+** |
 | Core (`titan`) | 811 tests |
-| Flutter (`titan_bastion`) | 145 tests |
-| Routing (`titan_atlas`) | 174 tests |
+| Flutter (`titan_bastion`) | 179 tests |
+| Routing (`titan_atlas`) | 150 tests |
+| Auth (`titan_argus`) | 57 tests |
+| Performance (`titan_colossus`) | 277 tests |
 | Benchmarks tracked | 30 performance metrics |
 | Core operation latency | Sub-microsecond |
 | Dart SDK | `^3.10.3` |
@@ -200,7 +204,7 @@ Atlas(
 
 ## Learn by Story
 
-Below is **The Chronicles of Titan** — a 21-chapter narrative tutorial where you build **Questboard** (a hero quest-tracking app) from scratch. Each chapter introduces real framework concepts through an engaging story.
+Below is **The Chronicles of Titan** — a 28-chapter narrative tutorial where you build **Questboard** (a hero quest-tracking app) from scratch. Each chapter introduces real framework concepts through an engaging story.
 
 | # | Chapter | You Will Learn |
 |---|---------|---------------|
@@ -224,7 +228,16 @@ Below is **The Chronicles of Titan** — a 21-chapter narrative tutorial where y
 | XVIII | **The Conduit Flows** | `Conduit`, Core-level middleware |
 | XIX | **The Prism Reveals** | `Prism`, fine-grained projections |
 | XX | **The Nexus Connects** | `NexusList`, `NexusMap`, `NexusSet`, reactive collections |
-| XXI | **The Spark Ignites** | `Spark`, hooks-style widgets |
+| XXI | **The Spark Ignites** | `Spark`, hooks-style widgets, 28 hooks |
+| XXII | **The Colossus Watches** | `Colossus`, `Pulse`, `Stride`, `Vessel`, `Echo` |
+| XXIII | **The Inscribe Endures** | `Inscribe`, report export formats |
+| XXIV | **The Shade Follows** | `Shade`, `Imprint`, gesture recording/replay |
+| XXV | **The Vault Remembers** | `ShadeVault`, session persistence, auto-replay |
+| XXVI | **The Colossus Turns Inward** | Dogfooding with Pillar/Core in Colossus widgets |
+| XXVII | **The Sentinel Awakens** | `CoreRefresh`, reactive route re-evaluation |
+| XXVIII | **The Argus Guards** | `Argus`, `guard()`, `signIn`/`signOut` contract |
+| XXIX | **The Rampart Rises** | `Rampart`, responsive layouts, breakpoints |
+| XXX | **The Cartograph Maps** | `Cartograph`, deep link parsing, named routes |
 
 ---
 

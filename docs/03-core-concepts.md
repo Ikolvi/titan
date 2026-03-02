@@ -372,4 +372,4 @@ class MyPillar extends Pillar {
 
 ---
 
-[← Getting Started](02-getting-started.md) · [Pillars →](04-stores.md)
+[← Getting Started](02-getting-started.md) · [Pillars →](04-pillars.md)

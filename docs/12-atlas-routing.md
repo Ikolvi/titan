@@ -16,6 +16,7 @@
 | Route State | **Waypoint** | Current position in the journey |
 | Refresh Bridge | **CoreRefresh** | Reactive route re-evaluation |
 | Observer | **AtlasObserver** | Watches all navigation events |
+| Deep Link Mapper | **Cartograph** | Maps external URLs to internal routes |
 
 ## Quick Start
 
@@ -233,6 +234,8 @@ Atlas(
 Async Sentinels are fully resolved during navigation — Atlas automatically detects whether any Sentinels are async and uses the appropriate resolution path.
 
 ## CoreRefresh — Reactive Route Re-evaluation
+
+> **Note:** `CoreRefresh`, `Garrison`, and `Argus` now live in the `titan_argus` package. Import via `import 'package:titan_argus/titan_argus.dart';`. See [Argus Auth](13-argus-auth.md) for full documentation.
 
 Sentinels only evaluate during navigation (`Atlas.to()`, `.replace()`, etc.). When auth state changes outside of navigation — like a token expiring or the user signing in — Sentinels aren't automatically re-evaluated.
 
@@ -660,6 +663,92 @@ runApp(
   ),
 );
 ```
+
+## Cartograph — Deep Link Mapping
+
+**Cartograph** is a static utility for deep link parsing, URL building, and named route mapping. Named for the ancient map-makers, it maps between external URLs and internal Atlas routes.
+
+### Named Routes
+
+Register routes by name for type-safe URL building:
+
+```dart
+Cartograph.name('user-profile', '/users/:id');
+Cartograph.name('settings', '/settings');
+
+// Or batch register
+Cartograph.nameAll({
+  'home': '/',
+  'profile': '/users/:id',
+  'settings': '/settings',
+});
+```
+
+### URL Building
+
+Build URLs from named routes with parameter substitution:
+
+```dart
+final url = Cartograph.build('profile',
+  runes: {'id': '42'},
+  query: {'tab': 'posts'},
+);
+// → '/users/42?tab=posts'
+```
+
+Or build from a template directly:
+
+```dart
+final url = Cartograph.buildFromTemplate(
+  '/users/:id',
+  runes: {'id': '42'},
+);
+// → '/users/42'
+```
+
+### Deep Link Parsing
+
+Parse incoming URIs against registered patterns:
+
+```dart
+final match = Cartograph.parse(Uri.parse('/users/42?tab=posts'));
+// match.path == '/users/:id'
+// match.runes == {'id': '42'}
+// match.query == {'tab': 'posts'}
+```
+
+### Deep Link Handling
+
+Register handlers for incoming deep links:
+
+```dart
+Cartograph.link('/users/:id', (match) {
+  Atlas.go('/users/${match.runes['id']}');
+});
+
+// Handle incoming link
+final handled = Cartograph.handleDeepLink(
+  Uri.parse('myapp://users/42'),
+); // true if handler found and invoked
+```
+
+### API Reference
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `name(routeName, path)` | `void` | Register a named route |
+| `nameAll(Map)` | `void` | Register multiple named routes |
+| `pathFor(routeName)` | `String?` | Look up path template by name |
+| `hasName(routeName)` | `bool` | Check if name is registered |
+| `routeNames` | `Set<String>` | All registered names |
+| `build(name, {runes, query})` | `String` | Build URL from named route |
+| `buildFromTemplate(template, {runes, query})` | `String` | Build URL from template |
+| `link(template, [handler])` | `void` | Register deep link pattern |
+| `parse(Uri)` | `CartographMatch?` | Match URI against registered patterns |
+| `handleDeepLink(Uri)` | `bool` | Parse + invoke handler |
+| `reset()` | `void` | Clear all registrations |
+
+---
 
 ## Full Example
 

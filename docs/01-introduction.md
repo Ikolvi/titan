@@ -9,10 +9,25 @@
 | Standard Term | Titan Name | Why |
 |---------------|------------|-----|
 | Store / Bloc | **Pillar** | Titans held up the sky; Pillars hold up your app |
-| Dispatch / Add | **Strike** | Fast, decisive, powerful |
 | State | **Core** | The indestructible center of the Pillar |
-| Consumer | **Vestige** | The UI — a visible trace of the underlying power |
-| Provider | **Beacon** | Shines state down to all children |
+| Computed | **Derived** | Forged from existing Cores |
+| Dispatch / Add | **Strike** | Fast, decisive, powerful |
+| Side Effect | **Watcher** | Vigilant sentinel, always watching |
+| Consumer Widget | **Vestige** | The UI — a visible trace of the underlying power |
+| Provider Widget | **Beacon** | Shines state down to all children |
+| Hooks Widget | **Spark** | Lightning-fast hooks (28 hooks available) |
+| Reactive Observer | **Obs** | Ultra-simple auto-tracking builder |
+| Global DI | **Titan** | `Titan.put()`, `Titan.get()`, `Titan.forge()` |
+| Event Bus | **Herald** | Carries messages between Pillars |
+| Middleware | **Conduit** | Intercepts value changes at Core level |
+| State Selector | **Prism** | Fine-grained sub-value extraction |
+| Reactive Collection | **Nexus** | In-place mutable lists, maps, sets |
+| Responsive Layout | **Rampart** | Tiered layout adaptation by screen width |
+| Router | **Atlas** | Maps all paths, bears the world |
+| Route Guard | **Sentinel** | Protects passage into guarded routes |
+| Auth Base Class | **Argus** | Hundred-eyed guardian of authentication |
+| Performance Monitor | **Colossus** | Giant who watches over app performance |
+| Debug Overlay | **Lens** | Runtime introspection and state inspection |
 
 ## Why Titan?
 
@@ -83,15 +98,18 @@ test('counter works', () {
 ┌──────────────────────────────────────────────┐
 │              titan_colossus                   │
 │  Colossus · Pulse · Stride · Vessel · Echo   │
-│  Tremor · Decree · Mark · ColossusLensTab    │
+│  Tremor · Decree · Shade · Phantom · Inscribe│
+├──────────────────────────────────────────────┤
+│              titan_argus                      │
+│  Argus · Garrison · CoreRefresh              │
 ├──────────────────────────────────────────────┤
 │              titan_atlas                      │
 │  Atlas · Passage · Sanctum · Sentinel        │
-│  Waypoint · Shift · Drift · context.atlas    │
+│  Waypoint · Shift · Drift · Cartograph       │
 ├──────────────────────────────────────────────┤
 │              titan_bastion                    │
-│  Vestige · Beacon · BeaconScope              │
-│  VestigeRaw · context.pillar<P>()            │
+│  Vestige · Beacon · Spark · Obs · Rampart    │
+│  Confluence · Lens · VestigeRaw              │
 ├──────────────────────────────────────────────┤
 │                   titan                       │
 │  ┌──────────┐ ┌──────────┐ ┌──────────────┐ │
@@ -153,10 +171,11 @@ class CounterPage extends StatelessWidget {
 
 - [Getting Started](02-getting-started.md) — Install and set up Titan
 - [Core Concepts](03-core-concepts.md) — Core, Derived, Strike, Watch
-- [Pillars](04-stores.md) — Organize state at scale
-- [Flutter Integration](05-flutter-integration.md) — Vestige, Beacon, extensions
+- [Pillars](04-pillars.md) — Organize state at scale
+- [Flutter Integration](05-flutter-integration.md) — Vestige, Beacon, Spark, Obs, Rampart
 - [Atlas Routing](12-atlas-routing.md) — Declarative navigation with Passages, Sentinels, Sanctums
-- [The Colossus Watches](story/chapter-22-the-colossus-watches.md) — Enterprise performance monitoring
+- [Argus Auth](13-argus-auth.md) — Authentication & authorization with Garrison guards
+- [Colossus Monitoring](14-colossus-monitoring.md) — Enterprise performance monitoring
 
 ---
 

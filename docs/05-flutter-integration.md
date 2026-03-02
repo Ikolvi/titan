@@ -301,10 +301,19 @@ Need reactive Pillar access?
 ├── Yes → Vestige<P>
 │
 Need standalone Core reactivity?
-├── Yes → VestigeRaw
+├── Yes → VestigeRaw or Obs
 │
 Need hooks-style reactivity (no Pillar)?
 ├── Yes → Spark
+│
+Need conditional rendering?
+├── Yes → VestigeWhen
+│
+Need animated transitions on state change?
+├── Yes → AnimatedVestige
+│
+Need responsive layout adaptation?
+├── Yes → Rampart
 │
 Need one-time Pillar access (action)?
 ├── Yes → context.pillar<P>()
@@ -318,6 +327,163 @@ Need StatefulWidget reactivity?
 Need legacy TitanStore access?
 ├── Yes → TitanConsumer<T> or TitanBuilder
 ```
+
+---
+
+## Obs — Ultra-Simple Reactive Builder
+
+`Obs` provides the simplest possible way to build reactive UI. It auto-tracks which Cores are read during its builder and rebuilds only when those values change:
+
+```dart
+final count = Core(0);
+
+// Rebuilds only when count changes
+Obs(() => Text('${count.value}'))
+```
+
+### With BuildContext
+
+```dart
+Obs.builder((context) {
+  final theme = Theme.of(context);
+  return Text(
+    '${count.value}',
+    style: theme.textTheme.headlineLarge,
+  );
+})
+```
+
+### Multiple Dependencies
+
+```dart
+// Rebuilds when firstName OR lastName changes
+Obs(() => Text('${firstName.value} ${lastName.value}'))
+```
+
+### Performance Tip
+
+Place `Obs` as deep in the tree as possible:
+
+```dart
+// ✅ Good — only Text rebuilds
+Column(
+  children: [
+    const Header(),
+    Obs(() => Text('${count.value}')),
+    const Footer(),
+  ],
+)
+
+// ❌ Bad — entire Column rebuilds
+Obs(() => Column(
+  children: [
+    const Header(),
+    Text('${count.value}'),
+    const Footer(),
+  ],
+))
+```
+
+**Obs vs VestigeRaw:** `Obs` is terser (no `builder:` parameter) and doesn't require `BuildContext`. Use `VestigeRaw` when you need more widget configuration options; use `Obs` for inline reactive snippets.
+
+---
+
+## VestigeWhen — Conditional Rendering
+
+`VestigeWhen` renders different widgets based on a condition from the Pillar's state:
+
+```dart
+VestigeWhen<AuthPillar>(
+  condition: (auth) => auth.isLoggedIn.value,
+  builder: (context, auth) => ProfileWidget(),
+  orElse: (context, auth) => LoginPrompt(),
+)
+```
+
+---
+
+## AnimatedVestige — Animated State Transitions
+
+`AnimatedVestige` wraps `Vestige` with animated transitions when state changes:
+
+```dart
+AnimatedVestige<CounterPillar>(
+  duration: const Duration(milliseconds: 300),
+  builder: (context, counter) => Text('${counter.count.value}'),
+  transitionBuilder: AnimatedSwitcher.defaultTransitionBuilder,
+)
+```
+
+---
+
+## Rampart — Responsive Layout Builder
+
+`Rampart` adapts layouts to screen width using Material 3 breakpoints. Named for the tiered defensive walls of a fortress.
+
+### Basic Usage
+
+```dart
+Rampart(
+  compact: (context) => const MobileLayout(),
+  medium: (context) => const TabletLayout(),
+  expanded: (context) => const DesktopLayout(),
+)
+```
+
+### Custom Breakpoints
+
+```dart
+Rampart(
+  breakpoints: const RampartBreakpoints(
+    compact: 0,
+    medium: 768,
+    expanded: 1280,
+  ),
+  compact: (context) => const MobileLayout(),
+  expanded: (context) => const DesktopLayout(),
+)
+```
+
+Falls back gracefully: if `medium` is not provided, uses `compact`. If `expanded` is not provided, uses `medium` or `compact`.
+
+### Responsive Values
+
+Use `RampartValue` for tier-dependent values (padding, font sizes, etc.):
+
+```dart
+final padding = RampartValue<double>(
+  compact: 8,
+  medium: 16,
+  expanded: 24,
+);
+
+Padding(
+  padding: EdgeInsets.all(padding.resolve(context.rampartLayout)),
+  child: content,
+)
+```
+
+### Conditional Visibility
+
+Show or hide widgets based on the layout tier:
+
+```dart
+RampartVisibility(
+  visibleOn: {RampartLayout.medium, RampartLayout.expanded},
+  child: const SidePanel(),
+)
+```
+
+### Context Extension
+
+```dart
+final layout = context.rampartLayout;  // RampartLayout enum
+if (context.isExpanded) {
+  // show side panel
+}
+```
+
+**Available extensions:** `context.rampartLayout`, `context.isCompact`, `context.isMedium`, `context.isExpanded`.
 
 ---
 
@@ -352,6 +518,8 @@ No `Pillar` required — `useCore` creates reactive state inline with automatic 
 
 ### Hook Reference
 
+**Reactive Hooks:**
+
 | Hook | Returns | Purpose |
 |------|---------|---------|
 | `useCore<T>(initial)` | `Core<T>` | Reactive mutable state, auto-rebuilds on change |
@@ -361,12 +529,42 @@ No `Pillar` required — `useCore` creates reactive state inline with automatic 
 | `useRef<T>(initial)` | `SparkRef<T>` | Mutable reference (no rebuild) |
 | `usePillar<P>(context)` | `P` | Access Pillar from Beacon or Titan DI |
 | `useStream<T>(stream)` | `AsyncValue<T>` | Subscribe to stream, returns Ether snapshot |
+| `useFuture<T>(future)` | `AsyncValue<T>` | Subscribe to Future, returns Ether snapshot |
+| `useCallback<T>(fn, [keys])` | `T` | Memoized callback, stable identity across rebuilds |
+| `useReducer<S,A>(reducer, init)` | `SparkStore<S,A>` | Redux-style reducer with `state` + `dispatch` |
+
+**Value Hooks:**
+
+| Hook | Returns | Purpose |
+|------|---------|---------|
+| `usePrevious<T>(value)` | `T?` | Previous value from last build |
+| `useValueListenable<T>(vn)` | `T` | Subscribe to `ValueListenable`, rebuilds on change |
+| `useValueChanged<T,R>(value, cb)` | `R?` | Callback when value changes between builds |
+| `useValueNotifier<T>(initial)` | `ValueNotifier<T>` | Auto-disposed `ValueNotifier` |
+| `useDebounced<T>(value, duration)` | `T` | Debounced value, updates after delay |
+| `useListenable(listenable)` | `void` | Subscribe to any `Listenable`, rebuilds on notify |
+| `useIsMounted()` | `bool Function()` | Returns closure checking if widget is still mounted |
+
+**Controller Hooks:**
+
+| Hook | Returns | Purpose |
+|------|---------|---------|
 | `useTextController()` | `TextEditingController` | Auto-disposed controller |
 | `useAnimationController()` | `AnimationController` | Auto-disposed with TickerProvider |
 | `useFocusNode()` | `FocusNode` | Auto-disposed focus node |
 | `useScrollController()` | `ScrollController` | Auto-disposed scroll controller |
 | `useTabController(length:)` | `TabController` | Auto-disposed with TickerProvider |
 | `usePageController()` | `PageController` | Auto-disposed page controller |
+| `useStreamController<T>()` | `StreamController<T>` | Auto-disposed stream controller |
+
+**Lifecycle Hooks:**
+
+| Hook | Returns | Purpose |
+|------|---------|---------|
+| `useAnimation(controller)` | `double` | Subscribe to animation, rebuilds on tick |
+| `useAppLifecycleState()` | `AppLifecycleState?` | Current app lifecycle state |
+| `useOnAppLifecycleStateChange(cb)` | `void` | Callback on app lifecycle transitions |
+| `useAutomaticKeepAlive({want: true})` | `void` | Keep widget alive in lazy lists (TabBarView, etc.) |
 
 ### useEffect Lifecycle
 
@@ -440,4 +638,4 @@ class QuestList extends Spark {
 
 ---
 
-[← Pillars](04-stores.md) · [Oracle & Observation →](06-middleware.md)
+[← Pillars](04-pillars.md) · [Oracle & Observation →](06-middleware.md)

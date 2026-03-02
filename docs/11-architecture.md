@@ -113,6 +113,15 @@ Titan ensures **glitch-free** updates through:
 │  │  Route-scoped Pillars (auto DI)     │   │
 │  └──────────────────────────────────────┘   │
 ├──────────────────────────────────────────────┤
+│              titan_argus                      │
+│                                              │
+│  ┌──────────────────────────────────────┐   │
+│  │       Authentication Layer           │   │
+│  │  Argus (auth Pillar base class)     │   │
+│  │  Garrison (Sentinel factories)      │   │
+│  │  CoreRefresh (ReactiveNode bridge)  │   │
+│  └──────────────────────────────────────┘   │
+├──────────────────────────────────────────────┤
 │              titan_bastion                    │
 │                                              │
 │  ┌──────────────┐  ┌──────────────────────┐ │
@@ -198,6 +207,8 @@ Titan ensures **glitch-free** updates through:
 | **Extensions** | `titan_bastion` | BuildContext methods (pillar, hasPillar) |
 | **Routing** | `titan_atlas` | Atlas, Passage, Sanctum, RouteTrie |
 | **Guards** | `titan_atlas` | Sentinel, Drift, per-route redirects |
+| **Auth** | `titan_argus` | Argus base class, Garrison factories, CoreRefresh |
+| **Monitoring** | `titan_colossus` | Pulse, Stride, Vessel, Echo, Tremor, Decree |
 | **Navigation** | `titan_atlas` | Waypoint, Shift, AtlasDelegate, AtlasParser |
 | **Route Observers** | `titan_atlas` | AtlasObserver, HeraldAtlasObserver |
 | **Route Integration** | `titan_atlas` | context.atlas, route-scoped Pillars |
