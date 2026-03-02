@@ -35,9 +35,7 @@ void main() {
         MaterialApp(
           home: PillarScope(
             overrides: [pillar],
-            child: Vestige<_TestPillar>(
-              builder: (_, p) => Text(p.value.value),
-            ),
+            child: Vestige<_TestPillar>(builder: (_, p) => Text(p.value.value)),
           ),
         ),
       );
@@ -80,9 +78,7 @@ void main() {
             overrides: [pillar1, pillar2],
             child: Column(
               children: [
-                Vestige<_TestPillar>(
-                  builder: (_, p) => Text(p.value.value),
-                ),
+                Vestige<_TestPillar>(builder: (_, p) => Text(p.value.value)),
                 Vestige<_AnotherPillar>(
                   builder: (_, p) => Text('${p.count.value}'),
                 ),
@@ -106,9 +102,7 @@ void main() {
         MaterialApp(
           home: PillarScope(
             overrides: [pillar],
-            child: Vestige<_TestPillar>(
-              builder: (_, p) => Text(p.value.value),
-            ),
+            child: Vestige<_TestPillar>(builder: (_, p) => Text(p.value.value)),
           ),
         ),
       );
@@ -116,11 +110,7 @@ void main() {
       expect(find.text('original'), findsOneWidget);
 
       // Remove the PillarScope — Pillar should NOT be disposed
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SizedBox.shrink(),
-        ),
-      );
+      await tester.pumpWidget(MaterialApp(home: SizedBox.shrink()));
 
       // Pillar is still alive (unlike Beacon which disposes)
       expect(pillar.isDisposed, isFalse);
@@ -135,9 +125,7 @@ void main() {
         MaterialApp(
           home: PillarScope(
             overrides: [pillar],
-            child: Vestige<_TestPillar>(
-              builder: (_, p) => Text(p.value.value),
-            ),
+            child: Vestige<_TestPillar>(builder: (_, p) => Text(p.value.value)),
           ),
         ),
       );

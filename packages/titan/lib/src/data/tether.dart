@@ -87,10 +87,7 @@ class Tether {
     Future<Res> Function(Req request) handler, {
     Duration? timeout,
   }) {
-    _handlers[name] = _TetherEntry(
-      handler: handler,
-      timeout: timeout,
-    );
+    _handlers[name] = _TetherEntry(handler: handler, timeout: timeout);
   }
 
   /// Unregister a tether handler.

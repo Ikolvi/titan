@@ -61,11 +61,9 @@ class PillarSnapshot {
   /// ```dart
   /// final snap = PillarSnapshot.fromMap({'count': 10});
   /// ```
-  PillarSnapshot.fromMap(
-    Map<String, dynamic> values, {
-    this.label,
-  }) : values = Map.unmodifiable(values),
-       timestamp = DateTime.now();
+  PillarSnapshot.fromMap(Map<String, dynamic> values, {this.label})
+    : values = Map.unmodifiable(values),
+      timestamp = DateTime.now();
 
   /// Whether this snapshot contains a value for the given Core name.
   bool has(String name) => values.containsKey(name);

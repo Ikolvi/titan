@@ -237,7 +237,11 @@ class Annals {
     if (limit != null && limit > 0) {
       final collected = <AnnalEntry>[];
       final snapshot = _entries.toList();
-      for (var i = snapshot.length - 1; i >= 0 && collected.length < limit; i--) {
+      for (
+        var i = snapshot.length - 1;
+        i >= 0 && collected.length < limit;
+        i--
+      ) {
         if (matches(snapshot[i])) {
           collected.add(snapshot[i]);
         }

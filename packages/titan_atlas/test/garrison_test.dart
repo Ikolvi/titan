@@ -3,12 +3,8 @@ import 'package:titan_atlas/titan_atlas.dart';
 
 void main() {
   group('Garrison', () {
-    Waypoint waypointFor(String path) => Waypoint(
-      path: path,
-      pattern: path,
-      runes: const {},
-      query: const {},
-    );
+    Waypoint waypointFor(String path) =>
+        Waypoint(path: path, pattern: path, runes: const {}, query: const {});
 
     group('authGuard', () {
       test('allows authenticated users', () {
@@ -17,7 +13,10 @@ void main() {
           loginPath: '/login',
         );
 
-        final result = sentinel.evaluate('/dashboard', waypointFor('/dashboard'));
+        final result = sentinel.evaluate(
+          '/dashboard',
+          waypointFor('/dashboard'),
+        );
         expect(result, isNull);
       });
 
@@ -27,7 +26,10 @@ void main() {
           loginPath: '/login',
         );
 
-        final result = sentinel.evaluate('/dashboard', waypointFor('/dashboard'));
+        final result = sentinel.evaluate(
+          '/dashboard',
+          waypointFor('/dashboard'),
+        );
         expect(result, isNotNull);
         expect(result, contains('/login'));
       });
@@ -38,7 +40,10 @@ void main() {
           loginPath: '/login',
         );
 
-        final result = sentinel.evaluate('/dashboard', waypointFor('/dashboard'));
+        final result = sentinel.evaluate(
+          '/dashboard',
+          waypointFor('/dashboard'),
+        );
         expect(result, contains('redirect='));
         expect(result, contains(Uri.encodeComponent('/dashboard')));
       });
@@ -50,7 +55,10 @@ void main() {
           preserveRedirect: false,
         );
 
-        final result = sentinel.evaluate('/dashboard', waypointFor('/dashboard'));
+        final result = sentinel.evaluate(
+          '/dashboard',
+          waypointFor('/dashboard'),
+        );
         expect(result, '/login');
       });
 
@@ -62,7 +70,10 @@ void main() {
         );
 
         expect(sentinel.evaluate('/login', waypointFor('/login')), isNull);
-        expect(sentinel.evaluate('/register', waypointFor('/register')), isNull);
+        expect(
+          sentinel.evaluate('/register', waypointFor('/register')),
+          isNull,
+        );
         expect(sentinel.evaluate('/', waypointFor('/')), isNull);
       });
 
@@ -73,9 +84,18 @@ void main() {
           publicPrefixes: {'/public/', '/api/'},
         );
 
-        expect(sentinel.evaluate('/public/about', waypointFor('/public/about')), isNull);
-        expect(sentinel.evaluate('/api/health', waypointFor('/api/health')), isNull);
-        expect(sentinel.evaluate('/dashboard', waypointFor('/dashboard')), isNotNull);
+        expect(
+          sentinel.evaluate('/public/about', waypointFor('/public/about')),
+          isNull,
+        );
+        expect(
+          sentinel.evaluate('/api/health', waypointFor('/api/health')),
+          isNull,
+        );
+        expect(
+          sentinel.evaluate('/dashboard', waypointFor('/dashboard')),
+          isNotNull,
+        );
       });
     });
 
@@ -83,7 +103,9 @@ void main() {
       test('allows matching role', () {
         final sentinel = Garrison.roleGuard(
           getRole: () => 'admin',
-          rules: {'/admin': {'admin'}},
+          rules: {
+            '/admin': {'admin'},
+          },
         );
 
         final result = sentinel.evaluate('/admin', waypointFor('/admin'));
@@ -93,7 +115,9 @@ void main() {
       test('blocks non-matching role', () {
         final sentinel = Garrison.roleGuard(
           getRole: () => 'user',
-          rules: {'/admin': {'admin'}},
+          rules: {
+            '/admin': {'admin'},
+          },
           fallbackPath: '/unauthorized',
         );
 
@@ -104,28 +128,40 @@ void main() {
       test('allows paths without rules', () {
         final sentinel = Garrison.roleGuard(
           getRole: () => 'user',
-          rules: {'/admin': {'admin'}},
+          rules: {
+            '/admin': {'admin'},
+          },
         );
 
-        final result = sentinel.evaluate('/dashboard', waypointFor('/dashboard'));
+        final result = sentinel.evaluate(
+          '/dashboard',
+          waypointFor('/dashboard'),
+        );
         expect(result, isNull);
       });
 
       test('matches sub-paths', () {
         final sentinel = Garrison.roleGuard(
           getRole: () => 'user',
-          rules: {'/admin': {'admin'}},
+          rules: {
+            '/admin': {'admin'},
+          },
           fallbackPath: '/403',
         );
 
-        final result = sentinel.evaluate('/admin/settings', waypointFor('/admin/settings'));
+        final result = sentinel.evaluate(
+          '/admin/settings',
+          waypointFor('/admin/settings'),
+        );
         expect(result, '/403');
       });
 
       test('multiple allowed roles', () {
         final sentinel = Garrison.roleGuard(
           getRole: () => 'manager',
-          rules: {'/billing': {'admin', 'manager'}},
+          rules: {
+            '/billing': {'admin', 'manager'},
+          },
         );
 
         final result = sentinel.evaluate('/billing', waypointFor('/billing'));
@@ -137,7 +173,9 @@ void main() {
       test('allows when user has matching role', () {
         final sentinel = Garrison.rolesGuard(
           getRoles: () => {'editor', 'viewer'},
-          rules: {'/content': {'editor', 'admin'}},
+          rules: {
+            '/content': {'editor', 'admin'},
+          },
         );
 
         final result = sentinel.evaluate('/content', waypointFor('/content'));
@@ -147,7 +185,9 @@ void main() {
       test('blocks when no matching role', () {
         final sentinel = Garrison.rolesGuard(
           getRoles: () => {'viewer'},
-          rules: {'/content': {'editor', 'admin'}},
+          rules: {
+            '/content': {'editor', 'admin'},
+          },
           fallbackPath: '/403',
         );
 
@@ -163,7 +203,10 @@ void main() {
           onboardingPath: '/onboarding',
         );
 
-        final result = sentinel.evaluate('/dashboard', waypointFor('/dashboard'));
+        final result = sentinel.evaluate(
+          '/dashboard',
+          waypointFor('/dashboard'),
+        );
         expect(result, isNull);
       });
 
@@ -173,7 +216,10 @@ void main() {
           onboardingPath: '/onboarding',
         );
 
-        final result = sentinel.evaluate('/dashboard', waypointFor('/dashboard'));
+        final result = sentinel.evaluate(
+          '/dashboard',
+          waypointFor('/dashboard'),
+        );
         expect(result, '/onboarding');
       });
 
@@ -183,7 +229,10 @@ void main() {
           onboardingPath: '/onboarding',
         );
 
-        final result = sentinel.evaluate('/onboarding', waypointFor('/onboarding'));
+        final result = sentinel.evaluate(
+          '/onboarding',
+          waypointFor('/onboarding'),
+        );
         expect(result, isNull);
       });
 
@@ -209,7 +258,10 @@ void main() {
         ]);
 
         // Logged in but not verified
-        final result = sentinel.evaluate('/dashboard', waypointFor('/dashboard'));
+        final result = sentinel.evaluate(
+          '/dashboard',
+          waypointFor('/dashboard'),
+        );
         expect(result, '/verify');
       });
 
@@ -241,7 +293,10 @@ void main() {
           (path, _) async => '/redirect',
         ]);
 
-        final result = await sentinel.evaluateAsync('/any', waypointFor('/any'));
+        final result = await sentinel.evaluateAsync(
+          '/any',
+          waypointFor('/any'),
+        );
         expect(result, '/redirect');
       });
     });
@@ -255,7 +310,10 @@ void main() {
         );
 
         expect(sentinel.evaluate('/login', waypointFor('/login')), isNull);
-        expect(sentinel.evaluate('/register', waypointFor('/register')), isNull);
+        expect(
+          sentinel.evaluate('/register', waypointFor('/register')),
+          isNull,
+        );
       });
 
       test('redirects authenticated users from guest pages', () {
@@ -265,8 +323,14 @@ void main() {
           redirectPath: '/dashboard',
         );
 
-        expect(sentinel.evaluate('/login', waypointFor('/login')), '/dashboard');
-        expect(sentinel.evaluate('/register', waypointFor('/register')), '/dashboard');
+        expect(
+          sentinel.evaluate('/login', waypointFor('/login')),
+          '/dashboard',
+        );
+        expect(
+          sentinel.evaluate('/register', waypointFor('/register')),
+          '/dashboard',
+        );
       });
 
       test('allows authenticated users on non-guest pages', () {

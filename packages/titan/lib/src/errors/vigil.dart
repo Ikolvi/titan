@@ -267,9 +267,7 @@ class Breadcrumb {
 
   @override
   String toString() {
-    final meta = metadata != null && metadata!.isNotEmpty
-        ? ' $metadata'
-        : '';
+    final meta = metadata != null && metadata!.isNotEmpty ? ' $metadata' : '';
     return '[$category] $message$meta';
   }
 }
@@ -339,8 +337,7 @@ abstract final class Vigil {
 
   // Breadcrumb trail
   static int _maxBreadcrumbs = 50;
-  static List<Breadcrumb?> _breadcrumbs =
-      List<Breadcrumb?>.filled(50, null);
+  static List<Breadcrumb?> _breadcrumbs = List<Breadcrumb?>.filled(50, null);
   static int _bcHead = 0;
   static int _bcCount = 0;
 

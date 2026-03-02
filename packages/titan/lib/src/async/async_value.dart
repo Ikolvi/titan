@@ -97,10 +97,13 @@ sealed class AsyncValue<T> {
     return switch (this) {
       AsyncData<T>(:final data) => AsyncValue<R>.data(transform(data)),
       AsyncLoading<T>() => AsyncValue<R>.loading(),
-      AsyncRefreshing<T>(:final data) =>
-        AsyncValue<R>.refreshing(transform(data)),
-      AsyncError<T>(:final error, :final stackTrace) =>
-        AsyncValue<R>.error(error, stackTrace),
+      AsyncRefreshing<T>(:final data) => AsyncValue<R>.refreshing(
+        transform(data),
+      ),
+      AsyncError<T>(:final error, :final stackTrace) => AsyncValue<R>.error(
+        error,
+        stackTrace,
+      ),
     };
   }
 

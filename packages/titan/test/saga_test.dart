@@ -65,12 +65,7 @@ void main() {
     test('status transitions through running to completed', () async {
       final statuses = <SagaStatus>[];
       final saga = Saga<String>(
-        steps: [
-          SagaStep(
-            name: 'step1',
-            execute: (_) async => 'done',
-          ),
-        ],
+        steps: [SagaStep(name: 'step1', execute: (_) async => 'done')],
       );
 
       // Track status changes
@@ -134,10 +129,7 @@ void main() {
             execute: (_) async => 3,
             compensate: (_) async => order.add(3),
           ),
-          SagaStep(
-            name: 'd',
-            execute: (_) async => throw StateError('fail'),
-          ),
+          SagaStep(name: 'd', execute: (_) async => throw StateError('fail')),
         ],
       );
 
@@ -204,9 +196,7 @@ void main() {
 
     test('can be reset after completion', () async {
       final saga = Saga<String>(
-        steps: [
-          SagaStep(name: 'a', execute: (_) async => 'done'),
-        ],
+        steps: [SagaStep(name: 'a', execute: (_) async => 'done')],
       );
 
       await saga.run();
@@ -246,9 +236,7 @@ void main() {
     test('calls onComplete callback', () async {
       String? completedWith;
       final saga = Saga<String>(
-        steps: [
-          SagaStep(name: 'a', execute: (_) async => 'result'),
-        ],
+        steps: [SagaStep(name: 'a', execute: (_) async => 'result')],
         onComplete: (result) => completedWith = result,
       );
 
@@ -284,8 +272,7 @@ void main() {
           SagaStep(name: 'a', execute: (_) async => 'one'),
           SagaStep(name: 'b', execute: (_) async => 'two'),
         ],
-        onStepComplete: (name, idx, total) =>
-            completed.add((name, idx, total)),
+        onStepComplete: (name, idx, total) => completed.add((name, idx, total)),
       );
 
       await saga.run();
@@ -371,14 +358,8 @@ void main() {
 class _SagaPillar extends Pillar {
   late final workflow = saga<String>(
     steps: [
-      SagaStep(
-        name: 'first',
-        execute: (_) async => 'step1',
-      ),
-      SagaStep(
-        name: 'second',
-        execute: (prev) async => '${prev}_step2',
-      ),
+      SagaStep(name: 'first', execute: (_) async => 'step1'),
+      SagaStep(name: 'second', execute: (prev) async => '${prev}_step2'),
     ],
   );
 }

@@ -394,11 +394,7 @@ void _benchAnnalsRecord() {
   const records = 100000;
   final sw = Stopwatch()..start();
   for (var i = 0; i < records; i++) {
-    Annals.record(AnnalEntry(
-      coreName: 'count',
-      oldValue: i,
-      newValue: i + 1,
-    ));
+    Annals.record(AnnalEntry(coreName: 'count', oldValue: i, newValue: i + 1));
   }
   sw.stop();
 

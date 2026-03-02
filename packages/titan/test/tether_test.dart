@@ -62,13 +62,10 @@ void main() {
     });
 
     test('timeout causes TimeoutException', () {
-      Tether.register<int, int>(
-        'slow',
-        (n) async {
-          await Future<void>.delayed(const Duration(seconds: 5));
-          return n;
-        },
-      );
+      Tether.register<int, int>('slow', (n) async {
+        await Future<void>.delayed(const Duration(seconds: 5));
+        return n;
+      });
 
       expect(
         () => Tether.call<int, int>(
@@ -81,14 +78,10 @@ void main() {
     });
 
     test('register with default timeout', () {
-      Tether.register<int, int>(
-        'slow-default',
-        (n) async {
-          await Future<void>.delayed(const Duration(seconds: 5));
-          return n;
-        },
-        timeout: const Duration(milliseconds: 50),
-      );
+      Tether.register<int, int>('slow-default', (n) async {
+        await Future<void>.delayed(const Duration(seconds: 5));
+        return n;
+      }, timeout: const Duration(milliseconds: 50));
 
       expect(
         () => Tether.call<int, int>('slow-default', 1),
@@ -123,10 +116,9 @@ void main() {
         (data) async => 'Hello, ${data['name']}!',
       );
 
-      final result = await Tether.call<Map<String, dynamic>, String>(
-        'greet',
-        {'name': 'Titan'},
-      );
+      final result = await Tether.call<Map<String, dynamic>, String>('greet', {
+        'name': 'Titan',
+      });
       expect(result, 'Hello, Titan!');
     });
 

@@ -35,8 +35,7 @@ void main(List<String> args) async {
   final showHistory = args.contains('--history');
   final baselineName = _getArg(args, '--baseline');
   final compareFile = _getArg(args, '--compare');
-  final threshold =
-      double.tryParse(_getArg(args, '--threshold') ?? '') ?? 10.0;
+  final threshold = double.tryParse(_getArg(args, '--threshold') ?? '') ?? 10.0;
   _samples = int.tryParse(_getArg(args, '--samples') ?? '') ?? 3;
 
   final resultsDir = Directory('benchmark/results');
@@ -113,12 +112,10 @@ void main(List<String> args) async {
     'timestamp': DateTime.now().toIso8601String(),
     'platform': Platform.operatingSystem,
     'dartVersion': Platform.version.split(' ').first,
-    'benchmarks':
-        _results.map((k, v) => MapEntry(k, {
-          'value': v.value,
-          'unit': v.unit,
-          'suite': v.suite,
-        })),
+    'benchmarks': _results.map(
+      (k, v) =>
+          MapEntry(k, {'value': v.value, 'unit': v.unit, 'suite': v.suite}),
+    ),
   };
 
   // Load previous results for comparison
@@ -146,8 +143,7 @@ void main(List<String> args) async {
     if (!resultsDir.existsSync()) resultsDir.createSync(recursive: true);
     if (!historyDir.existsSync()) historyDir.createSync(recursive: true);
 
-    final jsonOutput =
-        const JsonEncoder.withIndent('  ').convert(payload);
+    final jsonOutput = const JsonEncoder.withIndent('  ').convert(payload);
 
     // Save as latest
     File('benchmark/results/latest.json').writeAsStringSync(jsonOutput);
@@ -159,8 +155,9 @@ void main(List<String> args) async {
         .split('.')
         .first;
     final historyName = baselineName ?? '${version}_$ts';
-    File('benchmark/results/history/$historyName.json')
-        .writeAsStringSync(jsonOutput);
+    File(
+      'benchmark/results/history/$historyName.json',
+    ).writeAsStringSync(jsonOutput);
 
     print('');
     print('📁 Results saved:');
@@ -179,7 +176,6 @@ void main(List<String> args) async {
 // =============================================================================
 
 Future<void> _runCoreBenchmarks() async {
-
   // 1. Node creation
   {
     const count = 100000;
@@ -189,8 +185,12 @@ Future<void> _runCoreBenchmarks() async {
       nodes.add(TitanState(i));
     }
     sw.stop();
-    _record('Node Creation (100K)', sw.elapsedMicroseconds / count, 'µs/node',
-        'core');
+    _record(
+      'Node Creation (100K)',
+      sw.elapsedMicroseconds / count,
+      'µs/node',
+      'core',
+    );
     for (final n in nodes) {
       n.dispose();
     }
@@ -206,8 +206,12 @@ Future<void> _runCoreBenchmarks() async {
       state.value = i;
     }
     sw.stop();
-    _record('Notification (1 listener)', mutations / sw.elapsedMicroseconds * 1e6,
-        'mutations/sec', 'core');
+    _record(
+      'Notification (1 listener)',
+      mutations / sw.elapsedMicroseconds * 1e6,
+      'mutations/sec',
+      'core',
+    );
     state.dispose();
   }
 
@@ -244,8 +248,12 @@ Future<void> _runCoreBenchmarks() async {
     }
     swB.stop();
 
-    _record('Batch Speedup', swU.elapsedMicroseconds / swB.elapsedMicroseconds,
-        'x', 'core');
+    _record(
+      'Batch Speedup',
+      swU.elapsedMicroseconds / swB.elapsedMicroseconds,
+      'x',
+      'core',
+    );
     eff2.dispose();
     sum.dispose();
     for (final s in states) {
@@ -271,8 +279,12 @@ Future<void> _runCoreBenchmarks() async {
       chain.last.value;
     }
     sw.stop();
-    _record('Deep Chain (1000)', sw.elapsedMicroseconds / mutations,
-        'µs/propagation', 'core');
+    _record(
+      'Deep Chain (1000)',
+      sw.elapsedMicroseconds / mutations,
+      'µs/propagation',
+      'core',
+    );
     for (final c in chain.reversed) {
       c.dispose();
     }
@@ -284,7 +296,9 @@ Future<void> _runCoreBenchmarks() async {
     const width = 10000;
     final source = TitanState(0);
     final deps = List.generate(
-        width, (i) => TitanComputed(() => source.value + i));
+      width,
+      (i) => TitanComputed(() => source.value + i),
+    );
     for (final d in deps) {
       d.value;
     }
@@ -298,8 +312,12 @@ Future<void> _runCoreBenchmarks() async {
       }
     }
     sw.stop();
-    _record('Fan-Out (10K)', sw.elapsedMicroseconds / mutations,
-        'µs/propagation', 'core');
+    _record(
+      'Fan-Out (10K)',
+      sw.elapsedMicroseconds / mutations,
+      'µs/propagation',
+      'core',
+    );
     for (final d in deps) {
       d.dispose();
     }
@@ -321,8 +339,12 @@ Future<void> _runCoreBenchmarks() async {
       Herald.emit(_BenchEvent(i));
     }
     sw.stop();
-    _record('Herald (10 listeners)', events / sw.elapsedMicroseconds * 1e6,
-        'events/sec', 'core');
+    _record(
+      'Herald (10 listeners)',
+      events / sw.elapsedMicroseconds * 1e6,
+      'events/sec',
+      'core',
+    );
     for (final s in subs) {
       (s as dynamic).cancel();
     }
@@ -343,8 +365,12 @@ Future<void> _runCoreBenchmarks() async {
       p.dispose();
     }
     sw.stop();
-    _record('Pillar Lifecycle (10K)', sw.elapsedMicroseconds / count,
-        'µs/pillar', 'core');
+    _record(
+      'Pillar Lifecycle (10K)',
+      sw.elapsedMicroseconds / count,
+      'µs/pillar',
+      'core',
+    );
     Titan.reset();
     Herald.reset();
   }
@@ -373,8 +399,12 @@ Future<void> _runCoreBenchmarks() async {
       }
     }
     sw.stop();
-    _record('Diamond (1K)', sw.elapsedMicroseconds / (diamondCount * mutations),
-        'µs/diamond', 'core');
+    _record(
+      'Diamond (1K)',
+      sw.elapsedMicroseconds / (diamondCount * mutations),
+      'µs/diamond',
+      'core',
+    );
     for (final d in diamonds) {
       d.dispose();
     }
@@ -382,7 +412,6 @@ Future<void> _runCoreBenchmarks() async {
       s.dispose();
     }
   }
-
 }
 
 // =============================================================================
@@ -390,7 +419,6 @@ Future<void> _runCoreBenchmarks() async {
 // =============================================================================
 
 Future<void> _runExtendedBenchmarks() async {
-
   // 9. Epoch overhead
   {
     const mutations = 100000;
@@ -407,8 +435,12 @@ Future<void> _runExtendedBenchmarks() async {
       epoch.value = i;
     }
     swEpoch.stop();
-    _record('Epoch Overhead', swEpoch.elapsedMicroseconds / swPlain.elapsedMicroseconds,
-        'x vs plain', 'extended');
+    _record(
+      'Epoch Overhead',
+      swEpoch.elapsedMicroseconds / swPlain.elapsedMicroseconds,
+      'x vs plain',
+      'extended',
+    );
     plain.dispose();
     epoch.dispose();
   }
@@ -423,8 +455,12 @@ Future<void> _runExtendedBenchmarks() async {
       state.value = i;
     }
     sw.stop();
-    _record('Effect Re-exec (1 dep)', sw.elapsedMicroseconds / mutations,
-        'µs/re-exec', 'extended');
+    _record(
+      'Effect Re-exec (1 dep)',
+      sw.elapsedMicroseconds / mutations,
+      'µs/re-exec',
+      'extended',
+    );
     effect.dispose();
     state.dispose();
   }
@@ -447,17 +483,22 @@ Future<void> _runExtendedBenchmarks() async {
     }
     swYes.stop();
 
-    _record('Observer Overhead',
-        swYes.elapsedMicroseconds / swNo.elapsedMicroseconds,
-        'x vs none', 'extended');
+    _record(
+      'Observer Overhead',
+      swYes.elapsedMicroseconds / swNo.elapsedMicroseconds,
+      'x vs none',
+      'extended',
+    );
     TitanObserver.instance = null;
     state.dispose();
   }
 
   // 12. Scroll validation
   {
-    final field = Scroll<String>('',
-        validator: (v) => v.isEmpty ? 'Required' : null);
+    final field = Scroll<String>(
+      '',
+      validator: (v) => v.isEmpty ? 'Required' : null,
+    );
     const validations = 100000;
     final sw = Stopwatch()..start();
     for (var i = 0; i < validations; i++) {
@@ -465,8 +506,12 @@ Future<void> _runExtendedBenchmarks() async {
       field.validate();
     }
     sw.stop();
-    _record('Scroll Validate', sw.elapsedMicroseconds / validations,
-        'µs/validate', 'extended');
+    _record(
+      'Scroll Validate',
+      sw.elapsedMicroseconds / validations,
+      'µs/validate',
+      'extended',
+    );
     field.dispose();
   }
 
@@ -477,12 +522,18 @@ Future<void> _runExtendedBenchmarks() async {
     const captures = 100000;
     final sw = Stopwatch()..start();
     for (var i = 0; i < captures; i++) {
-      Vigil.capture(StateError('bench'),
-          context: ErrorContext(source: StateError, action: 'bench'));
+      Vigil.capture(
+        StateError('bench'),
+        context: ErrorContext(source: StateError, action: 'bench'),
+      );
     }
     sw.stop();
-    _record('Vigil Capture', captures / sw.elapsedMicroseconds * 1e6,
-        'captures/sec', 'extended');
+    _record(
+      'Vigil Capture',
+      captures / sw.elapsedMicroseconds * 1e6,
+      'captures/sec',
+      'extended',
+    );
     Vigil.reset();
   }
 
@@ -500,8 +551,12 @@ Future<void> _runExtendedBenchmarks() async {
       log.info('msg $i');
     }
     sw.stop();
-    _record('Chronicle Log', messages / sw.elapsedMicroseconds * 1e6,
-        'msgs/sec', 'extended');
+    _record(
+      'Chronicle Log',
+      messages / sw.elapsedMicroseconds * 1e6,
+      'msgs/sec',
+      'extended',
+    );
     while (Chronicle.sinks.isNotEmpty) {
       Chronicle.removeSink(Chronicle.sinks.first);
     }
@@ -519,8 +574,12 @@ Future<void> _runExtendedBenchmarks() async {
       Titan.has<_BenchPillar>();
     }
     sw.stop();
-    _record('DI Lookup (hit)',
-        sw.elapsedMicroseconds / lookups * 1000, 'ns/lookup', 'extended');
+    _record(
+      'DI Lookup (hit)',
+      sw.elapsedMicroseconds / lookups * 1000,
+      'ns/lookup',
+      'extended',
+    );
     Titan.reset();
   }
 
@@ -536,10 +595,13 @@ Future<void> _runExtendedBenchmarks() async {
       s.dispose();
     }
     sw.stop();
-    _record('GC Stress (state)', sw.elapsedMicroseconds / cycles,
-        'µs/cycle', 'extended');
+    _record(
+      'GC Stress (state)',
+      sw.elapsedMicroseconds / cycles,
+      'µs/cycle',
+      'extended',
+    );
   }
-
 }
 
 // =============================================================================
@@ -547,7 +609,6 @@ Future<void> _runExtendedBenchmarks() async {
 // =============================================================================
 
 Future<void> _runEnterpriseBenchmarks() async {
-
   // 17. Loom transition
   {
     final loom = Loom<_LoomState, _LoomAction>(
@@ -568,8 +629,12 @@ Future<void> _runEnterpriseBenchmarks() async {
       loom.reset(_LoomState.available);
     }
     sw.stop();
-    _record('Loom Transition', sw.elapsedMicroseconds / (cycles * 3),
-        'µs/transition', 'enterprise');
+    _record(
+      'Loom Transition',
+      sw.elapsedMicroseconds / (cycles * 3),
+      'µs/transition',
+      'enterprise',
+    );
     loom.state.dispose();
   }
 
@@ -582,8 +647,12 @@ Future<void> _runEnterpriseBenchmarks() async {
       await bulwark.call(() async => i);
     }
     sw.stop();
-    _record('Bulwark Success', sw.elapsedMicroseconds / calls,
-        'µs/call', 'enterprise');
+    _record(
+      'Bulwark Success',
+      sw.elapsedMicroseconds / calls,
+      'µs/call',
+      'enterprise',
+    );
     bulwark.dispose();
   }
 
@@ -604,8 +673,12 @@ Future<void> _runEnterpriseBenchmarks() async {
       saga.dispose();
     }
     sw.stop();
-    _record('Saga (10 steps)', sw.elapsedMicroseconds / runs,
-        'µs/run', 'enterprise');
+    _record(
+      'Saga (10 steps)',
+      sw.elapsedMicroseconds / runs,
+      'µs/run',
+      'enterprise',
+    );
   }
 
   // 20. Volley batch
@@ -618,8 +691,12 @@ Future<void> _runEnterpriseBenchmarks() async {
     final sw = Stopwatch()..start();
     await volley.execute(tasks);
     sw.stop();
-    _record('Volley (100 tasks, conc=10)',
-        sw.elapsedMicroseconds / 100, 'µs/task', 'enterprise');
+    _record(
+      'Volley (100 tasks, conc=10)',
+      sw.elapsedMicroseconds / 100,
+      'µs/task',
+      'enterprise',
+    );
     volley.dispose();
   }
 
@@ -633,8 +710,12 @@ Future<void> _runEnterpriseBenchmarks() async {
       Annals.record(AnnalEntry(coreName: 'c', oldValue: i, newValue: i + 1));
     }
     sw.stop();
-    _record('Annals Record (cap=1K)',
-        records / sw.elapsedMicroseconds * 1e6, 'records/sec', 'enterprise');
+    _record(
+      'Annals Record (cap=1K)',
+      records / sw.elapsedMicroseconds * 1e6,
+      'records/sec',
+      'enterprise',
+    );
     Annals.reset();
   }
 
@@ -648,8 +729,12 @@ Future<void> _runEnterpriseBenchmarks() async {
       await Tether.call<int, int>('mul', i);
     }
     sw.stop();
-    _record('Tether Call', sw.elapsedMicroseconds / calls,
-        'µs/call', 'enterprise');
+    _record(
+      'Tether Call',
+      sw.elapsedMicroseconds / calls,
+      'µs/call',
+      'enterprise',
+    );
     Tether.reset();
   }
 
@@ -661,8 +746,12 @@ Future<void> _runEnterpriseBenchmarks() async {
       await Aegis.run(() async => i, maxAttempts: 3, baseDelay: Duration.zero);
     }
     sw.stop();
-    _record('Aegis Success', sw.elapsedMicroseconds / calls,
-        'µs/call', 'enterprise');
+    _record(
+      'Aegis Success',
+      sw.elapsedMicroseconds / calls,
+      'µs/call',
+      'enterprise',
+    );
   }
 
   // 24. Sigil lookup
@@ -677,8 +766,12 @@ Future<void> _runEnterpriseBenchmarks() async {
       Sigil.isEnabled('f_0');
     }
     sw.stop();
-    _record('Sigil Lookup',
-        lookups / sw.elapsedMicroseconds * 1e6, 'lookups/sec', 'enterprise');
+    _record(
+      'Sigil Lookup',
+      lookups / sw.elapsedMicroseconds * 1e6,
+      'lookups/sec',
+      'enterprise',
+    );
     Sigil.reset();
   }
 
@@ -691,8 +784,7 @@ Future<void> _runEnterpriseBenchmarks() async {
       flag.toggle();
     }
     sw.stop();
-    _record('Core.toggle', sw.elapsedMicroseconds / ops,
-        'µs/op', 'enterprise');
+    _record('Core.toggle', sw.elapsedMicroseconds / ops, 'µs/op', 'enterprise');
     flag.dispose();
   }
 
@@ -705,8 +797,12 @@ Future<void> _runEnterpriseBenchmarks() async {
       Snapshot.captureFromNodes(nodes);
     }
     sw.stop();
-    _record('Snapshot Capture (100)', sw.elapsedMicroseconds / captures,
-        'µs/capture', 'enterprise');
+    _record(
+      'Snapshot Capture (100)',
+      sw.elapsedMicroseconds / captures,
+      'µs/capture',
+      'enterprise',
+    );
     for (final n in nodes) {
       n.dispose();
     }
@@ -722,13 +818,16 @@ Future<void> _runEnterpriseBenchmarks() async {
       crucible.pillar.count.value = i;
     }
     sw.stop();
-    _record('Crucible Track', sw.elapsedMicroseconds / mutations,
-        'µs/mutation', 'enterprise');
+    _record(
+      'Crucible Track',
+      sw.elapsedMicroseconds / mutations,
+      'µs/mutation',
+      'enterprise',
+    );
     crucible.dispose();
     Titan.reset();
     Herald.reset();
   }
-
 }
 
 // =============================================================================
@@ -773,7 +872,9 @@ void _printReport(Map<String, dynamic>? previous, double threshold) {
       final result = _results[name]!;
       final valueStr = _formatValue(result.value, result.unit);
 
-      if (hasPrevious && prevBenchmarks != null && prevBenchmarks.containsKey(name)) {
+      if (hasPrevious &&
+          prevBenchmarks != null &&
+          prevBenchmarks.containsKey(name)) {
         final prevData = prevBenchmarks[name] as Map<String, dynamic>;
         final prevValue = (prevData['value'] as num).toDouble();
         final change = _calculateChange(result.value, prevValue, result.unit);
@@ -795,9 +896,11 @@ void _printReport(Map<String, dynamic>? previous, double threshold) {
 
   // Summary
   if (hasPrevious) {
-    print('  Summary: $regressionCount regressions, '
-        '$improvementCount improvements '
-        '(threshold: ±${threshold.toStringAsFixed(0)}%)');
+    print(
+      '  Summary: $regressionCount regressions, '
+      '$improvementCount improvements '
+      '(threshold: ±${threshold.toStringAsFixed(0)}%)',
+    );
     if (regressionCount > 0) {
       print('  ⚠ REGRESSIONS DETECTED — investigate before committing');
     } else {
@@ -819,7 +922,8 @@ double _calculateChange(double current, double previous, String unit) {
   if (previous == 0) return 0;
 
   // Higher-is-better units: positive % = improvement, flip sign for regression
-  final higherIsBetter = unit.contains('/sec') ||
+  final higherIsBetter =
+      unit.contains('/sec') ||
       unit.contains('lookups/sec') ||
       unit.contains('records/sec') ||
       unit == 'x';
@@ -867,12 +971,13 @@ void _showHistory(Directory historyDir) {
     return;
   }
 
-  final files = historyDir
-      .listSync()
-      .whereType<File>()
-      .where((f) => f.path.endsWith('.json'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final files =
+      historyDir
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.json'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
   if (files.isEmpty) {
     print('No benchmark history found.');
@@ -958,4 +1063,5 @@ class _NoOpSink extends LogSink {
 }
 
 enum _LoomState { available, claiming, active, completed }
+
 enum _LoomAction { claim, start, complete }

@@ -65,17 +65,20 @@ Future<void> _benchLoom() async {
       final sw = Stopwatch()..start();
       final looms = <Loom<_QuestState, _QuestEvent>>[];
       for (var i = 0; i < count; i++) {
-        looms.add(Loom(
-          initial: _QuestState.available,
-          transitions: {
-            (_QuestState.available, _QuestEvent.claim): _QuestState.claiming,
-            (_QuestState.claiming, _QuestEvent.start): _QuestState.active,
-            (_QuestState.active, _QuestEvent.complete): _QuestState.completed,
-            (_QuestState.active, _QuestEvent.fail): _QuestState.failed,
-            (_QuestState.failed, _QuestEvent.retry): _QuestState.active,
-            (_QuestState.claiming, _QuestEvent.abandon): _QuestState.available,
-          },
-        ));
+        looms.add(
+          Loom(
+            initial: _QuestState.available,
+            transitions: {
+              (_QuestState.available, _QuestEvent.claim): _QuestState.claiming,
+              (_QuestState.claiming, _QuestEvent.start): _QuestState.active,
+              (_QuestState.active, _QuestEvent.complete): _QuestState.completed,
+              (_QuestState.active, _QuestEvent.fail): _QuestState.failed,
+              (_QuestState.failed, _QuestEvent.retry): _QuestState.active,
+              (_QuestState.claiming, _QuestEvent.abandon):
+                  _QuestState.available,
+            },
+          ),
+        );
       }
       sw.stop();
 
@@ -114,8 +117,8 @@ Future<void> _benchLoom() async {
     sw.stop();
 
     final totalTransitions = cycles * 3;
-    final perTransition =
-        (sw.elapsedMicroseconds / totalTransitions).toStringAsFixed(2);
+    final perTransition = (sw.elapsedMicroseconds / totalTransitions)
+        .toStringAsFixed(2);
     print(
       '│  ${_pad(totalTransitions)} transitions: '
       '${_ms(sw)}  ($perTransition µs/transition)',
@@ -151,10 +154,10 @@ Future<void> _benchLoom() async {
     }
     swAllowed.stop();
 
-    final perCanSend =
-        (swCanSend.elapsedMicroseconds / lookups * 1000).toStringAsFixed(1);
-    final perAllowed =
-        (swAllowed.elapsedMicroseconds / lookups * 1000).toStringAsFixed(1);
+    final perCanSend = (swCanSend.elapsedMicroseconds / lookups * 1000)
+        .toStringAsFixed(1);
+    final perAllowed = (swAllowed.elapsedMicroseconds / lookups * 1000)
+        .toStringAsFixed(1);
     print(
       '│  canSend ($lookups): ${_ms(swCanSend)} ($perCanSend ns/call)  '
       'allowedEvents: ${_ms(swAllowed)} ($perAllowed ns/call)',
@@ -202,8 +205,8 @@ Future<void> _benchLoom() async {
     sw.stop();
 
     final totalTransitions = cycles * 3;
-    final perTransition =
-        (sw.elapsedMicroseconds / totalTransitions).toStringAsFixed(2);
+    final perTransition = (sw.elapsedMicroseconds / totalTransitions)
+        .toStringAsFixed(2);
     print(
       '│  With callbacks ($totalTransitions): '
       '${_ms(sw)}  ($perTransition µs/transition, '
@@ -388,10 +391,7 @@ Future<void> _benchVolley() async {
     for (final taskCount in [10, 100, 1000]) {
       final tasks = List.generate(
         taskCount,
-        (i) => VolleyTask<int>(
-          name: 'task$i',
-          execute: () async => i,
-        ),
+        (i) => VolleyTask<int>(name: 'task$i', execute: () async => i),
       );
 
       final volley = Volley<int>(concurrency: 10);
@@ -452,18 +452,21 @@ Future<void> _benchAnnals() async {
     const records = 100000;
     final sw = Stopwatch()..start();
     for (var i = 0; i < records; i++) {
-      Annals.record(AnnalEntry(
-        coreName: 'count',
-        pillarType: 'CounterPillar',
-        oldValue: i,
-        newValue: i + 1,
-        action: 'increment',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'count',
+          pillarType: 'CounterPillar',
+          oldValue: i,
+          newValue: i + 1,
+          action: 'increment',
+        ),
+      );
     }
     sw.stop();
 
-    final throughput =
-        (records / sw.elapsedMicroseconds * 1e6).toStringAsFixed(0);
+    final throughput = (records / sw.elapsedMicroseconds * 1e6).toStringAsFixed(
+      0,
+    );
     print(
       '│  Record ($records): '
       '${_ms(sw)}  ($throughput records/sec)',
@@ -488,10 +491,12 @@ Future<void> _benchAnnals() async {
     }
     swType.stop();
 
-    final perNameQuery =
-        (swName.elapsedMicroseconds / queries).toStringAsFixed(1);
-    final perTypeQuery =
-        (swType.elapsedMicroseconds / queries).toStringAsFixed(1);
+    final perNameQuery = (swName.elapsedMicroseconds / queries).toStringAsFixed(
+      1,
+    );
+    final perTypeQuery = (swType.elapsedMicroseconds / queries).toStringAsFixed(
+      1,
+    );
     print(
       '│  Query ($queries, 100K entries): '
       'byName ${_ms(swName)} ($perNameQuery µs/q), '
@@ -523,16 +528,13 @@ Future<void> _benchAnnals() async {
     const records = 100000;
     final sw = Stopwatch()..start();
     for (var i = 0; i < records; i++) {
-      Annals.record(AnnalEntry(
-        coreName: 'trimmed',
-        oldValue: i,
-        newValue: i + 1,
-      ));
+      Annals.record(
+        AnnalEntry(coreName: 'trimmed', oldValue: i, newValue: i + 1),
+      );
     }
     sw.stop();
 
-    final perRecord =
-        (sw.elapsedMicroseconds / records).toStringAsFixed(2);
+    final perRecord = (sw.elapsedMicroseconds / records).toStringAsFixed(2);
     print(
       '│  Capped recording ($records, cap=1000): '
       '${_ms(sw)}  ($perRecord µs/record, ${Annals.length} stored)',
@@ -558,10 +560,7 @@ Future<void> _benchTether() async {
     const count = 10000;
     final sw = Stopwatch()..start();
     for (var i = 0; i < count; i++) {
-      Tether.register<int, int>(
-        'handler_$i',
-        (req) async => req * 2,
-      );
+      Tether.register<int, int>('handler_$i', (req) async => req * 2);
     }
     sw.stop();
 
@@ -624,10 +623,11 @@ Future<void> _benchTether() async {
     }
     swMiss.stop();
 
-    final perHit =
-        (swHit.elapsedMicroseconds / lookups * 1000).toStringAsFixed(1);
-    final perMiss =
-        (swMiss.elapsedMicroseconds / lookups * 1000).toStringAsFixed(1);
+    final perHit = (swHit.elapsedMicroseconds / lookups * 1000).toStringAsFixed(
+      1,
+    );
+    final perMiss = (swMiss.elapsedMicroseconds / lookups * 1000)
+        .toStringAsFixed(1);
     print(
       '│  has() ($lookups): '
       'hit ${_ms(swHit)} ($perHit ns), '
@@ -748,8 +748,9 @@ Future<void> _benchSigil() async {
     }
     sw.stop();
 
-    final perLookup =
-        (sw.elapsedMicroseconds / lookups * 1000).toStringAsFixed(1);
+    final perLookup = (sw.elapsedMicroseconds / lookups * 1000).toStringAsFixed(
+      1,
+    );
     print(
       '│  isEnabled ($lookups): '
       '${_ms(sw)}  ($perLookup ns/lookup)',
@@ -765,8 +766,7 @@ Future<void> _benchSigil() async {
     }
     sw.stop();
 
-    final perToggle =
-        (sw.elapsedMicroseconds / toggles).toStringAsFixed(2);
+    final perToggle = (sw.elapsedMicroseconds / toggles).toStringAsFixed(2);
     print(
       '│  Toggle ($toggles): '
       '${_ms(sw)}  ($perToggle µs/toggle)',
@@ -805,8 +805,7 @@ Future<void> _benchSigil() async {
     }
     sw.stop();
 
-    final perPeek =
-        (sw.elapsedMicroseconds / peeks * 1000).toStringAsFixed(1);
+    final perPeek = (sw.elapsedMicroseconds / peeks * 1000).toStringAsFixed(1);
     print(
       '│  peek() ($peeks): '
       '${_ms(sw)}  ($perPeek ns/peek)',
@@ -891,10 +890,7 @@ Future<void> _benchCoreExtensions() async {
 
   // e) Core.select overhead vs raw computed
   {
-    final user = TitanState<Map<String, dynamic>>({
-      'name': 'Kael',
-      'level': 1,
-    });
+    final user = TitanState<Map<String, dynamic>>({'name': 'Kael', 'level': 1});
 
     // select (creates a TitanComputed internally)
     final selected = user.select((u) => u['name'] as String);
@@ -958,8 +954,7 @@ Future<void> _benchSnapshot() async {
       }
       sw.stop();
 
-      final perCapture =
-          (sw.elapsedMicroseconds / captures).toStringAsFixed(1);
+      final perCapture = (sw.elapsedMicroseconds / captures).toStringAsFixed(1);
       print(
         '│  Capture ${_pad(nodeCount)} nodes ($captures): '
         '${_ms(sw)}  ($perCapture µs/capture)',
@@ -973,10 +968,7 @@ Future<void> _benchSnapshot() async {
 
   // b) Restore throughput
   {
-    final nodes = List.generate(
-      100,
-      (i) => TitanState(i, name: 'node_$i'),
-    );
+    final nodes = List.generate(100, (i) => TitanState(i, name: 'node_$i'));
     final snapshot = Snapshot.captureFromNodes(nodes);
 
     // Change values
@@ -991,8 +983,7 @@ Future<void> _benchSnapshot() async {
     }
     sw.stop();
 
-    final perRestore =
-        (sw.elapsedMicroseconds / restores).toStringAsFixed(1);
+    final perRestore = (sw.elapsedMicroseconds / restores).toStringAsFixed(1);
     print(
       '│  Restore 100 nodes ($restores): '
       '${_ms(sw)}  ($perRestore µs/restore)',
@@ -1005,10 +996,7 @@ Future<void> _benchSnapshot() async {
 
   // c) Diff throughput
   {
-    final nodesA = List.generate(
-      100,
-      (i) => TitanState(i, name: 'node_$i'),
-    );
+    final nodesA = List.generate(100, (i) => TitanState(i, name: 'node_$i'));
     final snapA = Snapshot.captureFromNodes(nodesA);
 
     // Change half
@@ -1079,8 +1067,7 @@ Future<void> _benchCrucible() async {
     sw.stop();
 
     final changeCount = crucible.changesFor(crucible.pillar.count).length;
-    final perMutation =
-        (sw.elapsedMicroseconds / mutations).toStringAsFixed(2);
+    final perMutation = (sw.elapsedMicroseconds / mutations).toStringAsFixed(2);
     print(
       '│  Track ($mutations mutations): '
       '${_ms(sw)}  ($perMutation µs/mutation, '

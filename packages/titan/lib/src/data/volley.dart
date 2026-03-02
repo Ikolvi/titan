@@ -67,10 +67,7 @@ class VolleyTask<T> {
   final Future<T> Function() execute;
 
   /// Creates a volley task.
-  const VolleyTask({
-    required this.name,
-    required this.execute,
-  });
+  const VolleyTask({required this.name, required this.execute});
 }
 
 /// The result of a single [VolleyTask].
@@ -108,7 +105,7 @@ class VolleySuccess<T> extends VolleyResult<T> {
 
   /// Creates a successful result.
   const VolleySuccess({required super.taskName, required this.value})
-      : super._();
+    : super._();
 
   @override
   String toString() => 'VolleySuccess($taskName: $value)';
@@ -173,25 +170,23 @@ class Volley<T> {
   ///
   /// - [concurrency] — Max parallel tasks (default: 5).
   /// - [name] — Debug name prefix for internal Cores.
-  Volley({
-    this.concurrency = 5,
-    String? name,
-  }) : _status = TitanState<VolleyStatus>(
-         VolleyStatus.idle,
-         name: name != null ? '${name}_status' : null,
-       ),
-       _progress = TitanState<double>(
-         0.0,
-         name: name != null ? '${name}_progress' : null,
-       ),
-       _completedCount = TitanState<int>(
-         0,
-         name: name != null ? '${name}_completed' : null,
-       ),
-       _totalCount = TitanState<int>(
-         0,
-         name: name != null ? '${name}_total' : null,
-       );
+  Volley({this.concurrency = 5, String? name})
+    : _status = TitanState<VolleyStatus>(
+        VolleyStatus.idle,
+        name: name != null ? '${name}_status' : null,
+      ),
+      _progress = TitanState<double>(
+        0.0,
+        name: name != null ? '${name}_progress' : null,
+      ),
+      _completedCount = TitanState<int>(
+        0,
+        name: name != null ? '${name}_completed' : null,
+      ),
+      _totalCount = TitanState<int>(
+        0,
+        name: name != null ? '${name}_total' : null,
+      );
 
   /// Current status (reactive).
   VolleyStatus get status => _status.value;
@@ -256,11 +251,15 @@ class Volley<T> {
     }
 
     return results
-        .map((r) => r ?? VolleyFailure<T>(
-              taskName: 'cancelled',
-              error: StateError('Task was cancelled'),
-              stackTrace: StackTrace.current,
-            ))
+        .map(
+          (r) =>
+              r ??
+              VolleyFailure<T>(
+                taskName: 'cancelled',
+                error: StateError('Task was cancelled'),
+                stackTrace: StackTrace.current,
+              ),
+        )
         .toList();
   }
 

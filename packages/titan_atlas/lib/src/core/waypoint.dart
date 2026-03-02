@@ -128,16 +128,14 @@ class Waypoint {
   /// // '/search?q=dart' → waypoint.queryOr('q', '') == 'dart'
   /// // '/search'        → waypoint.queryOr('q', '') == ''
   /// ```
-  String queryOr(String key, String defaultValue) =>
-      query[key] ?? defaultValue;
+  String queryOr(String key, String defaultValue) => query[key] ?? defaultValue;
 
   /// Get a query parameter as `int` with a default value.
   ///
   /// ```dart
   /// waypoint.intQueryOr('page', 1) // 1 if missing or unparseable
   /// ```
-  int intQueryOr(String key, int defaultValue) =>
-      intQuery(key) ?? defaultValue;
+  int intQueryOr(String key, int defaultValue) => intQuery(key) ?? defaultValue;
 
   /// Get a query parameter as `double` with a default value.
   double doubleQueryOr(String key, double defaultValue) =>
@@ -171,8 +169,7 @@ class Waypoint {
   /// ```dart
   /// waypoint.runeOr('tab', 'overview')
   /// ```
-  String runeOr(String key, String defaultValue) =>
-      runes[key] ?? defaultValue;
+  String runeOr(String key, String defaultValue) => runes[key] ?? defaultValue;
 
   /// Create a copy with updated fields.
   Waypoint copyWith({

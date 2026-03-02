@@ -9,8 +9,7 @@ void main() {
 
       final observer = AtlasAnalyticsObserver(
         onScreen: (name, params) => screens.add({'name': name, ...params}),
-        onEvent: (event, params) =>
-            events.add({'event': event, ...params}),
+        onEvent: (event, params) => events.add({'event': event, ...params}),
       );
 
       const from = Waypoint(path: '/home', pattern: '/home');

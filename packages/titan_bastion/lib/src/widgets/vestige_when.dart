@@ -27,10 +27,7 @@ class WhenCase<P extends Pillar> {
   final Widget Function(BuildContext context, P pillar) builder;
 
   /// Creates a condition-builder pair.
-  const WhenCase({
-    required this.condition,
-    required this.builder,
-  });
+  const WhenCase({required this.condition, required this.builder});
 }
 
 /// **VestigeWhen** — Conditional widget rendering based on Pillar state.
@@ -84,11 +81,7 @@ class VestigeWhen<P extends Pillar> extends StatefulWidget {
   final Widget Function(BuildContext context, P pillar)? orElse;
 
   /// Creates a VestigeWhen widget.
-  const VestigeWhen({
-    super.key,
-    required this.cases,
-    this.orElse,
-  });
+  const VestigeWhen({super.key, required this.cases, this.orElse});
 
   @override
   State<VestigeWhen<P>> createState() => _VestigeWhenState<P>();

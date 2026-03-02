@@ -137,11 +137,7 @@ void main() {
     });
 
     testWidgets('stack is unmodifiable', (tester) async {
-      final atlas = Atlas(
-        passages: [
-          Passage('/', (_) => const Text('Home')),
-        ],
-      );
+      final atlas = Atlas(passages: [Passage('/', (_) => const Text('Home'))]);
 
       await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
       await tester.pumpAndSettle();

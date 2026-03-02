@@ -118,10 +118,7 @@ void main() {
         },
       );
 
-      expect(
-        loom.allowedEvents,
-        {AuthEvent.success, AuthEvent.failure},
-      );
+      expect(loom.allowedEvents, {AuthEvent.success, AuthEvent.failure});
     });
 
     test('sendOrThrow() throws on invalid transition', () {
@@ -130,10 +127,7 @@ void main() {
         transitions: {},
       );
 
-      expect(
-        () => loom.sendOrThrow(TrafficEvent.next),
-        throwsStateError,
-      );
+      expect(() => loom.sendOrThrow(TrafficEvent.next), throwsStateError);
     });
 
     test('onEnter/onExit callbacks fire correctly', () {

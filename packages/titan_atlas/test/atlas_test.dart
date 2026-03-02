@@ -604,8 +604,9 @@ void main() {
   });
 
   group('Atlas — push with result', () {
-    testWidgets('push returns result when back is called with value',
-        (tester) async {
+    testWidgets('push returns result when back is called with value', (
+      tester,
+    ) async {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
@@ -613,9 +614,7 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(
-        MaterialApp.router(routerConfig: atlas.config),
-      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
       await tester.pumpAndSettle();
 
       // Push and capture the future
@@ -633,8 +632,9 @@ void main() {
       expect(find.text('Home'), findsOneWidget);
     });
 
-    testWidgets('push returns null when back is called without value',
-        (tester) async {
+    testWidgets('push returns null when back is called without value', (
+      tester,
+    ) async {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
@@ -642,9 +642,7 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(
-        MaterialApp.router(routerConfig: atlas.config),
-      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
       await tester.pumpAndSettle();
 
       final future = Atlas.push<String>('/confirm');
@@ -665,9 +663,7 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(
-        MaterialApp.router(routerConfig: atlas.config),
-      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
       await tester.pumpAndSettle();
 
       final future = Atlas.push<Map<String, dynamic>>('/picker');
@@ -680,8 +676,7 @@ void main() {
       expect(result, {'id': 42, 'name': 'Titan'});
     });
 
-    testWidgets('push completes with null when go() is called',
-        (tester) async {
+    testWidgets('push completes with null when go() is called', (tester) async {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
@@ -690,9 +685,7 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(
-        MaterialApp.router(routerConfig: atlas.config),
-      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
       await tester.pumpAndSettle();
 
       final future = Atlas.push<bool>('/a');
@@ -706,8 +699,9 @@ void main() {
       expect(result, isNull);
     });
 
-    testWidgets('push completes with null when reset() is called',
-        (tester) async {
+    testWidgets('push completes with null when reset() is called', (
+      tester,
+    ) async {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
@@ -715,9 +709,7 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(
-        MaterialApp.router(routerConfig: atlas.config),
-      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
       await tester.pumpAndSettle();
 
       final future = Atlas.push<int>('/modal');
@@ -730,8 +722,9 @@ void main() {
       expect(result, isNull);
     });
 
-    testWidgets('push completes with null when replace() is called',
-        (tester) async {
+    testWidgets('push completes with null when replace() is called', (
+      tester,
+    ) async {
       final atlas = Atlas(
         passages: [
           Passage('/', (_) => const Text('Home')),
@@ -740,9 +733,7 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(
-        MaterialApp.router(routerConfig: atlas.config),
-      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
       await tester.pumpAndSettle();
 
       final future = Atlas.push<bool>('/a');

@@ -67,8 +67,7 @@ abstract class TitanObserver {
   }
 
   /// Returns an unmodifiable view of all registered observers.
-  static List<TitanObserver> get observers =>
-      List.unmodifiable(_observers);
+  static List<TitanObserver> get observers => List.unmodifiable(_observers);
 
   /// Removes all registered observers and clears [instance].
   static void clearObservers() {
@@ -181,11 +180,7 @@ abstract class TitanObserver {
   void onEffectRun(TitanEffect effect) {}
 
   /// Called when a [TitanEffect] throws an error during execution.
-  void onEffectError(
-    TitanEffect effect,
-    Object error,
-    StackTrace stackTrace,
-  ) {}
+  void onEffectError(TitanEffect effect, Object error, StackTrace stackTrace) {}
 }
 
 /// A simple logging observer that prints state changes.

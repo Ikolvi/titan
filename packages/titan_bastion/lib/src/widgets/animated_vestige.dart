@@ -44,7 +44,8 @@ class AnimatedVestige<P extends Pillar> extends StatefulWidget {
     BuildContext context,
     P pillar,
     Animation<double> animation,
-  ) builder;
+  )
+  builder;
 
   /// Animation duration. Defaults to 300ms.
   final Duration duration;
@@ -80,14 +81,8 @@ class _AnimatedVestigeState<P extends Pillar> extends State<AnimatedVestige<P>>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    );
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: widget.curve,
-    );
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+    _animation = CurvedAnimation(parent: _controller, curve: widget.curve);
     // Set controller to completed state initially so first build
     // doesn't show a zero-opacity widget
     _controller.value = 1.0;

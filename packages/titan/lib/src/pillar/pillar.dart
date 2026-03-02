@@ -476,10 +476,7 @@ abstract class Pillar {
   /// late final upload = volley<String>(concurrency: 3);
   /// ```
   @protected
-  Volley<T> volley<T>({
-    int concurrency = 5,
-    String? name,
-  }) {
+  Volley<T> volley<T>({int concurrency = 5, String? name}) {
     final v = Volley<T>(concurrency: concurrency, name: name);
     _managedNodes.addAll(v.managedNodes);
     return v;
@@ -671,8 +668,7 @@ abstract class Pillar {
     _assertNotDisposed();
     final lastExecution = _throttleTimestamps[tag];
     final now = DateTime.now();
-    if (lastExecution == null ||
-        now.difference(lastExecution) >= duration) {
+    if (lastExecution == null || now.difference(lastExecution) >= duration) {
       _throttleTimestamps[tag] = now;
       strike(action);
     }
@@ -1105,7 +1101,7 @@ class StrikeMiddleware {
 
   /// Called when the strike action throws an error.
   final void Function(Pillar pillar, Object error, StackTrace stackTrace)?
-      onError;
+  onError;
 
   /// Creates a strike middleware.
   const StrikeMiddleware({this.before, this.after, this.onError});

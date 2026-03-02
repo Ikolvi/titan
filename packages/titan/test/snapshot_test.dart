@@ -109,10 +109,7 @@ void main() {
         snap.timestamp.isAfter(before.subtract(Duration(seconds: 1))),
         isTrue,
       );
-      expect(
-        snap.timestamp.isBefore(after.add(Duration(seconds: 1))),
-        isTrue,
-      );
+      expect(snap.timestamp.isBefore(after.add(Duration(seconds: 1))), isTrue);
       pillar.dispose();
     });
 
@@ -156,10 +153,7 @@ void main() {
       pillar.initialize();
 
       final snap = pillar.snapshot();
-      expect(
-        () => (snap.values)['count'] = 999,
-        throwsUnsupportedError,
-      );
+      expect(() => (snap.values)['count'] = 999, throwsUnsupportedError);
       pillar.dispose();
     });
 
@@ -219,10 +213,10 @@ void main() {
     });
 
     test('PillarSnapshot.fromMap creates snapshot directly', () {
-      final snap = PillarSnapshot.fromMap(
-        {'x': 1, 'y': 'hello'},
-        label: 'direct',
-      );
+      final snap = PillarSnapshot.fromMap({
+        'x': 1,
+        'y': 'hello',
+      }, label: 'direct');
       expect(snap.get<int>('x'), 1);
       expect(snap.get<String>('y'), 'hello');
       expect(snap.label, 'direct');

@@ -73,15 +73,10 @@ class PillarScope extends StatelessWidget {
   final Widget child;
 
   /// Creates a PillarScope that overrides Pillar resolution for a subtree.
-  const PillarScope({
-    super.key,
-    required this.overrides,
-    required this.child,
-  });
+  const PillarScope({super.key, required this.overrides, required this.child});
 
   @override
   Widget build(BuildContext context) {
     return Beacon.value(values: overrides, child: child);
   }
 }
-

@@ -177,11 +177,9 @@ class Crucible<P extends Pillar> {
   /// ```
   void track<T>(TitanState<T> core) {
     final unsub = core.listen((value) {
-      _changes.add(CoreChange<T>(
-        core: core,
-        value: value,
-        timestamp: DateTime.now(),
-      ));
+      _changes.add(
+        CoreChange<T>(core: core, value: value, timestamp: DateTime.now()),
+      );
     });
     _listeners.add(unsub);
   }
@@ -195,10 +193,7 @@ class Crucible<P extends Pillar> {
   /// expect(changes.first.value, 1);
   /// ```
   List<CoreChange<T>> changesFor<T>(TitanState<T> core) {
-    return _changes
-        .where((c) => c.core == core)
-        .cast<CoreChange<T>>()
-        .toList();
+    return _changes.where((c) => c.core == core).cast<CoreChange<T>>().toList();
   }
 
   /// Returns the values recorded for a specific [Core] as a list.
@@ -262,6 +257,5 @@ class CoreChange<T> {
   });
 
   @override
-  String toString() =>
-      'CoreChange<$T>(${core.name ?? 'unnamed'}: $value)';
+  String toString() => 'CoreChange<$T>(${core.name ?? 'unnamed'}: $value)';
 }

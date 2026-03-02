@@ -65,11 +65,7 @@ void main() {
     });
 
     test('loadAll registers multiple flags', () {
-      Sigil.loadAll({
-        'a': true,
-        'b': false,
-        'c': true,
-      });
+      Sigil.loadAll({'a': true, 'b': false, 'c': true});
 
       expect(Sigil.isEnabled('a'), isTrue);
       expect(Sigil.isEnabled('b'), isFalse);

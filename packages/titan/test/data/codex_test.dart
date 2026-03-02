@@ -281,10 +281,8 @@ void main() {
 
     setUp(() async {
       codex = Codex<String>(
-        fetcher: (req) async => CodexPage(
-          items: ['a', 'b', 'c'],
-          hasMore: false,
-        ),
+        fetcher: (req) async =>
+            CodexPage(items: ['a', 'b', 'c'], hasMore: false),
         pageSize: 10,
       );
       await codex.loadFirst();
@@ -385,10 +383,7 @@ void main() {
         fetcher: (req) async {
           fetchCount++;
           await Future<void>.delayed(const Duration(milliseconds: 20));
-          return CodexPage(
-            items: ['batch_$fetchCount'],
-            hasMore: false,
-          );
+          return CodexPage(items: ['batch_$fetchCount'], hasMore: false);
         },
       );
 

@@ -166,7 +166,9 @@ class Cartograph {
         final paramName = segment.substring(1);
         final value = runes[paramName];
         if (value == null) {
-          throw ArgumentError('Missing rune "$paramName" for template "$template".');
+          throw ArgumentError(
+            'Missing rune "$paramName" for template "$template".',
+          );
         }
         built.add(value);
       } else {
@@ -179,8 +181,10 @@ class Cartograph {
 
     if (query.isNotEmpty) {
       final queryString = query.entries
-          .map((e) =>
-              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .map(
+            (e) =>
+                '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+          )
           .join('&');
       path = '$path?$queryString';
     }
@@ -264,11 +268,13 @@ class Cartograph {
     for (final entry in _links.entries) {
       final match = _matchTemplate(entry.key, pathSegments);
       if (match != null && entry.value != null) {
-        entry.value!(CartographMatch(
-          path: entry.key,
-          runes: match,
-          query: uri.queryParameters,
-        ));
+        entry.value!(
+          CartographMatch(
+            path: entry.key,
+            runes: match,
+            query: uri.queryParameters,
+          ),
+        );
         return true;
       }
     }

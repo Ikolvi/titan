@@ -24,11 +24,7 @@ void main() {
       });
 
       test('respects custom breakpoints', () {
-        const bp = RampartBreakpoints(
-          compact: 0,
-          medium: 768,
-          expanded: 1280,
-        );
+        const bp = RampartBreakpoints(compact: 0, medium: 768, expanded: 1280);
         expect(Rampart.layoutFor(600, bp), RampartLayout.compact);
         expect(Rampart.layoutFor(768, bp), RampartLayout.medium);
         expect(Rampart.layoutFor(1280, bp), RampartLayout.expanded);
@@ -62,13 +58,16 @@ void main() {
         expect(value.resolve(RampartLayout.medium), 8);
       });
 
-      test('resolve falls back to medium then compact when expanded is null', () {
-        const value = RampartValue<double>(compact: 8, medium: 16);
-        expect(value.resolve(RampartLayout.expanded), 16);
+      test(
+        'resolve falls back to medium then compact when expanded is null',
+        () {
+          const value = RampartValue<double>(compact: 8, medium: 16);
+          expect(value.resolve(RampartLayout.expanded), 16);
 
-        const value2 = RampartValue<double>(compact: 8);
-        expect(value2.resolve(RampartLayout.expanded), 8);
-      });
+          const value2 = RampartValue<double>(compact: 8);
+          expect(value2.resolve(RampartLayout.expanded), 8);
+        },
+      );
 
       test('all constructor sets same value for all tiers', () {
         const value = RampartValue<int>.all(42);
@@ -88,9 +87,12 @@ void main() {
           MediaQuery(
             data: const MediaQueryData(size: Size(360, 640)),
             child: Rampart(
-              compact: (_) => const Text('compact', textDirection: TextDirection.ltr),
-              medium: (_) => const Text('medium', textDirection: TextDirection.ltr),
-              expanded: (_) => const Text('expanded', textDirection: TextDirection.ltr),
+              compact: (_) =>
+                  const Text('compact', textDirection: TextDirection.ltr),
+              medium: (_) =>
+                  const Text('medium', textDirection: TextDirection.ltr),
+              expanded: (_) =>
+                  const Text('expanded', textDirection: TextDirection.ltr),
             ),
           ),
         );
@@ -109,9 +111,12 @@ void main() {
           MediaQuery(
             data: const MediaQueryData(size: Size(768, 1024)),
             child: Rampart(
-              compact: (_) => const Text('compact', textDirection: TextDirection.ltr),
-              medium: (_) => const Text('medium', textDirection: TextDirection.ltr),
-              expanded: (_) => const Text('expanded', textDirection: TextDirection.ltr),
+              compact: (_) =>
+                  const Text('compact', textDirection: TextDirection.ltr),
+              medium: (_) =>
+                  const Text('medium', textDirection: TextDirection.ltr),
+              expanded: (_) =>
+                  const Text('expanded', textDirection: TextDirection.ltr),
             ),
           ),
         );
@@ -130,9 +135,12 @@ void main() {
           MediaQuery(
             data: const MediaQueryData(size: Size(1200, 800)),
             child: Rampart(
-              compact: (_) => const Text('compact', textDirection: TextDirection.ltr),
-              medium: (_) => const Text('medium', textDirection: TextDirection.ltr),
-              expanded: (_) => const Text('expanded', textDirection: TextDirection.ltr),
+              compact: (_) =>
+                  const Text('compact', textDirection: TextDirection.ltr),
+              medium: (_) =>
+                  const Text('medium', textDirection: TextDirection.ltr),
+              expanded: (_) =>
+                  const Text('expanded', textDirection: TextDirection.ltr),
             ),
           ),
         );
@@ -147,8 +155,10 @@ void main() {
           MediaQuery(
             data: const MediaQueryData(size: Size(768, 1024)),
             child: Rampart(
-              compact: (_) => const Text('compact', textDirection: TextDirection.ltr),
-              expanded: (_) => const Text('expanded', textDirection: TextDirection.ltr),
+              compact: (_) =>
+                  const Text('compact', textDirection: TextDirection.ltr),
+              expanded: (_) =>
+                  const Text('expanded', textDirection: TextDirection.ltr),
             ),
           ),
         );
@@ -161,8 +171,10 @@ void main() {
           MediaQuery(
             data: const MediaQueryData(size: Size(1200, 800)),
             child: Rampart(
-              compact: (_) => const Text('compact', textDirection: TextDirection.ltr),
-              medium: (_) => const Text('medium', textDirection: TextDirection.ltr),
+              compact: (_) =>
+                  const Text('compact', textDirection: TextDirection.ltr),
+              medium: (_) =>
+                  const Text('medium', textDirection: TextDirection.ltr),
             ),
           ),
         );

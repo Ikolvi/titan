@@ -137,9 +137,7 @@ class TitanState<T> extends ReactiveNode {
   /// final userName = user.select((u) => u.name);
   /// ```
   TitanComputed<R> select<R>(R Function(T value) selector) {
-    return TitanComputed<R>(
-      () => selector(value),
-    );
+    return TitanComputed<R>(() => selector(value));
   }
 
   bool _isEqual(T a, T b) {

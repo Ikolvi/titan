@@ -25,24 +25,26 @@ void main() {
       final pillar = _TestPillar();
       Titan.put(pillar);
 
-      await tester.pumpWidget(MaterialApp(
-        home: VestigeWhen<_TestPillar>(
-          cases: [
-            WhenCase(
-              condition: (p) => p.count.value < 0,
-              builder: (_, p) => Text('negative'),
-            ),
-            WhenCase(
-              condition: (p) => p.count.value == 0,
-              builder: (_, p) => Text('zero'),
-            ),
-            WhenCase(
-              condition: (p) => p.count.value > 0,
-              builder: (_, p) => Text('positive'),
-            ),
-          ],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VestigeWhen<_TestPillar>(
+            cases: [
+              WhenCase(
+                condition: (p) => p.count.value < 0,
+                builder: (_, p) => Text('negative'),
+              ),
+              WhenCase(
+                condition: (p) => p.count.value == 0,
+                builder: (_, p) => Text('zero'),
+              ),
+              WhenCase(
+                condition: (p) => p.count.value > 0,
+                builder: (_, p) => Text('positive'),
+              ),
+            ],
+          ),
         ),
-      ));
+      );
 
       expect(find.text('zero'), findsOneWidget);
     });
@@ -52,41 +54,46 @@ void main() {
       pillar.count.value = 5;
       Titan.put(pillar);
 
-      await tester.pumpWidget(MaterialApp(
-        home: VestigeWhen<_TestPillar>(
-          cases: [
-            WhenCase(
-              condition: (p) => p.count.value < 0,
-              builder: (_, p) => Text('negative'),
-            ),
-            WhenCase(
-              condition: (p) => p.count.value > 100,
-              builder: (_, p) => Text('over hundred'),
-            ),
-          ],
-          orElse: (_, p) => Text('default: ${p.count.value}'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VestigeWhen<_TestPillar>(
+            cases: [
+              WhenCase(
+                condition: (p) => p.count.value < 0,
+                builder: (_, p) => Text('negative'),
+              ),
+              WhenCase(
+                condition: (p) => p.count.value > 100,
+                builder: (_, p) => Text('over hundred'),
+              ),
+            ],
+            orElse: (_, p) => Text('default: ${p.count.value}'),
+          ),
         ),
-      ));
+      );
 
       expect(find.text('default: 5'), findsOneWidget);
     });
 
-    testWidgets('renders SizedBox.shrink when no match and no orElse',
-        (tester) async {
+    testWidgets('renders SizedBox.shrink when no match and no orElse', (
+      tester,
+    ) async {
       final pillar = _TestPillar();
       pillar.count.value = 50;
       Titan.put(pillar);
 
-      await tester.pumpWidget(MaterialApp(
-        home: VestigeWhen<_TestPillar>(
-          cases: [
-            WhenCase(
-              condition: (p) => p.count.value < 0,
-              builder: (_, p) => Text('negative'),
-            ),
-          ],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VestigeWhen<_TestPillar>(
+            cases: [
+              WhenCase(
+                condition: (p) => p.count.value < 0,
+                builder: (_, p) => Text('negative'),
+              ),
+            ],
+          ),
         ),
-      ));
+      );
 
       expect(find.text('negative'), findsNothing);
       expect(find.byType(SizedBox), findsOneWidget);
@@ -96,24 +103,26 @@ void main() {
       final pillar = _TestPillar();
       Titan.put(pillar);
 
-      await tester.pumpWidget(MaterialApp(
-        home: VestigeWhen<_TestPillar>(
-          cases: [
-            WhenCase(
-              condition: (p) => p.count.value < 0,
-              builder: (_, p) => Text('negative'),
-            ),
-            WhenCase(
-              condition: (p) => p.count.value == 0,
-              builder: (_, p) => Text('zero'),
-            ),
-            WhenCase(
-              condition: (p) => p.count.value > 0,
-              builder: (_, p) => Text('positive'),
-            ),
-          ],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VestigeWhen<_TestPillar>(
+            cases: [
+              WhenCase(
+                condition: (p) => p.count.value < 0,
+                builder: (_, p) => Text('negative'),
+              ),
+              WhenCase(
+                condition: (p) => p.count.value == 0,
+                builder: (_, p) => Text('zero'),
+              ),
+              WhenCase(
+                condition: (p) => p.count.value > 0,
+                builder: (_, p) => Text('positive'),
+              ),
+            ],
+          ),
         ),
-      ));
+      );
 
       expect(find.text('zero'), findsOneWidget);
 
@@ -127,44 +136,47 @@ void main() {
     });
 
     testWidgets('works with Beacon', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Beacon(
-          pillars: [_TestPillar.new],
-          child: VestigeWhen<_TestPillar>(
-            cases: [
-              WhenCase(
-                condition: (p) => p.count.value == 0,
-                builder: (_, p) => Text('zero'),
-              ),
-            ],
-            orElse: (_, p) => Text('other'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Beacon(
+            pillars: [_TestPillar.new],
+            child: VestigeWhen<_TestPillar>(
+              cases: [
+                WhenCase(
+                  condition: (p) => p.count.value == 0,
+                  builder: (_, p) => Text('zero'),
+                ),
+              ],
+              orElse: (_, p) => Text('other'),
+            ),
           ),
         ),
-      ));
+      );
 
       expect(find.text('zero'), findsOneWidget);
     });
 
-    testWidgets('first matching case wins over later matches',
-        (tester) async {
+    testWidgets('first matching case wins over later matches', (tester) async {
       final pillar = _TestPillar();
       pillar.count.value = 5;
       Titan.put(pillar);
 
-      await tester.pumpWidget(MaterialApp(
-        home: VestigeWhen<_TestPillar>(
-          cases: [
-            WhenCase(
-              condition: (p) => p.count.value > 0,
-              builder: (_, p) => Text('first match'),
-            ),
-            WhenCase(
-              condition: (p) => p.count.value > 0,
-              builder: (_, p) => Text('second match'),
-            ),
-          ],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VestigeWhen<_TestPillar>(
+            cases: [
+              WhenCase(
+                condition: (p) => p.count.value > 0,
+                builder: (_, p) => Text('first match'),
+              ),
+              WhenCase(
+                condition: (p) => p.count.value > 0,
+                builder: (_, p) => Text('second match'),
+              ),
+            ],
+          ),
         ),
-      ));
+      );
 
       expect(find.text('first match'), findsOneWidget);
       expect(find.text('second match'), findsNothing);
@@ -174,18 +186,20 @@ void main() {
       final pillar = _TestPillar();
       Titan.put(pillar);
 
-      await tester.pumpWidget(MaterialApp(
-        home: VestigeWhen<_TestPillar>(
-          cases: [
-            WhenCase(
-              condition: (p) =>
-                  p.count.value > 10 && p.label.value == 'special',
-              builder: (_, p) => Text('special high'),
-            ),
-          ],
-          orElse: (_, p) => Text('normal'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VestigeWhen<_TestPillar>(
+            cases: [
+              WhenCase(
+                condition: (p) =>
+                    p.count.value > 10 && p.label.value == 'special',
+                builder: (_, p) => Text('special high'),
+              ),
+            ],
+            orElse: (_, p) => Text('normal'),
+          ),
         ),
-      ));
+      );
 
       expect(find.text('normal'), findsOneWidget);
 

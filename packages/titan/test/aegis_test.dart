@@ -4,10 +4,7 @@ import 'package:titan/titan.dart';
 void main() {
   group('Aegis', () {
     test('succeeds on first attempt', () async {
-      final result = await Aegis.run(
-        () async => 42,
-        maxAttempts: 3,
-      );
+      final result = await Aegis.run(() async => 42, maxAttempts: 3);
       expect(result, 42);
     });
 
@@ -246,13 +243,10 @@ void main() {
     test('single attempt does not retry', () async {
       var attempts = 0;
       try {
-        await Aegis.run(
-          () async {
-            attempts++;
-            throw Exception('fail');
-          },
-          maxAttempts: 1,
-        );
+        await Aegis.run(() async {
+          attempts++;
+          throw Exception('fail');
+        }, maxAttempts: 1);
       } catch (_) {}
 
       expect(attempts, 1);

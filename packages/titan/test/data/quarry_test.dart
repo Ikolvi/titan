@@ -362,10 +362,7 @@ void main() {
         },
       );
 
-      await q.startPolling(
-        Duration(milliseconds: 50),
-        fetchImmediately: true,
-      );
+      await q.startPolling(Duration(milliseconds: 50), fetchImmediately: true);
       expect(q.isPolling, true);
       expect(fetchCount, 1); // Immediate fetch
 
@@ -396,24 +393,26 @@ void main() {
       q.dispose();
     });
 
-    test('startPolling with fetchImmediately false skips initial fetch',
-        () async {
-      var fetchCount = 0;
-      final q = Quarry<int>(
-        fetcher: () async {
-          fetchCount++;
-          return fetchCount;
-        },
-      );
+    test(
+      'startPolling with fetchImmediately false skips initial fetch',
+      () async {
+        var fetchCount = 0;
+        final q = Quarry<int>(
+          fetcher: () async {
+            fetchCount++;
+            return fetchCount;
+          },
+        );
 
-      await q.startPolling(
-        Duration(milliseconds: 200),
-        fetchImmediately: false,
-      );
-      expect(fetchCount, 0); // No immediate fetch
-      q.stopPolling();
-      q.dispose();
-    });
+        await q.startPolling(
+          Duration(milliseconds: 200),
+          fetchImmediately: false,
+        );
+        expect(fetchCount, 0); // No immediate fetch
+        q.stopPolling();
+        q.dispose();
+      },
+    );
 
     test('dispose stops polling', () async {
       var fetchCount = 0;

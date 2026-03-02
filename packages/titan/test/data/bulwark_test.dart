@@ -81,9 +81,7 @@ void main() {
       final breaker = Bulwark<String>(failureThreshold: 1);
 
       try {
-        await breaker.call(
-          () async => throw Exception('fail'),
-        );
+        await breaker.call(() async => throw Exception('fail'));
       } catch (_) {}
 
       expect(breaker.isOpen, isTrue);
@@ -113,9 +111,7 @@ void main() {
       );
 
       try {
-        await breaker.call(
-          () async => throw Exception('fail'),
-        );
+        await breaker.call(() async => throw Exception('fail'));
       } catch (_) {}
 
       expect(breaker.isOpen, isTrue);
@@ -135,9 +131,7 @@ void main() {
       );
 
       try {
-        await breaker.call(
-          () async => throw Exception('fail'),
-        );
+        await breaker.call(() async => throw Exception('fail'));
       } catch (_) {}
 
       // Wait for half-open
@@ -161,9 +155,7 @@ void main() {
       );
 
       try {
-        await breaker.call(
-          () async => throw Exception('fail 1'),
-        );
+        await breaker.call(() async => throw Exception('fail 1'));
       } catch (_) {}
 
       await Future<void>.delayed(Duration(milliseconds: 80));
@@ -171,9 +163,7 @@ void main() {
 
       // Failed probe
       try {
-        await breaker.call(
-          () async => throw Exception('fail 2'),
-        );
+        await breaker.call(() async => throw Exception('fail 2'));
       } catch (_) {}
 
       expect(breaker.isOpen, isTrue);
@@ -211,9 +201,7 @@ void main() {
       );
 
       try {
-        await breaker.call(
-          () async => throw Exception('fail'),
-        );
+        await breaker.call(() async => throw Exception('fail'));
       } catch (_) {}
       expect(events, ['open']);
 
@@ -230,9 +218,7 @@ void main() {
       final breaker = Bulwark<String>(failureThreshold: 1);
 
       try {
-        await breaker.call(
-          () async => throw Exception('fail'),
-        );
+        await breaker.call(() async => throw Exception('fail'));
       } catch (_) {}
 
       expect(breaker.isOpen, isTrue);
@@ -263,9 +249,7 @@ void main() {
       breaker.stateCore.listen((s) => states.add(s));
 
       try {
-        await breaker.call(
-          () async => throw Exception('fail'),
-        );
+        await breaker.call(() async => throw Exception('fail'));
       } catch (_) {}
 
       expect(states, [BulwarkState.open]);

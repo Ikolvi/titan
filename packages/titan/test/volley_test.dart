@@ -30,7 +30,10 @@ void main() {
 
       final tasks = [
         VolleyTask<int>(name: 'ok', execute: () async => 1),
-        VolleyTask<int>(name: 'fail', execute: () async => throw Exception('boom')),
+        VolleyTask<int>(
+          name: 'fail',
+          execute: () async => throw Exception('boom'),
+        ),
         VolleyTask<int>(name: 'ok2', execute: () async => 3),
       ];
 
@@ -54,14 +57,18 @@ void main() {
 
       final volley = Volley<int>(concurrency: 2);
 
-      final tasks = List.generate(6, (i) =>
-        VolleyTask<int>(name: 'task$i', execute: () async {
-          concurrent++;
-          if (concurrent > maxConcurrent) maxConcurrent = concurrent;
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-          concurrent--;
-          return i;
-        }),
+      final tasks = List.generate(
+        6,
+        (i) => VolleyTask<int>(
+          name: 'task$i',
+          execute: () async {
+            concurrent++;
+            if (concurrent > maxConcurrent) maxConcurrent = concurrent;
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+            concurrent--;
+            return i;
+          },
+        ),
       );
 
       await volley.execute(tasks);
@@ -75,14 +82,20 @@ void main() {
       final volley = Volley<int>(concurrency: 1);
 
       final tasks = [
-        VolleyTask<int>(name: 'a', execute: () async {
-          await Future<void>.delayed(const Duration(milliseconds: 5));
-          return 1;
-        }),
-        VolleyTask<int>(name: 'b', execute: () async {
-          await Future<void>.delayed(const Duration(milliseconds: 5));
-          return 2;
-        }),
+        VolleyTask<int>(
+          name: 'a',
+          execute: () async {
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+            return 1;
+          },
+        ),
+        VolleyTask<int>(
+          name: 'b',
+          execute: () async {
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+            return 2;
+          },
+        ),
       ];
 
       await volley.execute(tasks);
@@ -98,11 +111,15 @@ void main() {
     test('can cancel running tasks', () async {
       final volley = Volley<int>(concurrency: 1);
 
-      final tasks = List.generate(10, (i) =>
-        VolleyTask<int>(name: 'task$i', execute: () async {
-          await Future<void>.delayed(const Duration(milliseconds: 50));
-          return i;
-        }),
+      final tasks = List.generate(
+        10,
+        (i) => VolleyTask<int>(
+          name: 'task$i',
+          execute: () async {
+            await Future<void>.delayed(const Duration(milliseconds: 50));
+            return i;
+          },
+        ),
       );
 
       final future = volley.execute(tasks);
@@ -122,9 +139,7 @@ void main() {
     test('reset clears state', () async {
       final volley = Volley<int>();
 
-      final tasks = [
-        VolleyTask<int>(name: 'a', execute: () async => 1),
-      ];
+      final tasks = [VolleyTask<int>(name: 'a', execute: () async => 1)];
 
       await volley.execute(tasks);
       expect(volley.status, VolleyStatus.done);
@@ -170,11 +185,15 @@ void main() {
       final volley = Volley<String>(concurrency: 1);
 
       final order = <int>[];
-      final tasks = List.generate(3, (i) =>
-        VolleyTask<String>(name: 'task$i', execute: () async {
-          order.add(i);
-          return 'result$i';
-        }),
+      final tasks = List.generate(
+        3,
+        (i) => VolleyTask<String>(
+          name: 'task$i',
+          execute: () async {
+            order.add(i);
+            return 'result$i';
+          },
+        ),
       );
 
       final results = await volley.execute(tasks);

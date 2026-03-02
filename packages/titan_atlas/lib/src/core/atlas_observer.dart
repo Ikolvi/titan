@@ -154,7 +154,7 @@ class AtlasAnalyticsObserver extends AtlasObserver {
   /// [screenName] is resolved via [screenNameResolver], or falls back
   /// to the route name, then to the path.
   final void Function(String screenName, Map<String, String> parameters)?
-      onScreen;
+  onScreen;
 
   /// Called on every navigation event with structured event data.
   final void Function(String event, Map<String, dynamic> parameters)? onEvent;
@@ -168,7 +168,8 @@ class AtlasAnalyticsObserver extends AtlasObserver {
     String path,
     String? name,
     Map<String, dynamic>? metadata,
-  )? screenNameResolver;
+  )?
+  screenNameResolver;
 
   /// Creates an analytics observer.
   const AtlasAnalyticsObserver({
@@ -179,7 +180,11 @@ class AtlasAnalyticsObserver extends AtlasObserver {
 
   String _resolveScreenName(Waypoint waypoint) {
     if (screenNameResolver != null) {
-      return screenNameResolver!(waypoint.path, waypoint.name, waypoint.metadata);
+      return screenNameResolver!(
+        waypoint.path,
+        waypoint.name,
+        waypoint.metadata,
+      );
     }
     return waypoint.name ?? waypoint.path;
   }
@@ -221,26 +226,17 @@ class AtlasAnalyticsObserver extends AtlasObserver {
   void onReset(Waypoint to) {
     final screenName = _resolveScreenName(to);
     onScreen?.call(screenName, {'path': to.path});
-    onEvent?.call('reset', {
-      'to': to.path,
-      'screen_name': screenName,
-    });
+    onEvent?.call('reset', {'to': to.path, 'screen_name': screenName});
   }
 
   @override
   void onGuardRedirect(String originalPath, String redirectPath) {
-    onEvent?.call('guard_redirect', {
-      'from': originalPath,
-      'to': redirectPath,
-    });
+    onEvent?.call('guard_redirect', {'from': originalPath, 'to': redirectPath});
   }
 
   @override
   void onDriftRedirect(String originalPath, String redirectPath) {
-    onEvent?.call('drift_redirect', {
-      'from': originalPath,
-      'to': redirectPath,
-    });
+    onEvent?.call('drift_redirect', {'from': originalPath, 'to': redirectPath});
   }
 
   @override

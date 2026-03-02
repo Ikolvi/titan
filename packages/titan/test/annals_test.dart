@@ -40,21 +40,25 @@ void main() {
     test('records entries when enabled', () {
       Annals.enable();
 
-      Annals.record(AnnalEntry(
-        coreName: 'count',
-        pillarType: 'TestPillar',
-        oldValue: 0,
-        newValue: 1,
-        action: 'increment',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'count',
+          pillarType: 'TestPillar',
+          oldValue: 0,
+          newValue: 1,
+          action: 'increment',
+        ),
+      );
 
-      Annals.record(AnnalEntry(
-        coreName: 'name',
-        pillarType: 'TestPillar',
-        oldValue: 'Alice',
-        newValue: 'Bob',
-        action: 'rename',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'name',
+          pillarType: 'TestPillar',
+          oldValue: 'Alice',
+          newValue: 'Bob',
+          action: 'rename',
+        ),
+      );
 
       expect(Annals.length, 2);
       expect(Annals.entries.first.coreName, 'count');
@@ -63,34 +67,43 @@ void main() {
 
     test('entries list is unmodifiable', () {
       Annals.enable();
-      Annals.record(AnnalEntry(
-        coreName: 'test',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 1,
-        action: 'set',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'test',
+          pillarType: 'P',
+          oldValue: 0,
+          newValue: 1,
+          action: 'set',
+        ),
+      );
 
-      expect(() => Annals.entries.add(AnnalEntry(
-        coreName: 'hack',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 1,
-        action: 'set',
-      )), throwsUnsupportedError);
+      expect(
+        () => Annals.entries.add(
+          AnnalEntry(
+            coreName: 'hack',
+            pillarType: 'P',
+            oldValue: 0,
+            newValue: 1,
+            action: 'set',
+          ),
+        ),
+        throwsUnsupportedError,
+      );
     });
 
     test('evicts oldest entries when maxEntries reached', () {
       Annals.enable(maxEntries: 3);
 
       for (var i = 0; i < 5; i++) {
-        Annals.record(AnnalEntry(
-          coreName: 'item$i',
-          pillarType: 'P',
-          oldValue: null,
-          newValue: i,
-          action: 'set',
-        ));
+        Annals.record(
+          AnnalEntry(
+            coreName: 'item$i',
+            pillarType: 'P',
+            oldValue: null,
+            newValue: i,
+            action: 'set',
+          ),
+        );
       }
 
       expect(Annals.length, 3);
@@ -102,20 +115,24 @@ void main() {
     test('query filters by coreName', () {
       Annals.enable();
 
-      Annals.record(AnnalEntry(
-        coreName: 'count',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 1,
-        action: 'set',
-      ));
-      Annals.record(AnnalEntry(
-        coreName: 'name',
-        pillarType: 'P',
-        oldValue: '',
-        newValue: 'test',
-        action: 'set',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'count',
+          pillarType: 'P',
+          oldValue: 0,
+          newValue: 1,
+          action: 'set',
+        ),
+      );
+      Annals.record(
+        AnnalEntry(
+          coreName: 'name',
+          pillarType: 'P',
+          oldValue: '',
+          newValue: 'test',
+          action: 'set',
+        ),
+      );
 
       final results = Annals.query(coreName: 'count');
       expect(results.length, 1);
@@ -125,20 +142,24 @@ void main() {
     test('query filters by pillarType', () {
       Annals.enable();
 
-      Annals.record(AnnalEntry(
-        coreName: 'a',
-        pillarType: 'AuthPillar',
-        oldValue: null,
-        newValue: 1,
-        action: 'set',
-      ));
-      Annals.record(AnnalEntry(
-        coreName: 'b',
-        pillarType: 'CartPillar',
-        oldValue: null,
-        newValue: 2,
-        action: 'set',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'a',
+          pillarType: 'AuthPillar',
+          oldValue: null,
+          newValue: 1,
+          action: 'set',
+        ),
+      );
+      Annals.record(
+        AnnalEntry(
+          coreName: 'b',
+          pillarType: 'CartPillar',
+          oldValue: null,
+          newValue: 2,
+          action: 'set',
+        ),
+      );
 
       final results = Annals.query(pillarType: 'AuthPillar');
       expect(results.length, 1);
@@ -148,20 +169,24 @@ void main() {
     test('query filters by action', () {
       Annals.enable();
 
-      Annals.record(AnnalEntry(
-        coreName: 'count',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 1,
-        action: 'increment',
-      ));
-      Annals.record(AnnalEntry(
-        coreName: 'count',
-        pillarType: 'P',
-        oldValue: 1,
-        newValue: 0,
-        action: 'reset',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'count',
+          pillarType: 'P',
+          oldValue: 0,
+          newValue: 1,
+          action: 'increment',
+        ),
+      );
+      Annals.record(
+        AnnalEntry(
+          coreName: 'count',
+          pillarType: 'P',
+          oldValue: 1,
+          newValue: 0,
+          action: 'reset',
+        ),
+      );
 
       final results = Annals.query(action: 'reset');
       expect(results.length, 1);
@@ -171,22 +196,26 @@ void main() {
     test('query filters by userId', () {
       Annals.enable();
 
-      Annals.record(AnnalEntry(
-        coreName: 'a',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 1,
-        action: 'set',
-        userId: 'user1',
-      ));
-      Annals.record(AnnalEntry(
-        coreName: 'b',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 2,
-        action: 'set',
-        userId: 'user2',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'a',
+          pillarType: 'P',
+          oldValue: 0,
+          newValue: 1,
+          action: 'set',
+          userId: 'user1',
+        ),
+      );
+      Annals.record(
+        AnnalEntry(
+          coreName: 'b',
+          pillarType: 'P',
+          oldValue: 0,
+          newValue: 2,
+          action: 'set',
+          userId: 'user2',
+        ),
+      );
 
       final results = Annals.query(userId: 'user1');
       expect(results.length, 1);
@@ -197,20 +226,24 @@ void main() {
       Annals.enable();
 
       final before = DateTime.now().subtract(const Duration(seconds: 1));
-      Annals.record(AnnalEntry(
-        coreName: 'early',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 1,
-        action: 'set',
-      ));
-      Annals.record(AnnalEntry(
-        coreName: 'late',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 2,
-        action: 'set',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'early',
+          pillarType: 'P',
+          oldValue: 0,
+          newValue: 1,
+          action: 'set',
+        ),
+      );
+      Annals.record(
+        AnnalEntry(
+          coreName: 'late',
+          pillarType: 'P',
+          oldValue: 0,
+          newValue: 2,
+          action: 'set',
+        ),
+      );
       final after = DateTime.now().add(const Duration(seconds: 1));
 
       // All entries should be between before and after
@@ -227,13 +260,15 @@ void main() {
       Annals.enable();
 
       for (var i = 0; i < 10; i++) {
-        Annals.record(AnnalEntry(
-          coreName: 'item$i',
-          pillarType: 'P',
-          oldValue: null,
-          newValue: i,
-          action: 'set',
-        ));
+        Annals.record(
+          AnnalEntry(
+            coreName: 'item$i',
+            pillarType: 'P',
+            oldValue: null,
+            newValue: i,
+            action: 'set',
+          ),
+        );
       }
 
       final results = Annals.query(limit: 3);
@@ -246,13 +281,15 @@ void main() {
       final entries = <AnnalEntry>[];
       final sub = Annals.stream.listen(entries.add);
 
-      Annals.record(AnnalEntry(
-        coreName: 'count',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 1,
-        action: 'set',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'count',
+          pillarType: 'P',
+          oldValue: 0,
+          newValue: 1,
+          action: 'set',
+        ),
+      );
 
       await Future<void>.delayed(Duration.zero);
       expect(entries.length, 1);
@@ -264,14 +301,16 @@ void main() {
     test('export converts entries to maps', () {
       Annals.enable();
 
-      Annals.record(AnnalEntry(
-        coreName: 'count',
-        pillarType: 'TestPillar',
-        oldValue: 0,
-        newValue: 1,
-        action: 'increment',
-        userId: 'admin',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'count',
+          pillarType: 'TestPillar',
+          oldValue: 0,
+          newValue: 1,
+          action: 'increment',
+          userId: 'admin',
+        ),
+      );
 
       final exported = Annals.export();
       expect(exported.length, 1);
@@ -286,13 +325,15 @@ void main() {
     test('clear removes all entries', () {
       Annals.enable();
 
-      Annals.record(AnnalEntry(
-        coreName: 'test',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 1,
-        action: 'set',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'test',
+          pillarType: 'P',
+          oldValue: 0,
+          newValue: 1,
+          action: 'set',
+        ),
+      );
 
       expect(Annals.length, 1);
       Annals.clear();
@@ -303,13 +344,15 @@ void main() {
     test('reset clears entries and disables', () {
       Annals.enable();
 
-      Annals.record(AnnalEntry(
-        coreName: 'test',
-        pillarType: 'P',
-        oldValue: 0,
-        newValue: 1,
-        action: 'set',
-      ));
+      Annals.record(
+        AnnalEntry(
+          coreName: 'test',
+          pillarType: 'P',
+          oldValue: 0,
+          newValue: 1,
+          action: 'set',
+        ),
+      );
 
       Annals.reset();
       expect(Annals.length, 0);
@@ -341,41 +384,41 @@ void main() {
     test('combined query filters', () {
       Annals.enable();
 
-      Annals.record(AnnalEntry(
-        coreName: 'count',
-        pillarType: 'AuthPillar',
-        oldValue: 0,
-        newValue: 1,
-        action: 'login',
-        userId: 'user1',
-      ));
-      Annals.record(AnnalEntry(
-        coreName: 'count',
-        pillarType: 'CartPillar',
-        oldValue: 0,
-        newValue: 1,
-        action: 'add',
-        userId: 'user1',
-      ));
-      Annals.record(AnnalEntry(
-        coreName: 'session',
-        pillarType: 'AuthPillar',
-        oldValue: null,
-        newValue: 'token',
-        action: 'login',
-        userId: 'user2',
-      ));
-
-      final results = Annals.query(
-        pillarType: 'AuthPillar',
-        action: 'login',
+      Annals.record(
+        AnnalEntry(
+          coreName: 'count',
+          pillarType: 'AuthPillar',
+          oldValue: 0,
+          newValue: 1,
+          action: 'login',
+          userId: 'user1',
+        ),
       );
+      Annals.record(
+        AnnalEntry(
+          coreName: 'count',
+          pillarType: 'CartPillar',
+          oldValue: 0,
+          newValue: 1,
+          action: 'add',
+          userId: 'user1',
+        ),
+      );
+      Annals.record(
+        AnnalEntry(
+          coreName: 'session',
+          pillarType: 'AuthPillar',
+          oldValue: null,
+          newValue: 'token',
+          action: 'login',
+          userId: 'user2',
+        ),
+      );
+
+      final results = Annals.query(pillarType: 'AuthPillar', action: 'login');
       expect(results.length, 2);
 
-      final results2 = Annals.query(
-        pillarType: 'AuthPillar',
-        userId: 'user1',
-      );
+      final results2 = Annals.query(pillarType: 'AuthPillar', userId: 'user1');
       expect(results2.length, 1);
       expect(results2.first.coreName, 'count');
     });

@@ -90,11 +90,7 @@ class SagaStep<T> {
   final Future<void> Function(T? result)? compensate;
 
   /// Creates a saga step.
-  const SagaStep({
-    required this.name,
-    required this.execute,
-    this.compensate,
-  });
+  const SagaStep({required this.name, required this.execute, this.compensate});
 }
 
 /// A multi-step async workflow orchestrator with compensating actions.

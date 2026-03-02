@@ -208,7 +208,7 @@ class Relic {
   /// Each function receives the raw JSON map and should return
   /// a transformed map compatible with the next version.
   final Map<int, Map<String, Object?> Function(Map<String, Object?>)>
-      _migrations;
+  _migrations;
 
   final List<void Function()> _unsubscribers = [];
   final Map<String, Timer> _debounceTimers = {};
@@ -350,10 +350,7 @@ class Relic {
 
     // Write migrated data back
     for (final entry in migrated.entries) {
-      await adapter.write(
-        _prefixedKey(entry.key),
-        jsonEncode(entry.value),
-      );
+      await adapter.write(_prefixedKey(entry.key), jsonEncode(entry.value));
     }
   }
 

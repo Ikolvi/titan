@@ -235,8 +235,7 @@ class Loom<S, E> {
   /// The transition history (most recent last).
   ///
   /// Limited by [maxHistory] (default: 50).
-  List<LoomTransition<S, E>> get history =>
-      List.unmodifiable(_history);
+  List<LoomTransition<S, E>> get history => List.unmodifiable(_history);
 
   /// Resets the state machine to a specific state.
   ///

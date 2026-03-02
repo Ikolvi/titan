@@ -303,10 +303,7 @@ class BulwarkOpenException implements Exception {
   final Object? lastError;
 
   /// Creates a circuit open exception.
-  const BulwarkOpenException({
-    required this.failureCount,
-    this.lastError,
-  });
+  const BulwarkOpenException({required this.failureCount, this.lastError});
 
   @override
   String toString() =>

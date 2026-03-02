@@ -112,17 +112,13 @@ class RampartValue<T> {
   final T? expanded;
 
   /// Creates a responsive value with per-tier overrides.
-  const RampartValue({
-    required this.compact,
-    this.medium,
-    this.expanded,
-  });
+  const RampartValue({required this.compact, this.medium, this.expanded});
 
   /// Creates a value that's the same across all tiers.
   const RampartValue.all(T value)
-      : compact = value,
-        medium = value,
-        expanded = value;
+    : compact = value,
+      medium = value,
+      expanded = value;
 
   /// Resolve the value for the given layout tier.
   T resolve(RampartLayout layout) {
@@ -243,7 +239,8 @@ class Rampart extends StatelessWidget {
   ///   // show side panel
   /// }
   /// ```
-  static RampartLayout layoutOf(BuildContext context, [
+  static RampartLayout layoutOf(
+    BuildContext context, [
     RampartBreakpoints breakpoints = const RampartBreakpoints(),
   ]) {
     final width = MediaQuery.sizeOf(context).width;

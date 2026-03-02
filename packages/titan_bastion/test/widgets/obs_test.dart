@@ -390,8 +390,9 @@ void main() {
       expect(find.text('Count: 1'), findsOneWidget);
     });
 
-    testWidgets('does NOT rebuild when unselected state changes',
-        (tester) async {
+    testWidgets('does NOT rebuild when unselected state changes', (
+      tester,
+    ) async {
       late _CounterPillar pillar;
       int buildCount = 0;
 
@@ -456,8 +457,9 @@ void main() {
       expect(find.text('Doubled: 2'), findsOneWidget);
     });
 
-    testWidgets('custom equality prevents unnecessary rebuilds',
-        (tester) async {
+    testWidgets('custom equality prevents unnecessary rebuilds', (
+      tester,
+    ) async {
       late _CounterPillar pillar;
       int buildCount = 0;
 
@@ -471,8 +473,7 @@ void main() {
               },
             ],
             child: VestigeSelector<_CounterPillar, String>(
-              selector: (counter) =>
-                  counter.count.value > 5 ? 'high' : 'low',
+              selector: (counter) => counter.count.value > 5 ? 'high' : 'low',
               equals: (a, b) => a == b,
               builder: (context, level) {
                 buildCount++;

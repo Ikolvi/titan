@@ -543,10 +543,9 @@ void main() {
     tearDown(() => Vigil.reset());
 
     test('addBreadcrumb stores breadcrumbs', () {
-      Vigil.addBreadcrumb(Breadcrumb(
-        category: 'nav',
-        message: 'Opened settings',
-      ));
+      Vigil.addBreadcrumb(
+        Breadcrumb(category: 'nav', message: 'Opened settings'),
+      );
       expect(Vigil.breadcrumbs, hasLength(1));
       expect(Vigil.breadcrumbs.first.category, 'nav');
       expect(Vigil.breadcrumbs.first.message, 'Opened settings');
@@ -557,8 +556,11 @@ void main() {
       Vigil.addBreadcrumb(Breadcrumb(category: 'b', message: 'second'));
       Vigil.addBreadcrumb(Breadcrumb(category: 'c', message: 'third'));
 
-      expect(Vigil.breadcrumbs.map((b) => b.message).toList(),
-          ['first', 'second', 'third']);
+      expect(Vigil.breadcrumbs.map((b) => b.message).toList(), [
+        'first',
+        'second',
+        'third',
+      ]);
     });
 
     test('breadcrumb ring buffer wraps correctly', () {
@@ -569,8 +571,7 @@ void main() {
       Vigil.addBreadcrumb(Breadcrumb(category: 'a', message: '4')); // wraps
 
       expect(Vigil.breadcrumbs, hasLength(3));
-      expect(Vigil.breadcrumbs.map((b) => b.message).toList(),
-          ['2', '3', '4']);
+      expect(Vigil.breadcrumbs.map((b) => b.message).toList(), ['2', '3', '4']);
     });
 
     test('clearBreadcrumbs empties the trail', () {
@@ -580,11 +581,13 @@ void main() {
     });
 
     test('breadcrumb metadata is preserved', () {
-      Vigil.addBreadcrumb(Breadcrumb(
-        category: 'api',
-        message: 'GET /users',
-        metadata: {'status': 200, 'count': 5},
-      ));
+      Vigil.addBreadcrumb(
+        Breadcrumb(
+          category: 'api',
+          message: 'GET /users',
+          metadata: {'status': 200, 'count': 5},
+        ),
+      );
 
       final bc = Vigil.breadcrumbs.first;
       expect(bc.metadata, {'status': 200, 'count': 5});

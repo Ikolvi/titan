@@ -733,10 +733,7 @@ class _TestGuardedWatchPillar extends Pillar {
 
   @override
   void onInit() {
-    watch(
-      () => watchLog.add(data.value),
-      when: () => enabled.value,
-    );
+    watch(() => watchLog.add(data.value), when: () => enabled.value);
   }
 }
 

@@ -28,7 +28,10 @@ void main() {
         expect(Cartograph.hasName('home'), isTrue);
         expect(Cartograph.hasName('profile'), isTrue);
         expect(Cartograph.hasName('settings'), isTrue);
-        expect(Cartograph.routeNames, containsAll(['home', 'profile', 'settings']));
+        expect(
+          Cartograph.routeNames,
+          containsAll(['home', 'profile', 'settings']),
+        );
       });
 
       test('pathFor returns null for unregistered name', () {
@@ -55,19 +58,19 @@ void main() {
 
       test('build URL with multiple runes', () {
         Cartograph.name('post', '/users/:userId/posts/:postId');
-        final url = Cartograph.build('post', runes: {
-          'userId': '42',
-          'postId': '7',
-        });
+        final url = Cartograph.build(
+          'post',
+          runes: {'userId': '42', 'postId': '7'},
+        );
         expect(url, '/users/42/posts/7');
       });
 
       test('build URL with query parameters', () {
         Cartograph.name('search', '/search');
-        final url = Cartograph.build('search', query: {
-          'q': 'flutter',
-          'page': '2',
-        });
+        final url = Cartograph.build(
+          'search',
+          query: {'q': 'flutter', 'page': '2'},
+        );
         expect(url, contains('/search?'));
         expect(url, contains('q=flutter'));
         expect(url, contains('page=2'));
@@ -75,7 +78,8 @@ void main() {
 
       test('build URL with runes and query', () {
         Cartograph.name('profile', '/users/:id');
-        final url = Cartograph.build('profile',
+        final url = Cartograph.build(
+          'profile',
           runes: {'id': '42'},
           query: {'tab': 'posts'},
         );
@@ -83,10 +87,7 @@ void main() {
       });
 
       test('build throws for unregistered route', () {
-        expect(
-          () => Cartograph.build('unknown'),
-          throwsA(isA<StateError>()),
-        );
+        expect(() => Cartograph.build('unknown'), throwsA(isA<StateError>()));
       });
 
       test('build throws for missing rune', () {

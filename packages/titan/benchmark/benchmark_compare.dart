@@ -24,7 +24,9 @@ import 'dart:io';
 
 void main(List<String> args) {
   if (args.length < 2) {
-    print('Usage: dart run benchmark/benchmark_compare.dart <baseline> <current>');
+    print(
+      'Usage: dart run benchmark/benchmark_compare.dart <baseline> <current>',
+    );
     print('');
     print('Examples:');
     print('  dart run benchmark/benchmark_compare.dart \\');
@@ -64,8 +66,10 @@ void main(List<String> args) {
   print('  Baseline: v${baseline['version']} (${baseline['timestamp']})');
   print('  Current:  v${current['version']} (${current['timestamp']})');
   print('');
-  print('${'  Metric'.padRight(38)} ${'Baseline'.padRight(18)} '
-      '${'Current'.padRight(18)} ${'Change'.padRight(10)} Flag');
+  print(
+    '${'  Metric'.padRight(38)} ${'Baseline'.padRight(18)} '
+    '${'Current'.padRight(18)} ${'Change'.padRight(10)} Flag',
+  );
   print('  ${'─' * 95}');
 
   var regressions = 0;
@@ -115,23 +119,29 @@ void main(List<String> args) {
           unchanged++;
         }
 
-        print('  ${name.padRight(36)} ${bStr.padRight(18)} '
-            '${cStr.padRight(18)} $changeStr $flag');
+        print(
+          '  ${name.padRight(36)} ${bStr.padRight(18)} '
+          '${cStr.padRight(18)} $changeStr $flag',
+        );
       } else if (hasCurrent) {
         final cData = currentBench[name] as Map<String, dynamic>;
         final cValue = (cData['value'] as num).toDouble();
         final unit = cData['unit'] as String? ?? '';
         newMetrics++;
-        print('  ${name.padRight(36)} ${'—'.padRight(18)} '
-            '${_formatVal(cValue, unit).padRight(18)} ${'NEW'.padLeft(10)} 🆕');
+        print(
+          '  ${name.padRight(36)} ${'—'.padRight(18)} '
+          '${_formatVal(cValue, unit).padRight(18)} ${'NEW'.padLeft(10)} 🆕',
+        );
       } else {
         final bData = baselineBench[name] as Map<String, dynamic>;
         final bValue = (bData['value'] as num).toDouble();
         final unit = bData['unit'] as String? ?? '';
         removedMetrics++;
-        print('  ${name.padRight(36)} '
-            '${_formatVal(bValue, unit).padRight(18)} ${'—'.padRight(18)} '
-            '${'REMOVED'.padLeft(10)} ❌');
+        print(
+          '  ${name.padRight(36)} '
+          '${_formatVal(bValue, unit).padRight(18)} ${'—'.padRight(18)} '
+          '${'REMOVED'.padLeft(10)} ❌',
+        );
       }
     }
   }
@@ -157,8 +167,11 @@ void main(List<String> args) {
   }
 }
 
-String _getSuite(String name, Map<String, dynamic> current,
-    Map<String, dynamic> baseline) {
+String _getSuite(
+  String name,
+  Map<String, dynamic> current,
+  Map<String, dynamic> baseline,
+) {
   final data = (current[name] ?? baseline[name]) as Map<String, dynamic>?;
   return (data?['suite'] as String?) ?? 'unknown';
 }
