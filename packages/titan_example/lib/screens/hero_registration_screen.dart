@@ -215,7 +215,7 @@ class _ScrollTextField extends Spark {
 
   @override
   Widget ignite(BuildContext context) {
-    final controller = useTextController(text: value);
+    final controller = useTextController(text: value, fieldId: 'reg_$label');
 
     // Sync external value → controller when parent pushes a new value
     useValueChanged<String, void>(value, (_, _) {

@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 
 import 'imprint.dart';
 import 'shade.dart';
+import '../widgets/shade_text_controller.dart';
 
 // ---------------------------------------------------------------------------
 // Phantom — Gesture Replay Engine
@@ -336,28 +337,31 @@ class Phantom {
             ? shade?.getTextController(fieldId)
             : null;
 
+        final textValue = TextEditingValue(
+          text: imprint.text ?? '',
+          selection: TextSelection(
+            baseOffset: imprint.selectionBase ?? 0,
+            extentOffset: imprint.selectionExtent ?? 0,
+          ),
+          composing: TextRange(
+            start: imprint.composingBase ?? -1,
+            end: imprint.composingExtent ?? -1,
+          ),
+        );
+
         if (controller != null) {
-          // Direct text injection — no keyboard needed
-          FocusManager.instance.primaryFocus?.unfocus();
-          _hideKeyboard();
-          controller.setValueSilently(
-            TextEditingValue(
-              text: imprint.text ?? '',
-              selection: TextSelection(
-                baseOffset: imprint.selectionBase ?? 0,
-                extentOffset: imprint.selectionExtent ?? 0,
-              ),
-              composing: TextRange(
-                start: imprint.composingBase ?? -1,
-                end: imprint.composingExtent ?? -1,
-              ),
-            ),
-          );
+          // Direct text injection via registered controller
+          controller.setValueSilently(textValue);
+          dispatched++;
+        } else if (_tryInjectIntoFocusedField(textValue)) {
+          // Fallback: inject into whatever text field has focus
+          dispatched++;
+        } else if (onTextInput != null) {
+          // Last resort: delegate to callback
+          onTextInput!.call(imprint);
           dispatched++;
         } else {
-          // Fallback to callback
-          onTextInput?.call(imprint);
-          dispatched++;
+          skipped++;
         }
       } else if (imprint.type == ImprintType.textAction) {
         // Text action — notify via callback
@@ -439,6 +443,64 @@ class Phantom {
 
     onComplete?.call(result);
     return result;
+  }
+
+  // -----------------------------------------------------------------------
+  // Focused-field text injection
+  // -----------------------------------------------------------------------
+
+  /// Try to inject [value] into the currently focused text field.
+  ///
+  /// Walks the focus tree to find an [EditableTextState] and uses
+  /// [TextInputConnection.setEditingState] to push the value. This
+  /// handles text fields that were created without a [fieldId] — e.g.
+  /// via [useTextController] without specifying a field identifier.
+  ///
+  /// Returns `true` if text was successfully injected.
+  bool _tryInjectIntoFocusedField(TextEditingValue value) {
+    // Find any ShadeTextController that matches via the shade registry
+    // (even without fieldId, there might be one currently active)
+    final controllers = shade?.textControllers.values;
+    if (controllers != null) {
+      for (final controller in controllers) {
+        // Heuristic: if there's exactly one controller, use it
+        if (controllers.length == 1) {
+          controller.setValueSilently(value);
+          return true;
+        }
+      }
+    }
+
+    // Try platform text input channel as last resort
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus == null) return false;
+
+    // Walk up from the focused node to find an EditableText
+    BuildContext? context = focus.context;
+    if (context == null) return false;
+
+    // Search for a TextEditingController attached to the focused widget
+    TextEditingController? targetController;
+    context.visitAncestorElements((element) {
+      final widget = element.widget;
+      if (widget is EditableText) {
+        targetController = widget.controller;
+        return false; // stop
+      }
+      return true; // keep searching
+    });
+
+    if (targetController != null) {
+      // Check if it's a ShadeTextController for silent setting
+      if (targetController is ShadeTextController) {
+        (targetController! as ShadeTextController).setValueSilently(value);
+      } else {
+        targetController!.value = value;
+      }
+      return true;
+    }
+
+    return false;
   }
 
   // -----------------------------------------------------------------------

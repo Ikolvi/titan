@@ -489,7 +489,9 @@ void main() {
       // Should complete without cancellation even though routes differ
       expect(result.wasCancelled, false);
       expect(result.routeChanged, false);
-      expect(result.eventsDispatched, 1);
+      // Text event skipped: no controller registered, no focused field,
+      // and no onTextInput callback — but replay itself completed.
+      expect(result.eventsSkipped, 1);
     });
   });
 

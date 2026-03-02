@@ -27,7 +27,10 @@ class SparkDemoScreen extends Spark {
     final prevCount = usePrevious(count.value);
 
     // --- Controller hooks (auto-disposed) ---
-    final nameCtrl = useTextController(text: heroName.value);
+    final nameCtrl = useTextController(
+      text: heroName.value,
+      fieldId: 'hero_name_spark',
+    );
     final charCount = useValueListenable(nameCtrl);
     final anim = useAnimationController(
       duration: const Duration(milliseconds: 600),

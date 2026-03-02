@@ -225,7 +225,10 @@ class _RenameDialog extends Spark {
 
   @override
   Widget ignite(BuildContext context) {
-    final controller = useTextController(text: board.heroName.value);
+    final controller = useTextController(
+      text: board.heroName.value,
+      fieldId: 'hero_rename',
+    );
 
     return AlertDialog(
       title: const Text('Rename Hero'),

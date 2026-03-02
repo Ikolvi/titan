@@ -23,7 +23,10 @@ class LoginScreen extends Spark {
 
   @override
   Widget ignite(BuildContext context) {
-    final controller = useTextController(text: 'Kael');
+    final controller = useTextController(
+      text: 'Kael',
+      fieldId: 'hero_name_login',
+    );
     final theme = Theme.of(context);
     final redirectTarget = waypoint.query['redirect'];
 

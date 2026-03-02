@@ -137,7 +137,7 @@ void main() {
       int factoryCallCount = 0;
       String? factoryText;
 
-      Spark.textControllerFactory = ({String? text}) {
+      Spark.textControllerFactory = ({String? text, String? fieldId}) {
         factoryCallCount++;
         factoryText = text;
         return TextEditingController(text: text);
@@ -160,7 +160,7 @@ void main() {
     testWidgets('factory-created controller works for rename', (tester) async {
       final controllers = <TextEditingController>[];
 
-      Spark.textControllerFactory = ({String? text}) {
+      Spark.textControllerFactory = ({String? text, String? fieldId}) {
         final ctrl = TextEditingController(text: text);
         controllers.add(ctrl);
         return ctrl;
@@ -206,7 +206,7 @@ void main() {
     testWidgets('controller is disposed when dialog closes', (tester) async {
       final controllers = <TextEditingController>[];
 
-      Spark.textControllerFactory = ({String? text}) {
+      Spark.textControllerFactory = ({String? text, String? fieldId}) {
         final ctrl = TextEditingController(text: text);
         controllers.add(ctrl);
         return ctrl;

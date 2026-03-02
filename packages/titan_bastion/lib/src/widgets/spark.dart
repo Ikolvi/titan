@@ -147,13 +147,21 @@ abstract class Spark extends StatefulWidget {
   /// When set, the factory runs once per [useTextController] call
   /// during the first build — subsequent rebuilds reuse the controller.
   ///
+  /// The [fieldId] parameter allows the factory to associate the
+  /// controller with a specific field for replay targeting.
+  ///
   /// ```dart
   /// // Registered by Colossus.init()
-  /// Spark.textControllerFactory = ({String? text}) {
-  ///   return ShadeTextController(shade: shade, text: text);
+  /// Spark.textControllerFactory = ({String? text, String? fieldId}) {
+  ///   return ShadeTextController(
+  ///     shade: shade,
+  ///     text: text,
+  ///     fieldId: fieldId,
+  ///   );
   /// };
   /// ```
-  static TextEditingController Function({String? text})? textControllerFactory;
+  static TextEditingController Function({String? text, String? fieldId})?
+  textControllerFactory;
 
   @override
   State<Spark> createState() => SparkState();
@@ -636,22 +644,49 @@ class _RefHookState<T> extends _HookState<T> {
 ///   }
 /// }
 /// ```
-TextEditingController useTextController({String? text}) {
+/// Creates a [TextEditingController] that auto-disposes with the Spark.
+///
+/// When [Spark.textControllerFactory] is set (e.g. by Colossus),
+/// the factory creates a recording-aware controller instead.
+///
+/// The [fieldId] identifies this text field for replay targeting.
+/// When provided, Phantom can directly inject text into the
+/// correct field during replay without needing keyboard focus.
+///
+/// ```dart
+/// class MyForm extends Spark {
+///   @override
+///   Widget spark(BuildContext context) {
+///     final name = useTextController(fieldId: 'hero_name');
+///     final email = useTextController(fieldId: 'hero_email');
+///     return Column(
+///       children: [
+///         TextField(controller: name),
+///         TextField(controller: email),
+///       ],
+///     );
+///   }
+/// }
+/// ```
+TextEditingController useTextController({String? text, String? fieldId}) {
   final state = SparkState.current!;
-  return state.use(() => _TextControllerHookState(text: text)).controller;
+  return state
+      .use(() => _TextControllerHookState(text: text, fieldId: fieldId))
+      .controller;
 }
 
 class _TextControllerHookState extends _HookState<void> {
-  _TextControllerHookState({this.text});
+  _TextControllerHookState({this.text, this.fieldId});
 
   final String? text;
+  final String? fieldId;
   late final TextEditingController controller;
 
   @override
   void init() {
     final factory = Spark.textControllerFactory;
     controller = factory != null
-        ? factory(text: text)
+        ? factory(text: text, fieldId: fieldId)
         : TextEditingController(text: text);
   }
 

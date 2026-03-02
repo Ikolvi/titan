@@ -260,8 +260,8 @@ class Colossus extends Pillar {
     // Performance: factory runs once per hook init (first build only);
     // ShadeTextController adds a single O(1) isRecording check per
     // text change — zero overhead when not recording.
-    Spark.textControllerFactory = ({String? text}) {
-      return ShadeTextController(shade: shade, text: text);
+    Spark.textControllerFactory = ({String? text, String? fieldId}) {
+      return ShadeTextController(shade: shade, text: text, fieldId: fieldId);
     };
   }
 
