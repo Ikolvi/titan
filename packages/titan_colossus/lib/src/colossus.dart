@@ -150,6 +150,19 @@ class Colossus extends Pillar {
   /// Directory path for exporting reports.
   String? get exportDirectory => _exportDirectory;
 
+  /// Callback invoked after reports are exported to disk.
+  ///
+  /// Receives a list of saved file paths. Use this to integrate
+  /// with platform sharing (e.g., `share_plus`), open the folder,
+  /// or show a notification.
+  ///
+  /// ```dart
+  /// Colossus.instance.onExport = (paths) {
+  ///   Share.shareFiles(paths, text: 'Colossus Report');
+  /// };
+  /// ```
+  void Function(List<String> paths)? onExport;
+
   // -----------------------------------------------------------------------
   // Performance recording state (survives Lens close/reopen)
   // -----------------------------------------------------------------------

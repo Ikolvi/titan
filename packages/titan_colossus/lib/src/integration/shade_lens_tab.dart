@@ -212,6 +212,7 @@ class _ShadeLensPillar extends Pillar {
         directory: colossus.exportDirectory,
       );
       status.value = 'Report saved: ${result.all.length} files';
+      colossus.onExport?.call(result.all);
     } on Exception catch (e) {
       status.value = 'Save failed: $e';
     }

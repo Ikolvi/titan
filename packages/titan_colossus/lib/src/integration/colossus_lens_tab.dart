@@ -735,6 +735,7 @@ class _ExportViewState extends State<_ExportView> {
           _statusMessage = 'HTML report saved';
           _lastSavedPath = path;
         });
+        widget.colossus.onExport?.call([path]);
       }
     } on Object {
       if (mounted) {
@@ -764,6 +765,7 @@ class _ExportViewState extends State<_ExportView> {
           _statusMessage = '3 files saved';
           _lastSavedPath = result.all.join('\n');
         });
+        widget.colossus.onExport?.call(result.all);
       }
     } on Object {
       if (mounted) {

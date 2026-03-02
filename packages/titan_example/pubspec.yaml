@@ -41,6 +41,7 @@ dependencies:
   titan_colossus:
     path: ../titan_colossus
   cupertino_icons: ^1.0.8
+  share_plus: ^11.0.0
 
 dev_dependencies:
   flutter_test:

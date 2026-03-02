@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:titan_argus/titan_argus.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 import 'package:titan_colossus/titan_colossus.dart';
@@ -74,6 +75,14 @@ void main() {
     shadeStoragePath: shadeDir,
     exportDirectory: exportDir,
   );
+
+  // Share exported reports via the system share sheet.
+  // This works on all platforms without storage permissions.
+  Colossus.instance.onExport = (paths) {
+    SharePlus.instance.share(
+      ShareParams(files: paths.map((p) => XFile(p)).toList()),
+    );
+  };
 
   // Wire up route-aware recording — Shade captures the current route
   // so Phantom can verify the correct page before replay
