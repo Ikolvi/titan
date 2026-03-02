@@ -469,6 +469,96 @@ void main() {
       q.dispose();
     });
   });
+
+  group('Quarry — Callbacks', () {
+    test('onSuccess is called after successful fetch', () async {
+      String? successValue;
+      final q = Quarry<String>(
+        fetcher: () async => 'data',
+        onSuccess: (d) => successValue = d,
+      );
+      await q.fetch();
+      expect(successValue, 'data');
+      q.dispose();
+    });
+
+    test('onError is called after failed fetch', () async {
+      Object? errorValue;
+      final q = Quarry<String>(
+        fetcher: () async => throw Exception('fail'),
+        onError: (e) => errorValue = e,
+      );
+      await q.fetch();
+      expect(errorValue, isA<Exception>());
+      q.dispose();
+    });
+
+    test('onSuccess not called when cancelled', () async {
+      String? successValue;
+      final q = Quarry<String>(
+        fetcher: () async {
+          await Future<void>.delayed(Duration(milliseconds: 50));
+          return 'data';
+        },
+        onSuccess: (d) => successValue = d,
+      );
+      q.fetch(); // Don't await
+      q.cancel();
+      await Future<void>.delayed(Duration(milliseconds: 80));
+      expect(successValue, isNull);
+      q.dispose();
+    });
+  });
+
+  group('Quarry — Cancellation', () {
+    test('cancel discards in-flight result', () async {
+      final q = Quarry<String>(
+        fetcher: () async {
+          await Future<void>.delayed(Duration(milliseconds: 50));
+          return 'should_be_discarded';
+        },
+      );
+      q.fetch();
+      q.cancel();
+      await Future<void>.delayed(Duration(milliseconds: 80));
+      expect(q.data.value, isNull); // Result discarded
+      expect(q.isLoading.value, false);
+      q.dispose();
+    });
+
+    test('cancel resets loading indicators immediately', () async {
+      final q = Quarry<String>(
+        fetcher: () async {
+          await Future<void>.delayed(Duration(milliseconds: 100));
+          return 'data';
+        },
+      );
+      q.fetch();
+      // Let it start loading
+      await Future<void>.delayed(Duration(milliseconds: 10));
+      expect(q.isLoading.value, true);
+      q.cancel();
+      expect(q.isLoading.value, false);
+      q.dispose();
+    });
+
+    test('can fetch again after cancel', () async {
+      var count = 0;
+      final q = Quarry<int>(
+        fetcher: () async {
+          count++;
+          await Future<void>.delayed(Duration(milliseconds: 20));
+          return count;
+        },
+      );
+      q.fetch();
+      q.cancel();
+      await q.fetch();
+      // Second fetch should succeed (first was cancelled)
+      expect(q.data.value, isNotNull);
+      q.dispose();
+    });
+  });
 }
 
 class _DataPillar extends Pillar {

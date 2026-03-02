@@ -564,5 +564,148 @@ void main() {
       relic.dispose();
       counter.dispose();
     });
+
+    // -----------------------------------------------------------------------
+    // Versioning & Migration
+    // -----------------------------------------------------------------------
+
+    test('hydrate stores version after first hydration', () async {
+      final adapter = InMemoryRelicAdapter();
+      final counter = TitanState<int>(0);
+
+      final relic = Relic(
+        adapter: adapter,
+        version: 2,
+        entries: {
+          'counter': RelicEntry<int>(
+            core: counter,
+            toJson: (v) => v,
+            fromJson: (v) => v as int,
+          ),
+        },
+      );
+
+      await relic.hydrate();
+      expect(adapter.store['titan:_relic_version'], '2');
+
+      relic.dispose();
+      counter.dispose();
+    });
+
+    test('migration transforms stored data', () async {
+      final adapter = InMemoryRelicAdapter();
+
+      // Simulate stored data from version 1
+      adapter.store['titan:name'] = '"Alice"';
+      adapter.store['titan:_relic_version'] = '1';
+
+      final name = TitanState<String>('');
+      final greeting = TitanState<String>('');
+
+      final relic = Relic(
+        adapter: adapter,
+        version: 2,
+        migrations: {
+          1: (data) {
+            // Migration: derive greeting from name
+            data['greeting'] = 'Hello, ${data['name']}!';
+            return data;
+          },
+        },
+        entries: {
+          'name': RelicEntry<String>(
+            core: name,
+            toJson: (v) => v,
+            fromJson: (v) => v as String,
+          ),
+          'greeting': RelicEntry<String>(
+            core: greeting,
+            toJson: (v) => v,
+            fromJson: (v) => v as String,
+          ),
+        },
+      );
+
+      await relic.hydrate();
+      expect(name.value, 'Alice');
+      expect(greeting.value, 'Hello, Alice!');
+
+      relic.dispose();
+      name.dispose();
+      greeting.dispose();
+    });
+
+    test('multiple migrations run in sequence', () async {
+      final adapter = InMemoryRelicAdapter();
+      adapter.store['titan:count'] = '5';
+      adapter.store['titan:_relic_version'] = '1';
+
+      final count = TitanState<int>(0);
+
+      final relic = Relic(
+        adapter: adapter,
+        version: 3,
+        migrations: {
+          1: (data) {
+            // v1→v2: double the count
+            data['count'] = (data['count'] as int) * 2;
+            return data;
+          },
+          2: (data) {
+            // v2→v3: add 100
+            data['count'] = (data['count'] as int) + 100;
+            return data;
+          },
+        },
+        entries: {
+          'count': RelicEntry<int>(
+            core: count,
+            toJson: (v) => v,
+            fromJson: (v) => v as int,
+          ),
+        },
+      );
+
+      await relic.hydrate();
+      // 5 * 2 = 10, 10 + 100 = 110
+      expect(count.value, 110);
+
+      relic.dispose();
+      count.dispose();
+    });
+
+    test('no migration runs when stored version equals current', () async {
+      final adapter = InMemoryRelicAdapter();
+      adapter.store['titan:value'] = '42';
+      adapter.store['titan:_relic_version'] = '2';
+
+      var migrationRan = false;
+      final value = TitanState<int>(0);
+
+      final relic = Relic(
+        adapter: adapter,
+        version: 2,
+        migrations: {
+          1: (data) {
+            migrationRan = true;
+            return data;
+          },
+        },
+        entries: {
+          'value': RelicEntry<int>(
+            core: value,
+            toJson: (v) => v,
+            fromJson: (v) => v as int,
+          ),
+        },
+      );
+
+      await relic.hydrate();
+      expect(migrationRan, false);
+      expect(value.value, 42);
+
+      relic.dispose();
+      value.dispose();
+    });
   });
 }

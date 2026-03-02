@@ -166,6 +166,24 @@ abstract final class Herald {
     return subscription;
   }
 
+  /// Listen for events of type [T] that match a [filter].
+  ///
+  /// Only events for which [filter] returns `true` are delivered to
+  /// the [handler]. Returns a cancellable subscription.
+  ///
+  /// ```dart
+  /// Herald.onWhere<UserAction>(
+  ///   (e) => e.userId == currentUser.id,
+  ///   (event) => handleUserAction(event),
+  /// );
+  /// ```
+  static StreamSubscription<T> onWhere<T>(
+    bool Function(T event) filter,
+    void Function(T event) handler,
+  ) {
+    return _ensureController<T>().stream.where(filter).listen(handler);
+  }
+
   // ---------------------------------------------------------------------------
   // Stream
   // ---------------------------------------------------------------------------

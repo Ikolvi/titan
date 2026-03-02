@@ -510,6 +510,42 @@ void main() {
       Herald.reset();
     });
   });
+
+  group('Herald — Filtered Subscriptions', () {
+    setUp(() => Herald.reset());
+    tearDown(() => Herald.reset());
+
+    test('onWhere only delivers matching events', () {
+      final received = <String>[];
+
+      Herald.onWhere<UserLoggedIn>(
+        (e) => e.userId.startsWith('admin'),
+        (e) => received.add(e.userId),
+      );
+
+      Herald.emit(UserLoggedIn('user_1'));
+      Herald.emit(UserLoggedIn('admin_1'));
+      Herald.emit(UserLoggedIn('user_2'));
+      Herald.emit(UserLoggedIn('admin_2'));
+
+      expect(received, ['admin_1', 'admin_2']);
+    });
+
+    test('onWhere subscription is cancellable', () {
+      final received = <String>[];
+
+      final sub = Herald.onWhere<UserLoggedIn>(
+        (e) => true,
+        (e) => received.add(e.userId),
+      );
+
+      Herald.emit(UserLoggedIn('a'));
+      sub.cancel();
+      Herald.emit(UserLoggedIn('b'));
+
+      expect(received, ['a']);
+    });
+  });
 }
 
 class _ThirdEvent {}

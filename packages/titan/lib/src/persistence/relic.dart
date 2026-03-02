@@ -200,6 +200,16 @@ class Relic {
   /// Prefix for all storage keys to avoid collisions.
   final String prefix;
 
+  /// Current schema version. Used for migration support.
+  final int version;
+
+  /// Migration functions keyed by the version they migrate FROM.
+  ///
+  /// Each function receives the raw JSON map and should return
+  /// a transformed map compatible with the next version.
+  final Map<int, Map<String, Object?> Function(Map<String, Object?>)>
+      _migrations;
+
   final List<void Function()> _unsubscribers = [];
   final Map<String, Timer> _debounceTimers = {};
   bool _disposed = false;
@@ -209,13 +219,40 @@ class Relic {
   /// - [adapter] — The storage backend to use.
   /// - [entries] — Map of storage keys to their [RelicEntry] configs.
   /// - [prefix] — Optional prefix for storage keys (default: `'titan:'`).
+  /// - [version] — Current schema version (default: `1`).
+  /// - [migrations] — Map of version → migration function. Each function
+  ///   receives the stored data as a `Map<String, Object?>` and returns
+  ///   the transformed data for the next version.
+  ///
+  /// ## Migration Example
+  ///
+  /// ```dart
+  /// final relic = Relic(
+  ///   adapter: adapter,
+  ///   version: 3,
+  ///   migrations: {
+  ///     1: (data) => data..['newField'] = 'default',
+  ///     2: (data) {
+  ///       data['renamed'] = data.remove('oldName');
+  ///       return data;
+  ///     },
+  ///   },
+  ///   entries: { ... },
+  /// );
+  /// ```
   Relic({
     required this.adapter,
     required Map<String, RelicEntry<dynamic>> entries,
     this.prefix = 'titan:',
-  }) : _entries = Map.unmodifiable(entries);
+    this.version = 1,
+    Map<int, Map<String, Object?> Function(Map<String, Object?>)>? migrations,
+  }) : _entries = Map.unmodifiable(entries),
+       _migrations = migrations ?? const {};
 
   String _prefixedKey(String key) => '$prefix$key';
+
+  /// The storage key for the schema version.
+  String get _versionKey => '${prefix}_relic_version';
 
   /// The registered entry keys.
   Iterable<String> get keys => _entries.keys;
@@ -226,6 +263,10 @@ class Relic {
 
   /// Restores all registered Core values from storage.
   ///
+  /// If [version] is greater than 1 and [migrations] are provided,
+  /// the stored version is checked and migrations are run sequentially
+  /// to bring data up to the current version.
+  ///
   /// Keys not found in storage are silently skipped (Cores keep their
   /// initial values). Invalid JSON data for a key is also skipped.
   ///
@@ -235,8 +276,18 @@ class Relic {
   Future<void> hydrate() async {
     _assertNotDisposed();
 
+    // Check if migrations are needed
+    if (_migrations.isNotEmpty) {
+      await _runMigrations();
+    }
+
     for (final entry in _entries.entries) {
       await _hydrateKey(entry.key, entry.value);
+    }
+
+    // Store the current version
+    if (version > 1 || _migrations.isNotEmpty) {
+      await adapter.write(_versionKey, version.toString());
     }
   }
 
@@ -262,6 +313,47 @@ class Relic {
     } catch (_) {
       // Invalid data — skip gracefully
       return false;
+    }
+  }
+
+  /// Runs migrations from stored version to current version.
+  ///
+  /// Reads all stored data into a map, runs each migration function
+  /// in sequence, then writes the transformed data back to storage.
+  Future<void> _runMigrations() async {
+    final raw = await adapter.read(_versionKey);
+    final storedVersion = raw != null ? int.tryParse(raw) ?? 1 : 1;
+
+    if (storedVersion >= version) return;
+
+    // Read all current data into a map
+    final dataMap = <String, Object?>{};
+    for (final key in _entries.keys) {
+      final stored = await adapter.read(_prefixedKey(key));
+      if (stored != null) {
+        try {
+          dataMap[key] = jsonDecode(stored);
+        } catch (_) {
+          // Skip invalid data
+        }
+      }
+    }
+
+    // Run migrations sequentially
+    var migrated = dataMap;
+    for (var v = storedVersion; v < version; v++) {
+      final migration = _migrations[v];
+      if (migration != null) {
+        migrated = migration(migrated);
+      }
+    }
+
+    // Write migrated data back
+    for (final entry in migrated.entries) {
+      await adapter.write(
+        _prefixedKey(entry.key),
+        jsonEncode(entry.value),
+      );
     }
   }
 

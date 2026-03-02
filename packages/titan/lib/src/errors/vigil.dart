@@ -229,6 +229,52 @@ class FilteredErrorHandler extends ErrorHandler {
 }
 
 // ---------------------------------------------------------------------------
+// Breadcrumb — Event trail for error context
+// ---------------------------------------------------------------------------
+
+/// A breadcrumb records a notable event that occurred before an error.
+///
+/// Breadcrumbs are stored in a ring buffer and attached to error reports
+/// to provide context about what the user/app was doing leading up to
+/// a failure.
+///
+/// ```dart
+/// Vigil.addBreadcrumb(Breadcrumb(
+///   category: 'navigation',
+///   message: 'Opened settings screen',
+/// ));
+/// ```
+class Breadcrumb {
+  /// A category for grouping breadcrumbs (e.g., `'navigation'`, `'api'`, `'ui'`).
+  final String category;
+
+  /// A human-readable description of the event.
+  final String message;
+
+  /// Optional metadata for additional context.
+  final Map<String, dynamic>? metadata;
+
+  /// When the breadcrumb was created.
+  final DateTime timestamp;
+
+  /// Creates a [Breadcrumb].
+  Breadcrumb({
+    required this.category,
+    required this.message,
+    this.metadata,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  @override
+  String toString() {
+    final meta = metadata != null && metadata!.isNotEmpty
+        ? ' $metadata'
+        : '';
+    return '[$category] $message$meta';
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Vigil — The Centralized Error Tracker
 // ---------------------------------------------------------------------------
 
@@ -290,6 +336,13 @@ abstract final class Vigil {
   static List<TitanError?> _buffer = List<TitanError?>.filled(100, null);
   static int _head = 0; // next write position
   static int _count = 0;
+
+  // Breadcrumb trail
+  static int _maxBreadcrumbs = 50;
+  static List<Breadcrumb?> _breadcrumbs =
+      List<Breadcrumb?>.filled(50, null);
+  static int _bcHead = 0;
+  static int _bcCount = 0;
 
   // ---------------------------------------------------------------------------
   // Configuration
@@ -537,6 +590,71 @@ abstract final class Vigil {
   }
 
   // ---------------------------------------------------------------------------
+  // Breadcrumbs — Event trail for error context
+  // ---------------------------------------------------------------------------
+
+  /// Set the maximum number of breadcrumbs to keep.
+  ///
+  /// Defaults to 50. Set to 0 to disable breadcrumbs.
+  static set maxBreadcrumbs(int value) {
+    if (value == _maxBreadcrumbs) return;
+    if (value <= 0) {
+      _maxBreadcrumbs = value;
+      _breadcrumbs = [];
+      _bcHead = 0;
+      _bcCount = 0;
+      return;
+    }
+
+    final old = _orderedBreadcrumbs();
+    _maxBreadcrumbs = value;
+    _breadcrumbs = List<Breadcrumb?>.filled(value, null);
+    _bcHead = 0;
+    _bcCount = 0;
+    final start = old.length > value ? old.length - value : 0;
+    for (var i = start; i < old.length; i++) {
+      _breadcrumbs[_bcHead] = old[i];
+      _bcHead = (_bcHead + 1) % value;
+      _bcCount++;
+    }
+  }
+
+  /// Get the current max breadcrumbs size.
+  static int get maxBreadcrumbs => _maxBreadcrumbs;
+
+  /// Add a breadcrumb to the event trail.
+  ///
+  /// Breadcrumbs are stored in a ring buffer and provide context
+  /// about what happened before an error.
+  ///
+  /// ```dart
+  /// Vigil.addBreadcrumb(Breadcrumb(
+  ///   category: 'api',
+  ///   message: 'GET /users',
+  ///   metadata: {'status': 200},
+  /// ));
+  /// ```
+  static void addBreadcrumb(Breadcrumb breadcrumb) {
+    if (_maxBreadcrumbs <= 0) return;
+    _breadcrumbs[_bcHead] = breadcrumb;
+    _bcHead = (_bcHead + 1) % _maxBreadcrumbs;
+    if (_bcCount < _maxBreadcrumbs) _bcCount++;
+  }
+
+  /// Get all breadcrumbs in chronological order (oldest first).
+  static List<Breadcrumb> get breadcrumbs => _orderedBreadcrumbs();
+
+  /// Clear all breadcrumbs.
+  static void clearBreadcrumbs() {
+    _breadcrumbs = List<Breadcrumb?>.filled(
+      _maxBreadcrumbs > 0 ? _maxBreadcrumbs : 1,
+      null,
+    );
+    _bcHead = 0;
+    _bcCount = 0;
+  }
+
+  // ---------------------------------------------------------------------------
   // Reset
   // ---------------------------------------------------------------------------
 
@@ -551,6 +669,10 @@ abstract final class Vigil {
     _buffer = List<TitanError?>.filled(100, null);
     _head = 0;
     _count = 0;
+    _maxBreadcrumbs = 50;
+    _breadcrumbs = List<Breadcrumb?>.filled(50, null);
+    _bcHead = 0;
+    _bcCount = 0;
   }
 
   // ---------------------------------------------------------------------------
@@ -568,6 +690,22 @@ abstract final class Vigil {
     } else {
       for (var i = 0; i < _count; i++) {
         result.add(_buffer[(_head + i) % _maxHistorySize]!);
+      }
+    }
+    return result;
+  }
+
+  /// Returns breadcrumbs in chronological order (oldest first).
+  static List<Breadcrumb> _orderedBreadcrumbs() {
+    if (_bcCount == 0) return const [];
+    final result = <Breadcrumb>[];
+    if (_bcCount < _maxBreadcrumbs) {
+      for (var i = 0; i < _bcCount; i++) {
+        result.add(_breadcrumbs[i]!);
+      }
+    } else {
+      for (var i = 0; i < _bcCount; i++) {
+        result.add(_breadcrumbs[(_bcHead + i) % _maxBreadcrumbs]!);
       }
     }
     return result;

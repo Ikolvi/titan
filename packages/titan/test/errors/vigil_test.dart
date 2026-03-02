@@ -537,4 +537,74 @@ void main() {
       expect(Vigil.bySeverity(ErrorSeverity.fatal), hasLength(1));
     });
   });
+
+  group('Vigil — Breadcrumbs', () {
+    setUp(() => Vigil.reset());
+    tearDown(() => Vigil.reset());
+
+    test('addBreadcrumb stores breadcrumbs', () {
+      Vigil.addBreadcrumb(Breadcrumb(
+        category: 'nav',
+        message: 'Opened settings',
+      ));
+      expect(Vigil.breadcrumbs, hasLength(1));
+      expect(Vigil.breadcrumbs.first.category, 'nav');
+      expect(Vigil.breadcrumbs.first.message, 'Opened settings');
+    });
+
+    test('breadcrumbs are in chronological order', () {
+      Vigil.addBreadcrumb(Breadcrumb(category: 'a', message: 'first'));
+      Vigil.addBreadcrumb(Breadcrumb(category: 'b', message: 'second'));
+      Vigil.addBreadcrumb(Breadcrumb(category: 'c', message: 'third'));
+
+      expect(Vigil.breadcrumbs.map((b) => b.message).toList(),
+          ['first', 'second', 'third']);
+    });
+
+    test('breadcrumb ring buffer wraps correctly', () {
+      Vigil.maxBreadcrumbs = 3;
+      Vigil.addBreadcrumb(Breadcrumb(category: 'a', message: '1'));
+      Vigil.addBreadcrumb(Breadcrumb(category: 'a', message: '2'));
+      Vigil.addBreadcrumb(Breadcrumb(category: 'a', message: '3'));
+      Vigil.addBreadcrumb(Breadcrumb(category: 'a', message: '4')); // wraps
+
+      expect(Vigil.breadcrumbs, hasLength(3));
+      expect(Vigil.breadcrumbs.map((b) => b.message).toList(),
+          ['2', '3', '4']);
+    });
+
+    test('clearBreadcrumbs empties the trail', () {
+      Vigil.addBreadcrumb(Breadcrumb(category: 'x', message: 'test'));
+      Vigil.clearBreadcrumbs();
+      expect(Vigil.breadcrumbs, isEmpty);
+    });
+
+    test('breadcrumb metadata is preserved', () {
+      Vigil.addBreadcrumb(Breadcrumb(
+        category: 'api',
+        message: 'GET /users',
+        metadata: {'status': 200, 'count': 5},
+      ));
+
+      final bc = Vigil.breadcrumbs.first;
+      expect(bc.metadata, {'status': 200, 'count': 5});
+    });
+
+    test('reset clears breadcrumbs', () {
+      Vigil.addBreadcrumb(Breadcrumb(category: 'x', message: 'test'));
+      Vigil.reset();
+      expect(Vigil.breadcrumbs, isEmpty);
+    });
+
+    test('Breadcrumb toString includes category and message', () {
+      final bc = Breadcrumb(category: 'nav', message: 'tap');
+      expect(bc.toString(), '[nav] tap');
+    });
+
+    test('disabled breadcrumbs (maxBreadcrumbs = 0) are no-ops', () {
+      Vigil.maxBreadcrumbs = 0;
+      Vigil.addBreadcrumb(Breadcrumb(category: 'x', message: 'ignored'));
+      expect(Vigil.breadcrumbs, isEmpty);
+    });
+  });
 }

@@ -94,6 +94,12 @@ class Quarry<T> {
   /// Retry configuration for failed fetches.
   final QuarryRetry retry;
 
+  /// Called after a successful fetch with the new data.
+  final void Function(T data)? onSuccess;
+
+  /// Called after a failed fetch with the error.
+  final void Function(Object error)? onError;
+
   /// The fetched data, or `null` if not yet fetched.
   final TitanState<T?> data;
 
@@ -115,11 +121,19 @@ class Quarry<T> {
   /// Active polling timer, if any.
   Timer? _pollTimer;
 
+  /// Generation counter for cancellation. Incremented on cancel().
+  int _generation = 0;
+
   /// Creates a Quarry with a fetcher function and optional configuration.
+  ///
+  /// - [onSuccess] — called with the fetched data after each successful fetch.
+  /// - [onError] — called with the error after each failed fetch.
   Quarry({
     required Future<T> Function() fetcher,
     this.staleTime,
     this.retry = const QuarryRetry(maxAttempts: 0),
+    this.onSuccess,
+    this.onError,
     String? name,
   }) : _fetcher = fetcher,
        data = TitanState<T?>(null, name: name != null ? '${name}_data' : null),
@@ -175,6 +189,7 @@ class Quarry<T> {
 
     final completer = Completer<void>();
     _activeFetch = completer;
+    final gen = _generation;
 
     try {
       if (hasData) {
@@ -186,16 +201,25 @@ class Quarry<T> {
       }
 
       final result = await _fetchWithRetry();
+
+      // If cancelled while fetching, discard the result.
+      if (_generation != gen) return;
+
       data.value = result;
       error.value = null;
       _lastFetchTime = DateTime.now();
+      onSuccess?.call(result);
     } catch (e) {
+      if (_generation != gen) return;
       error.value = e;
+      onError?.call(e);
     } finally {
-      isLoading.value = false;
-      isFetching.value = false;
-      _activeFetch = null;
-      completer.complete();
+      if (_generation == gen) {
+        isLoading.value = false;
+        isFetching.value = false;
+        _activeFetch = null;
+        completer.complete();
+      }
     }
   }
 
@@ -213,6 +237,26 @@ class Quarry<T> {
   /// The next call to [fetch] will trigger a refetch.
   void invalidate() {
     _lastFetchTime = null;
+  }
+
+  /// Cancel any in-flight fetch.
+  ///
+  /// The result of a cancelled fetch is silently discarded — it will not
+  /// update [data], [error], or trigger [onSuccess]/[onError] callbacks.
+  /// Loading indicators are reset immediately.
+  ///
+  /// ```dart
+  /// query.fetch(); // Starts fetching
+  /// query.cancel(); // Discards the result
+  /// ```
+  void cancel() {
+    _generation++;
+    if (_activeFetch != null) {
+      isLoading.value = false;
+      isFetching.value = false;
+      _activeFetch!.complete();
+      _activeFetch = null;
+    }
   }
 
   /// Set data manually (optimistic update).

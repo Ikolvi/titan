@@ -284,6 +284,8 @@ abstract class Pillar {
     required Future<T> Function() fetcher,
     Duration? staleTime,
     QuarryRetry retry = const QuarryRetry(maxAttempts: 0),
+    void Function(T data)? onSuccess,
+    void Function(Object error)? onError,
     String? name,
   }) {
     _assertNotDisposed();
@@ -291,6 +293,8 @@ abstract class Pillar {
       fetcher: fetcher,
       staleTime: staleTime,
       retry: retry,
+      onSuccess: onSuccess,
+      onError: onError,
       name: name,
     );
     _managedNodes.addAll(q.managedNodes);
