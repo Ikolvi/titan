@@ -1,3 +1,4 @@
+import 'computed.dart';
 import 'observer.dart';
 import 'reactive.dart';
 
@@ -122,6 +123,23 @@ class TitanState<T> extends ReactiveNode {
     void listener() => callback(_value);
     addListener(listener);
     return () => removeListener(listener);
+  }
+
+  /// Creates a [TitanComputed] that selects a sub-value from this state.
+  ///
+  /// Only triggers downstream updates when the selected value actually
+  /// changes — enabling fine-grained reactivity for complex state objects.
+  ///
+  /// ```dart
+  /// final user = core(User(name: 'Alice', age: 30));
+  ///
+  /// // Only rebuilds when the name changes, not when age changes
+  /// final userName = user.select((u) => u.name);
+  /// ```
+  TitanComputed<R> select<R>(R Function(T value) selector) {
+    return TitanComputed<R>(
+      () => selector(value),
+    );
   }
 
   bool _isEqual(T a, T b) {

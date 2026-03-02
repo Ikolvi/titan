@@ -149,5 +149,51 @@ void main() {
       container.dispose();
       container.dispose(); // Should not throw
     });
+
+    test('registerIfAbsent registers when not present', () {
+      final registered = container.registerIfAbsent(() => _CounterStore());
+      expect(registered, true);
+
+      final store = container.get<_CounterStore>();
+      expect(store, isA<_CounterStore>());
+    });
+
+    test('registerIfAbsent returns false when already present', () {
+      container.register(() => _CounterStore());
+      final registered = container.registerIfAbsent(() => _CounterStore());
+      expect(registered, false);
+    });
+
+    test('registerIfAbsent skips when instance exists', () {
+      container.register(() => _CounterStore());
+      container.get<_CounterStore>(); // Force creation
+      final registered = container.registerIfAbsent(() => _CounterStore());
+      expect(registered, false);
+    });
+
+    test('unregister removes and disposes store', () {
+      container.register(() => _CounterStore());
+      final store = container.get<_CounterStore>();
+      expect(store.isDisposed, false);
+
+      final removed = container.unregister<_CounterStore>();
+      expect(removed, same(store));
+      expect(store.isDisposed, true);
+      expect(container.has<_CounterStore>(), false);
+    });
+
+    test('unregister returns null when not found', () {
+      final removed = container.unregister<_CounterStore>();
+      expect(removed, isNull);
+    });
+
+    test('unregister removes only registration when not yet instantiated', () {
+      container.register(() => _CounterStore());
+      expect(container.has<_CounterStore>(), true);
+
+      final removed = container.unregister<_CounterStore>();
+      expect(removed, isNull); // No instance created yet
+      expect(container.has<_CounterStore>(), false);
+    });
   });
 }

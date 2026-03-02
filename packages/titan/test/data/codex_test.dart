@@ -349,6 +349,33 @@ void main() {
       codex.removeItemAt(0);
       expect(codex.itemCount, 3);
     });
+
+    test('where filters items by predicate', () {
+      final result = codex.where((item) => item != 'b');
+      expect(result, ['a', 'c']);
+    });
+
+    test('where returns empty list when no items match', () {
+      final result = codex.where((item) => item == 'z');
+      expect(result, isEmpty);
+    });
+
+    test('where returns all items when all match', () {
+      final result = codex.where((item) => item.isNotEmpty);
+      expect(result, ['a', 'b', 'c']);
+    });
+
+    test('replaceItems replaces all items', () {
+      codex.replaceItems(['x', 'y']);
+      expect(codex.items.value, ['x', 'y']);
+      expect(codex.itemCount, 2);
+    });
+
+    test('replaceItems with empty list clears items', () {
+      codex.replaceItems([]);
+      expect(codex.items.value, isEmpty);
+      expect(codex.isEmpty, true);
+    });
   });
 }
 

@@ -602,4 +602,157 @@ void main() {
       expect(find.text('Home'), findsNothing);
     });
   });
+
+  group('Atlas — push with result', () {
+    testWidgets('push returns result when back is called with value',
+        (tester) async {
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/dialog', (_) => const Text('Dialog')),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp.router(routerConfig: atlas.config),
+      );
+      await tester.pumpAndSettle();
+
+      // Push and capture the future
+      final future = Atlas.push<bool>('/dialog');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Dialog'), findsOneWidget);
+
+      // Pop with result
+      Atlas.back(true);
+      await tester.pumpAndSettle();
+
+      final result = await future;
+      expect(result, true);
+      expect(find.text('Home'), findsOneWidget);
+    });
+
+    testWidgets('push returns null when back is called without value',
+        (tester) async {
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/confirm', (_) => const Text('Confirm')),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp.router(routerConfig: atlas.config),
+      );
+      await tester.pumpAndSettle();
+
+      final future = Atlas.push<String>('/confirm');
+      await tester.pumpAndSettle();
+
+      Atlas.back();
+      await tester.pumpAndSettle();
+
+      final result = await future;
+      expect(result, isNull);
+    });
+
+    testWidgets('push returns typed result', (tester) async {
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/picker', (_) => const Text('Picker')),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp.router(routerConfig: atlas.config),
+      );
+      await tester.pumpAndSettle();
+
+      final future = Atlas.push<Map<String, dynamic>>('/picker');
+      await tester.pumpAndSettle();
+
+      Atlas.back({'id': 42, 'name': 'Titan'});
+      await tester.pumpAndSettle();
+
+      final result = await future;
+      expect(result, {'id': 42, 'name': 'Titan'});
+    });
+
+    testWidgets('push completes with null when go() is called',
+        (tester) async {
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/a', (_) => const Text('A')),
+          Passage('/b', (_) => const Text('B')),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp.router(routerConfig: atlas.config),
+      );
+      await tester.pumpAndSettle();
+
+      final future = Atlas.push<bool>('/a');
+      await tester.pumpAndSettle();
+
+      // go() replaces the stack, should complete with null
+      Atlas.go('/b');
+      await tester.pumpAndSettle();
+
+      final result = await future;
+      expect(result, isNull);
+    });
+
+    testWidgets('push completes with null when reset() is called',
+        (tester) async {
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/modal', (_) => const Text('Modal')),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp.router(routerConfig: atlas.config),
+      );
+      await tester.pumpAndSettle();
+
+      final future = Atlas.push<int>('/modal');
+      await tester.pumpAndSettle();
+
+      Atlas.reset('/');
+      await tester.pumpAndSettle();
+
+      final result = await future;
+      expect(result, isNull);
+    });
+
+    testWidgets('push completes with null when replace() is called',
+        (tester) async {
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/a', (_) => const Text('A')),
+          Passage('/b', (_) => const Text('B')),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp.router(routerConfig: atlas.config),
+      );
+      await tester.pumpAndSettle();
+
+      final future = Atlas.push<bool>('/a');
+      await tester.pumpAndSettle();
+
+      Atlas.replace('/b');
+      await tester.pumpAndSettle();
+
+      final result = await future;
+      expect(result, isNull);
+    });
+  });
 }

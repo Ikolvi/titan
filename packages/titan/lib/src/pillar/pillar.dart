@@ -580,6 +580,7 @@ abstract class Pillar {
         metadata: metadata,
       ),
     );
+    onError(error, stackTrace);
   }
 
   // ---------------------------------------------------------------------------
@@ -605,6 +606,21 @@ abstract class Pillar {
   /// Override to perform cleanup: close connections, cancel timers, etc.
   @protected
   void onDispose() {}
+
+  /// Called when an error occurs during [strikeAsync] or [captureError].
+  ///
+  /// Override to implement Pillar-specific error recovery, logging,
+  /// or user notification. The default implementation does nothing
+  /// (errors are still captured by Vigil regardless).
+  ///
+  /// ```dart
+  /// @override
+  /// void onError(Object error, StackTrace? stackTrace) {
+  ///   showErrorSnackbar(error.toString());
+  /// }
+  /// ```
+  @protected
+  void onError(Object error, StackTrace? stackTrace) {}
 
   /// Initializes the Pillar. Called automatically by [Beacon] or [Titan].
   void initialize() {

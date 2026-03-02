@@ -31,6 +31,8 @@
 /// ```
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:titan/titan.dart';
 
@@ -456,6 +458,24 @@ class Atlas {
     }
   }
 
+  /// Push a route and wait for a result.
+  ///
+  /// Returns a [Future] that completes with the result value when the
+  /// pushed route is popped (via [back]). If the route is popped without
+  /// a result (system back, [go], [reset], etc.), the Future completes
+  /// with `null`.
+  ///
+  /// ```dart
+  /// final confirmed = await Atlas.push<bool>('/confirm-dialog');
+  /// if (confirmed == true) {
+  ///   // User confirmed
+  /// }
+  /// ```
+  static Future<T?> push<T>(String path, {Object? extra}) {
+    _ensureInstance();
+    return _instance!._delegate._pushWithResult<T>(path, extra: extra);
+  }
+
   /// Navigate to a path (declarative / go-style).
   ///
   /// If the path already exists in the stack, pops back to it instead
@@ -512,12 +532,17 @@ class Atlas {
 
   /// Go back to the previous route.
   ///
+  /// Optionally pass a [result] that will be returned to the caller
+  /// of [push] for this route.
+  ///
   /// ```dart
-  /// Atlas.back();
+  /// Atlas.back();           // pop without result
+  /// Atlas.back(true);       // pop with result
+  /// Atlas.back({'id': 42}); // pop with map result
   /// ```
-  static void back() {
+  static void back([Object? result]) {
     _ensureInstance();
-    _instance!._delegate._pop();
+    _instance!._delegate._pop(result);
   }
 
   /// Go back to a specific path, removing all routes above it.
@@ -576,6 +601,10 @@ class _NavigationResult {
   /// Created during resolution, disposed when route leaves the stack.
   final List<Pillar> ownedPillars;
 
+  /// Completer for push-with-result navigation.
+  /// When non-null, the Completer is completed when this entry is popped.
+  Completer<Object?>? resultCompleter;
+
   _NavigationResult({
     required this.waypoint,
     required this.widget,
@@ -624,6 +653,35 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
     notifyListeners();
   }
 
+  Future<T?> _pushWithResult<T>(String path, {Object? extra}) {
+    final from = _currentWaypoint;
+    final completer = Completer<Object?>();
+    final result = _atlas._hasAsyncSentinels
+        ? null // handled below for async sentinels
+        : _atlas._resolve(path, extra: extra);
+
+    if (result != null) {
+      result.resultCompleter = completer;
+      _stack.add(result);
+      for (final observer in _atlas._observers) {
+        observer.onNavigate(from, result.waypoint);
+      }
+      notifyListeners();
+    } else {
+      // Async sentinel path
+      _atlas._resolveAsync(path, extra: extra).then((asyncResult) {
+        asyncResult.resultCompleter = completer;
+        _stack.add(asyncResult);
+        for (final observer in _atlas._observers) {
+          observer.onNavigate(from, asyncResult.waypoint);
+        }
+        notifyListeners();
+      });
+    }
+
+    return completer.future.then((value) => value as T?);
+  }
+
   void _go(String path, {Object? extra}) {
     // No-op if already at this path
     if (_currentWaypoint.path == path) return;
@@ -634,12 +692,15 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
     final index = _stack.indexWhere((r) => r.waypoint.path == path);
     if (index >= 0) {
       while (_stack.length > index + 1) {
-        _stack.last.disposePillars();
+        final removed = _stack.last;
+        removed.resultCompleter?.complete(null);
+        removed.disposePillars();
         _stack.removeLast();
       }
     } else {
       // Clear stack and navigate fresh
       for (final entry in _stack) {
+        entry.resultCompleter?.complete(null);
         entry.disposePillars();
       }
       final result = _atlas._resolve(path, extra: extra);
@@ -667,7 +728,9 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
   void _replace(String path, {Object? extra}) {
     final from = _currentWaypoint;
     if (_stack.isNotEmpty) {
-      _stack.last.disposePillars();
+      final removed = _stack.last;
+      removed.resultCompleter?.complete(null);
+      removed.disposePillars();
       _stack.removeLast();
     }
     final result = _atlas._resolve(path, extra: extra);
@@ -678,10 +741,12 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
     notifyListeners();
   }
 
-  void _pop() {
+  void _pop([Object? result]) {
     if (_stack.length > 1) {
       final from = _currentWaypoint;
-      _stack.last.disposePillars();
+      final popped = _stack.last;
+      popped.resultCompleter?.complete(result);
+      popped.disposePillars();
       _stack.removeLast();
       for (final observer in _atlas._observers) {
         observer.onPop(from, _currentWaypoint);
@@ -693,7 +758,9 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
   void _popUntil(String path) {
     final from = _currentWaypoint;
     while (_stack.length > 1 && _stack.last.waypoint.path != path) {
-      _stack.last.disposePillars();
+      final removed = _stack.last;
+      removed.resultCompleter?.complete(null);
+      removed.disposePillars();
       _stack.removeLast();
     }
     for (final observer in _atlas._observers) {
@@ -703,8 +770,9 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
   }
 
   void _reset(String path, {Object? extra}) {
-    // Dispose all route-scoped pillars
+    // Complete pending result completers and dispose route-scoped pillars
     for (final entry in _stack) {
+      entry.resultCompleter?.complete(null);
       entry.disposePillars();
     }
     final result = _atlas._resolve(path, extra: extra);
@@ -726,8 +794,9 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
     // Handle URL changes (browser, deep links)
     final path = configuration.waypoint.path;
     if (_stack.isEmpty || _stack.last.waypoint.path != path) {
-      // Dispose all existing route-scoped pillars
+      // Complete pending result completers and dispose route-scoped pillars
       for (final entry in _stack) {
+        entry.resultCompleter?.complete(null);
         entry.disposePillars();
       }
       final result = _atlas._resolve(path);
@@ -744,7 +813,9 @@ class AtlasDelegate extends RouterDelegate<AtlasConfiguration>
       pages: _buildPages(),
       onDidRemovePage: (page) {
         if (_stack.length > 1) {
-          _stack.last.disposePillars();
+          final removed = _stack.last;
+          removed.resultCompleter?.complete(null);
+          removed.disposePillars();
           _stack.removeLast();
         }
       },

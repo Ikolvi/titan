@@ -607,4 +607,66 @@ void main() {
       expect(Vigil.breadcrumbs, isEmpty);
     });
   });
+
+  group('Pillar.onError lifecycle hook', () {
+    test('onError is called when captureError is used', () {
+      final pillar = _OnErrorPillar();
+      Titan.put(pillar);
+
+      pillar.triggerCapture();
+
+      expect(pillar.capturedErrors, hasLength(1));
+      expect(pillar.capturedErrors.first, isA<FormatException>());
+      Titan.remove<_OnErrorPillar>();
+    });
+
+    test('onError is called on strikeAsync failure', () async {
+      final pillar = _OnErrorPillar();
+      Titan.put(pillar);
+
+      // strikeAsync rethrows, so catch the error
+      try {
+        await pillar.triggerAsyncFailure();
+      } catch (_) {}
+
+      expect(pillar.capturedErrors, hasLength(1));
+      expect(pillar.capturedErrors.first, isA<StateError>());
+      Titan.remove<_OnErrorPillar>();
+    });
+
+    test('onError receives stackTrace when available', () {
+      final pillar = _OnErrorPillar();
+      Titan.put(pillar);
+
+      pillar.triggerCapture();
+
+      expect(pillar.capturedStackTraces, hasLength(1));
+      expect(pillar.capturedStackTraces.first, isNotNull);
+      Titan.remove<_OnErrorPillar>();
+    });
+  });
+}
+
+class _OnErrorPillar extends Pillar {
+  late final value = core(0);
+  final List<Object> capturedErrors = [];
+  final List<StackTrace?> capturedStackTraces = [];
+
+  @override
+  void onError(Object error, StackTrace? stackTrace) {
+    capturedErrors.add(error);
+    capturedStackTraces.add(stackTrace);
+  }
+
+  void triggerCapture() {
+    try {
+      throw const FormatException('bad');
+    } catch (e, s) {
+      captureError(e, stackTrace: s, action: 'test');
+    }
+  }
+
+  Future<void> triggerAsyncFailure() => strikeAsync(() async {
+    throw StateError('async error');
+  });
 }

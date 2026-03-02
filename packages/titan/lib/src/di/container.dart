@@ -78,6 +78,40 @@ class TitanContainer {
         (_parent?.has<T>() ?? false);
   }
 
+  /// Register only if [T] is not already registered locally.
+  ///
+  /// Returns `true` if the factory was registered, `false` if [T]
+  /// was already present. Does NOT check parent containers.
+  ///
+  /// ```dart
+  /// container.registerIfAbsent(() => AnalyticsStore());
+  /// container.registerIfAbsent(() => AnalyticsStore()); // No-op
+  /// ```
+  bool registerIfAbsent<T extends TitanStore>(
+    T Function() factory, {
+    bool lazy = true,
+  }) {
+    _assertNotDisposed();
+    if (_registrations.containsKey(T) || _instances.containsKey(T)) {
+      return false;
+    }
+    register<T>(factory, lazy: lazy);
+    return true;
+  }
+
+  /// Unregister and dispose a store of type [T].
+  ///
+  /// Returns the disposed instance, or `null` if not found.
+  T? unregister<T extends TitanStore>() {
+    _assertNotDisposed();
+    _registrations.remove(T);
+    final instance = _instances.remove(T);
+    if (instance is TitanStore) {
+      instance.dispose();
+    }
+    return instance as T?;
+  }
+
   /// Creates a child container that inherits this container's registrations.
   ///
   /// Child containers can override parent registrations and will be

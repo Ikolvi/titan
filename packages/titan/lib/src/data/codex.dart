@@ -183,6 +183,29 @@ class Codex<T> {
     await loadFirst();
   }
 
+  /// Returns a filtered view of the current items.
+  ///
+  /// Does NOT modify the stored items — returns a new list with
+  /// only the items matching [test]. Useful for client-side search
+  /// and filtering without re-fetching.
+  ///
+  /// ```dart
+  /// final completed = codex.where((q) => q.isCompleted);
+  /// ```
+  List<T> where(bool Function(T item) test) {
+    return items.value.where(test).toList();
+  }
+
+  /// Replace all items (e.g., after sorting or bulk update).
+  ///
+  /// ```dart
+  /// final sorted = [...codex.items.value]..sort((a, b) => a.name.compareTo(b.name));
+  /// codex.replaceItems(sorted);
+  /// ```
+  void replaceItems(List<T> newItems) {
+    items.value = newItems;
+  }
+
   /// Insert an item at the given [index] (optimistic mutation).
   ///
   /// If [index] is omitted, prepends to the beginning.

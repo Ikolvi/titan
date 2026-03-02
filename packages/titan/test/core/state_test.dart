@@ -192,6 +192,44 @@ void main() {
       expect(state.toString(), contains('42'));
       state.dispose();
     });
+
+    test('select creates a computed that tracks sub-value', () {
+      final state = TitanState<Map<String, int>>({'a': 1, 'b': 2});
+      final selected = state.select((m) => m['a']!);
+
+      expect(selected.value, 1);
+
+      // Change the selected value
+      state.value = {'a': 10, 'b': 2};
+      expect(selected.value, 10);
+
+      state.dispose();
+      selected.dispose();
+    });
+
+    test('select only triggers when selected sub-value changes', () {
+      final state = TitanState<Map<String, int>>({'a': 1, 'b': 2});
+      final selected = state.select((m) => m['a']!);
+
+      // Access value first to establish dependency tracking
+      expect(selected.value, 1);
+
+      int notifications = 0;
+      selected.addListener(() => notifications++);
+
+      // Change only 'b' — 'a' stays the same, but computed re-evaluates
+      // and sees same result, so no notification
+      state.value = {'a': 1, 'b': 99};
+      expect(notifications, 0);
+
+      // Change 'a' — should notify
+      state.value = {'a': 5, 'b': 99};
+      expect(notifications, 1);
+      expect(selected.value, 5);
+
+      state.dispose();
+      selected.dispose();
+    });
   });
 }
 
