@@ -5,6 +5,7 @@ import 'package:titan_atlas/titan_atlas.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 import 'package:titan_colossus/titan_colossus.dart';
 
+import 'pillars/auth_pillar.dart';
 import 'pillars/quest_detail_pillar.dart';
 import 'pillars/quest_list_pillar.dart';
 import 'pillars/questboard_pillar.dart';
@@ -12,6 +13,7 @@ import 'screens/about_screen.dart';
 import 'screens/enterprise_demo_screen.dart';
 import 'screens/hero_profile_screen.dart';
 import 'screens/hero_registration_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/quest_detail_screen.dart';
 import 'screens/quest_list_screen.dart';
 import 'screens/shade_demo_screen.dart';
@@ -49,6 +51,7 @@ import 'screens/spark_demo_screen.dart';
 //   Colossus                   -- Performance monitoring (Pulse, Vessel, Stride)
 //   Shade                      -- Gesture recording & macro replay
 //   Phantom                    -- Automated gesture replay engine
+//   CoreRefresh                -- Reactive Sentinel re-evaluation on auth change
 //
 // ---------------------------------------------------------------------------
 
@@ -85,10 +88,17 @@ void main() {
     Colossus.instance.checkAutoReplay();
   });
 
-  // Create Atlas router
+  // Register AuthPillar globally for Sentinel access during Atlas construction
+  Titan.put(AuthPillar());
+  final authPillar = Titan.get<AuthPillar>();
+
+  // Create Atlas router with CoreRefresh for reactive auth routing
   final atlas = Atlas(
     passages: [
-      // Sanctum: persistent bottom nav shell
+      // Login screen — outside Sanctum shell, accessible when unauthenticated
+      Passage('/login', (_) => const LoginScreen(), name: 'login'),
+
+      // Sanctum: persistent bottom nav shell (protected by Sentinel)
       Sanctum(
         shell: (child) => _QuestboardShell(child: child),
         passages: [
@@ -125,6 +135,27 @@ void main() {
       ),
     ],
     observers: [HeraldAtlasObserver(), ColossusAtlasObserver()],
+
+    // Sentinels — route guards for authentication
+    sentinels: [
+      // Redirect unauthenticated users to /login
+      Garrison.authGuard(
+        isAuthenticated: () => authPillar.isLoggedIn.value,
+        loginPath: '/login',
+        publicPaths: {'/login', '/about'},
+      ),
+      // Redirect authenticated users away from /login
+      Garrison.guestOnly(
+        isAuthenticated: () => authPillar.isLoggedIn.value,
+        redirectPath: '/',
+        guestPaths: {'/login'},
+      ),
+    ],
+
+    // CoreRefresh — re-evaluate Sentinels when auth state changes
+    // Sign in → auto-redirect from /login to /
+    // Sign out → auto-redirect to /login
+    refreshListenable: CoreRefresh([authPillar.isLoggedIn]),
   );
 
   runApp(
@@ -192,6 +223,12 @@ class _QuestboardShell extends StatelessWidget {
           ],
         ),
         actions: [
+          // Sign out button — CoreRefresh auto-redirects to /login
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => Titan.get<AuthPillar>().signOut(),
+            tooltip: 'Sign Out',
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () => context.atlas.to('/about'),

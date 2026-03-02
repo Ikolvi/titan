@@ -130,6 +130,10 @@ class AboutScreen extends StatelessWidget {
                 icon: Icons.replay_circle_filled,
                 text: 'Phantom — Automated gesture replay',
               ),
+              const _FeatureRow(
+                icon: Icons.refresh,
+                text: 'CoreRefresh — Reactive auth routing',
+              ),
               const SizedBox(height: 32),
               Text(
                 'Built by Ikolvi',
