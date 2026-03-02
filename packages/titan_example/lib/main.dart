@@ -66,11 +66,13 @@ void main() {
 
   // Initialize Colossus performance monitoring with session persistence
   final shadeDir = '${Directory.systemTemp.path}/questboard_shade';
+  final exportDir = _getExportDirectory();
   Colossus.init(
     tremors: [Tremor.fps(), Tremor.jankRate(), Tremor.leaks()],
     enableLensTab: true,
     enableChronicle: true,
     shadeStoragePath: shadeDir,
+    exportDirectory: exportDir,
   );
 
   // Wire up route-aware recording — Shade captures the current route
@@ -276,4 +278,23 @@ class _QuestboardShell extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Returns a user-accessible directory for exporting reports.
+///
+/// On macOS/Linux: `~/Downloads/colossus_reports`
+/// On other platforms: falls back to system temp.
+String _getExportDirectory() {
+  try {
+    final home =
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    if (home != null) {
+      final downloads = '$home/Downloads/colossus_reports';
+      Directory(downloads).createSync(recursive: true);
+      return downloads;
+    }
+  } catch (_) {
+    // Fall back to temp
+  }
+  return '${Directory.systemTemp.path}/colossus_reports';
 }

@@ -207,7 +207,10 @@ class _ShadeLensPillar extends Pillar {
   Future<void> saveReport() async {
     final decree = colossus.decree();
     try {
-      final result = await InscribeIO.saveAll(decree);
+      final result = await InscribeIO.saveAll(
+        decree,
+        directory: colossus.exportDirectory,
+      );
       status.value = 'Report saved: ${result.all.length} files';
     } on Exception catch (e) {
       status.value = 'Save failed: $e';

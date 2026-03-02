@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:titan_bastion/titan_bastion.dart';
@@ -68,36 +66,35 @@ class _PerfRecordingPillar extends Pillar {
 
   _PerfRecordingPillar(this.colossus);
 
-  /// Whether a standalone perf recording session is active.
-  late final isPerfRecording = core(false);
+  /// Reactive state mirroring [Colossus.isPerfRecording].
+  ///
+  /// Lives on the Pillar for reactive UI updates but delegates
+  /// actual state to the Colossus instance so recording survives
+  /// Lens close/reopen.
+  late final isPerfRecording = core(colossus.isPerfRecording);
 
   /// Status message shown after recording stops.
-  late final perfStatus = core('');
+  late final perfStatus = core(colossus.perfRecordingStatus);
 
-  DateTime? _perfRecordingStart;
+  @override
+  void onInit() {
+    // Sync from Colossus state (in case Lens was reopened mid-recording)
+    isPerfRecording.value = colossus.isPerfRecording;
+    perfStatus.value = colossus.perfRecordingStatus;
+  }
 
   /// Start a standalone performance recording session.
-  ///
-  /// Resets all Colossus metrics and begins tracking.
   void startPerfRecording() {
-    colossus.reset();
+    colossus.startPerfRecording();
     isPerfRecording.value = true;
-    _perfRecordingStart = DateTime.now();
     perfStatus.value = '';
   }
 
   /// Stop the current performance recording session.
-  ///
-  /// Calculates the duration and updates the status message.
   void stopPerfRecording() {
-    final duration = _perfRecordingStart != null
-        ? DateTime.now().difference(_perfRecordingStart!)
-        : Duration.zero;
+    colossus.stopPerfRecording();
     isPerfRecording.value = false;
-    _perfRecordingStart = null;
-    perfStatus.value =
-        'Recorded ${duration.inSeconds}s — '
-        'check Export tab for report';
+    perfStatus.value = colossus.perfRecordingStatus;
   }
 }
 
@@ -730,7 +727,7 @@ class _ExportViewState extends State<_ExportView> {
       final decree = widget.colossus.decree();
       final path = await InscribeIO.saveHtml(
         decree,
-        directory: Directory.systemTemp.path,
+        directory: widget.colossus.exportDirectory,
       );
       if (mounted) {
         setState(() {
@@ -759,7 +756,7 @@ class _ExportViewState extends State<_ExportView> {
       final decree = widget.colossus.decree();
       final result = await InscribeIO.saveAll(
         decree,
-        directory: Directory.systemTemp.path,
+        directory: widget.colossus.exportDirectory,
       );
       if (mounted) {
         setState(() {

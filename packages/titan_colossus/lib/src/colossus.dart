@@ -140,6 +140,66 @@ class Colossus extends Pillar {
   ColossusLensTab? _lensTab;
   ShadeLensTab? _shadeLensTab;
 
+  /// Directory path for exporting reports.
+  ///
+  /// When set via [Colossus.init], reports are saved to this
+  /// user-accessible directory (e.g., Downloads) instead of
+  /// the system temp directory.
+  String? _exportDirectory;
+
+  /// Directory path for exporting reports.
+  String? get exportDirectory => _exportDirectory;
+
+  // -----------------------------------------------------------------------
+  // Performance recording state (survives Lens close/reopen)
+  // -----------------------------------------------------------------------
+
+  /// Whether a standalone perf recording session is active.
+  ///
+  /// This state lives on the [Colossus] instance so it persists
+  /// across Lens open/close cycles. The Lens UI reads this to
+  /// show the correct recording indicators.
+  bool _isPerfRecording = false;
+
+  /// Whether a standalone perf recording session is active.
+  bool get isPerfRecording => _isPerfRecording;
+
+  /// When the current perf recording started.
+  DateTime? _perfRecordingStart;
+
+  /// Status message from the last perf recording operation.
+  String perfRecordingStatus = '';
+
+  /// Start a standalone performance recording session.
+  ///
+  /// Resets all Colossus metrics and begins tracking frame times,
+  /// memory, and rebuilds. The recording persists even when the
+  /// Lens overlay is closed.
+  void startPerfRecording() {
+    reset();
+    _isPerfRecording = true;
+    _perfRecordingStart = DateTime.now();
+    perfRecordingStatus = '';
+    _chronicle?.info('Perf recording started');
+  }
+
+  /// Stop the current performance recording session.
+  ///
+  /// Calculates the duration and generates a Decree.
+  void stopPerfRecording() {
+    final duration = _perfRecordingStart != null
+        ? DateTime.now().difference(_perfRecordingStart!)
+        : Duration.zero;
+    _isPerfRecording = false;
+    _perfRecordingStart = null;
+    perfRecordingStatus =
+        'Recorded ${duration.inSeconds}s — '
+        'check Export tab for report';
+    _chronicle?.info(
+      'Perf recording stopped — ${duration.inSeconds}s captured',
+    );
+  }
+
   /// The session persistence vault.
   ///
   /// Only available if [shadeStoragePath] was provided during [init].
@@ -189,6 +249,7 @@ class Colossus extends Pillar {
     bool enableLensTab = true,
     bool enableChronicle = true,
     String? shadeStoragePath,
+    String? exportDirectory,
   }) {
     if (_instance != null) {
       return _instance!;
@@ -209,6 +270,10 @@ class Colossus extends Pillar {
 
     if (shadeStoragePath != null) {
       colossus._vault = ShadeVault(shadeStoragePath);
+    }
+
+    if (exportDirectory != null) {
+      colossus._exportDirectory = exportDirectory;
     }
 
     _instance = colossus;
