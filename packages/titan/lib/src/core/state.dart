@@ -34,7 +34,7 @@ class TitanState<T> extends ReactiveNode {
   T? _previousValue;
   final bool Function(T previous, T next)? _equals;
   final String? _name;
-  final List<Conduit<T>> _conduits;
+  List<Conduit<T>>? _conduits;
 
   /// Creates a reactive state with the given initial [value].
   ///
@@ -49,7 +49,9 @@ class TitanState<T> extends ReactiveNode {
   }) : _value = value,
        _name = name,
        _equals = equals,
-       _conduits = conduits != null ? List<Conduit<T>>.of(conduits) : [];
+       _conduits = conduits != null && conduits.isNotEmpty
+           ? List<Conduit<T>>.of(conduits)
+           : null;
 
   /// The debug name of this state, if provided.
   String? get name => _name;
@@ -83,8 +85,9 @@ class TitanState<T> extends ReactiveNode {
   set value(T newValue) {
     // Pipe through conduits
     var piped = newValue;
-    if (_conduits.isNotEmpty) {
-      for (final conduit in _conduits) {
+    final conduits = _conduits;
+    if (conduits != null) {
+      for (final conduit in conduits) {
         piped = conduit.pipe(_value, piped);
       }
     }
@@ -105,8 +108,8 @@ class TitanState<T> extends ReactiveNode {
     notifyDependents();
 
     // Post-change callbacks
-    if (_conduits.isNotEmpty) {
-      for (final conduit in _conduits) {
+    if (conduits != null) {
+      for (final conduit in conduits) {
         conduit.onPiped(oldValue, piped);
       }
     }
@@ -136,23 +139,23 @@ class TitanState<T> extends ReactiveNode {
   /// counter.addConduit(ClampConduit(min: 0, max: 100));
   /// ```
   void addConduit(Conduit<T> conduit) {
-    _conduits.add(conduit);
+    (_conduits ??= []).add(conduit);
   }
 
   /// Removes a previously added [Conduit].
   ///
   /// Returns `true` if the conduit was found and removed.
   bool removeConduit(Conduit<T> conduit) {
-    return _conduits.remove(conduit);
+    return _conduits?.remove(conduit) ?? false;
   }
 
   /// Removes all Conduits from this Core.
   void clearConduits() {
-    _conduits.clear();
+    _conduits?.clear();
   }
 
   /// The list of currently attached Conduits (read-only view).
-  List<Conduit<T>> get conduits => List.unmodifiable(_conduits);
+  List<Conduit<T>> get conduits => List.unmodifiable(_conduits ?? const []);
 
   /// Silently sets the value without notifying dependents.
   ///

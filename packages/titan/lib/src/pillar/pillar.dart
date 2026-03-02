@@ -99,12 +99,19 @@ abstract class Pillar {
   bool _isDisposed = false;
   bool _autoDispose = false;
   int _refCount = 0;
+  bool _isReadyFlag = false;
+  TitanState<bool>? _isReadyCore;
+
+  /// Sentinel used to detect whether [onInitAsync] has been overridden.
+  static final Future<void> _completedFuture = Future<void>.value();
 
   /// Reactive readiness indicator for async initialization.
   ///
-  /// Starts as `false`, becomes `true` after [onInitAsync] completes.
-  /// If [onInitAsync] is not overridden, remains `false` (use
-  /// [isInitialized] instead for sync init checks).
+  /// Starts as `false`, becomes `true` after [onInitAsync] completes
+  /// (including the default no-op implementation).
+  ///
+  /// The underlying [TitanState] is allocated lazily on first access,
+  /// avoiding overhead for Pillars that never read [isReady].
   ///
   /// ```dart
   /// Vestige<MyPillar>(
@@ -113,10 +120,12 @@ abstract class Pillar {
   ///     : CircularProgressIndicator(),
   /// )
   /// ```
-  late final TitanState<bool> isReady = TitanState<bool>(
-    false,
-    name: '${runtimeType}_isReady',
-  );
+  TitanState<bool> get isReady {
+    return _isReadyCore ??= TitanState<bool>(
+      _isReadyFlag,
+      name: '${runtimeType}_isReady',
+    );
+  }
 
   /// Whether this Pillar has been initialized.
   bool get isInitialized => _isInitialized;
@@ -1002,7 +1011,7 @@ abstract class Pillar {
   /// }
   /// ```
   @protected
-  Future<void> onInitAsync() async {}
+  Future<void> onInitAsync() => _completedFuture;
 
   /// Called when the Pillar is being disposed.
   ///
@@ -1109,15 +1118,38 @@ abstract class Pillar {
   }
 
   /// Internal async init runner.
-  Future<void> _runInitAsync() async {
+  ///
+  /// Uses a sentinel to detect whether [onInitAsync] was overridden.
+  /// For sync-only Pillars (the default), this avoids allocating a
+  /// [Future] and scheduling microtasks, setting [isReady] synchronously.
+  void _runInitAsync() {
+    final Future<void> result;
     try {
-      await onInitAsync();
-      if (!_isDisposed) {
-        isReady.value = true;
-      }
+      result = onInitAsync();
     } catch (e, s) {
       onError(e, s);
+      return;
     }
+
+    if (identical(result, _completedFuture)) {
+      // Default implementation — no async work. Set ready synchronously.
+      _isReadyFlag = true;
+      _isReadyCore?.value = true;
+      return;
+    }
+
+    // Actual async init — await completion without async/await overhead.
+    result.then(
+      (_) {
+        if (!_isDisposed) {
+          _isReadyFlag = true;
+          _isReadyCore?.value = true;
+        }
+      },
+      onError: (Object e, StackTrace s) {
+        onError(e, s);
+      },
+    );
   }
 
   /// Disposes the Pillar and all its managed reactive nodes.
@@ -1154,8 +1186,8 @@ abstract class Pillar {
     }
     _managedNodes.clear();
 
-    // Dispose isReady Core
-    isReady.dispose();
+    // Dispose isReady Core (only if it was allocated)
+    _isReadyCore?.dispose();
   }
 
   void _assertNotDisposed() {
