@@ -107,7 +107,11 @@ void main() {
   final atlas = Atlas(
     passages: [
       // Login screen — outside Sanctum shell, accessible when unauthenticated
-      Passage('/login', (_) => const LoginScreen(), name: 'login'),
+      Passage(
+        '/login',
+        (waypoint) => LoginScreen(waypoint: waypoint),
+        name: 'login',
+      ),
 
       // Sanctum: persistent bottom nav shell (protected by Sentinel)
       Sanctum(

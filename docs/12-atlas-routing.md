@@ -319,6 +319,39 @@ Atlas(
 
 This replaces the manual wiring of separate `Garrison.authGuard()`, `Garrison.guestOnly()`, and `CoreRefresh()` calls.
 
+### Post-Login Redirect
+
+When `preserveRedirect` is enabled (default), users are automatically returned to their originally requested page after signing in:
+
+1. User visits `/quest/42` while unauthenticated
+2. `authGuard` redirects to `/login?redirect=%2Fquest%2F42`
+3. User signs in → `CoreRefresh` triggers re-evaluation
+4. `guestOnly` reads the `redirect` query parameter and navigates to `/quest/42`
+
+```dart
+final garrisonAuth = Garrison.refreshAuth(
+  isAuthenticated: () => auth.isLoggedIn.value,
+  cores: [auth.isLoggedIn],
+  loginPath: '/login',
+  homePath: '/',
+  guestPaths: {'/login'},
+  preserveRedirect: true, // default
+);
+```
+
+The `guestOnly` Sentinel checks for a `redirect` query parameter by default (`useRedirectQuery: true`). When the user signs in on a login page with `?redirect=<path>`, they're sent to the decoded redirect path instead of the default `homePath`.
+
+To disable this behavior:
+
+```dart
+Garrison.guestOnly(
+  isAuthenticated: () => auth.isLoggedIn.value,
+  guestPaths: {'/login'},
+  redirectPath: '/',
+  useRedirectQuery: false, // always redirect to redirectPath
+);
+```
+
 ### How It Works
 
 1. When the `Listenable` notifies, Atlas re-resolves the current path through **Drift → Sentinels → per-route redirect**

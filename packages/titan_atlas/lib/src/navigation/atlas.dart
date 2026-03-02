@@ -263,7 +263,8 @@ class Atlas {
     _isRefreshing = true;
 
     try {
-      final currentPath = _delegate._currentWaypoint.path;
+      final currentWaypoint = _delegate._currentWaypoint;
+      final currentPath = currentWaypoint.uri.toString();
 
       if (_hasAsyncSentinels) {
         _resolveAsync(currentPath).then((result) {

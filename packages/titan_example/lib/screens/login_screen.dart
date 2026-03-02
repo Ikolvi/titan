@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:titan_atlas/titan_atlas.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 
 import '../pillars/auth_pillar.dart';
@@ -11,9 +12,13 @@ import '../pillars/auth_pillar.dart';
 ///
 /// When the user signs in via [AuthPillar.signIn], the `CoreRefresh`
 /// bridge notifies Atlas, which re-evaluates the guestOnly Sentinel
-/// and automatically redirects to `/` — no manual navigation needed.
+/// and automatically redirects — either to the `redirect` query param
+/// (preserveRedirect) or to `/` as the default home.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  /// The current waypoint, used to read the `redirect` query param.
+  final Waypoint waypoint;
+
+  const LoginScreen({super.key, required this.waypoint});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -31,6 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final redirectTarget = widget.waypoint.query['redirect'];
 
     return Scaffold(
       body: Center(
@@ -57,7 +63,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Sign in to begin your quest',
+                  redirectTarget != null
+                      ? 'Sign in to continue to $redirectTarget'
+                      : 'Sign in to begin your quest',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -114,7 +122,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 8),
                         Text(
                           'After sign-in, Atlas automatically redirects '
-                          'to the quest board — no manual navigation needed. '
+                          '${redirectTarget != null ? 'to $redirectTarget (preserveRedirect)' : 'to the quest board'}'
+                          ' — no manual navigation needed. '
                           'CoreRefresh bridges the AuthPillar\'s isLoggedIn '
                           'Core to Atlas\'s refreshListenable.',
                           style: theme.textTheme.bodySmall,

@@ -15,8 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Both sync and async Sentinel support during refresh
 - `Garrison.refreshAuth` — one-call factory combining `authGuard` + `guestOnly` + `CoreRefresh`
 - `GarrisonAuth` — result type with `sentinels` and `refresh` fields
-- 20 new tests for CoreRefresh, refreshListenable, and Garrison.refreshAuth
-- 194 tests passing
+- Post-login redirect: `guestOnly` now reads `redirect` query parameter (via `useRedirectQuery`) for seamless return to originally requested page
+- `_onRefresh` preserves query parameters during re-evaluation (uses `waypoint.uri` instead of `waypoint.path`)
+- 26 tests for CoreRefresh, refreshListenable, Garrison.refreshAuth, and post-login redirect
+- 200 tests passing
 
 ## [1.0.0] - 2026-03-02
 

@@ -249,6 +249,11 @@ class Garrison {
   ///
   /// Use this to prevent logged-in users from accessing login/register pages.
   ///
+  /// When [useRedirectQuery] is true (default), the Sentinel checks for a
+  /// `redirect` query parameter and navigates there instead of [redirectPath].
+  /// This works with [authGuard]'s `preserveRedirect` option to provide
+  /// seamless post-login redirect to the originally requested page.
+  ///
   /// ```dart
   /// Garrison.guestOnly(
   ///   isAuthenticated: () => authPillar.isLoggedIn.value,
@@ -260,11 +265,21 @@ class Garrison {
     required bool Function() isAuthenticated,
     required Set<String> guestPaths,
     required String redirectPath,
+    bool useRedirectQuery = true,
   }) {
     return Sentinel((path, waypoint) {
       if (!guestPaths.contains(path)) return null;
-      if (isAuthenticated()) return redirectPath;
-      return null;
+      if (!isAuthenticated()) return null;
+
+      // Check for redirect query parameter from preserveRedirect
+      if (useRedirectQuery) {
+        final redirect = waypoint.query['redirect'];
+        if (redirect != null && redirect.isNotEmpty) {
+          return Uri.decodeComponent(redirect);
+        }
+      }
+
+      return redirectPath;
     });
   }
 

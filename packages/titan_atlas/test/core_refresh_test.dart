@@ -607,4 +607,157 @@ void main() {
       expect(find.text('Login'), findsOneWidget);
     });
   });
+
+  // ---------------------------------------------------------
+  // Post-login redirect — preserveRedirect + guestOnly
+  // ---------------------------------------------------------
+
+  group('Post-login redirect', () {
+    test('guestOnly uses redirect query param when authenticated', () {
+      final sentinel = Garrison.guestOnly(
+        isAuthenticated: () => true,
+        guestPaths: {'/login'},
+        redirectPath: '/',
+      );
+
+      // Waypoint with redirect query param
+      final waypoint = Waypoint(
+        path: '/login',
+        pattern: '/login',
+        query: {'redirect': '%2Fquest%2F42'},
+      );
+
+      final result = sentinel.evaluate('/login', waypoint);
+      expect(result, '/quest/42');
+    });
+
+    test('guestOnly falls back to redirectPath without redirect param', () {
+      final sentinel = Garrison.guestOnly(
+        isAuthenticated: () => true,
+        guestPaths: {'/login'},
+        redirectPath: '/',
+      );
+
+      final waypoint = Waypoint(path: '/login', pattern: '/login');
+
+      final result = sentinel.evaluate('/login', waypoint);
+      expect(result, '/');
+    });
+
+    test('guestOnly ignores redirect param when useRedirectQuery is false', () {
+      final sentinel = Garrison.guestOnly(
+        isAuthenticated: () => true,
+        guestPaths: {'/login'},
+        redirectPath: '/',
+        useRedirectQuery: false,
+      );
+
+      final waypoint = Waypoint(
+        path: '/login',
+        pattern: '/login',
+        query: {'redirect': '%2Fquest%2F42'},
+      );
+
+      final result = sentinel.evaluate('/login', waypoint);
+      expect(result, '/');
+    });
+
+    test('guestOnly returns null when not authenticated', () {
+      final sentinel = Garrison.guestOnly(
+        isAuthenticated: () => false,
+        guestPaths: {'/login'},
+        redirectPath: '/',
+      );
+
+      final waypoint = Waypoint(
+        path: '/login',
+        pattern: '/login',
+        query: {'redirect': '%2Fquest%2F42'},
+      );
+
+      final result = sentinel.evaluate('/login', waypoint);
+      expect(result, isNull);
+    });
+
+    testWidgets(
+      'authGuard preserveRedirect → guestOnly redirects to original page',
+      (tester) async {
+        final auth = _AuthPillar();
+        Titan.put(auth);
+        auth.isLoggedIn.value = false;
+
+        final garrisonAuth = Garrison.refreshAuth(
+          isAuthenticated: () => auth.isLoggedIn.value,
+          cores: [auth.isLoggedIn],
+          loginPath: '/login',
+          homePath: '/',
+          guestPaths: {'/login'},
+          preserveRedirect: true,
+        );
+
+        final atlas = Atlas(
+          passages: [
+            Passage('/', (_) => const Text('Home')),
+            Passage('/login', (wp) => Text('Login:${wp.query['redirect']}')),
+            Passage('/quest/:id', (wp) => Text('Quest:${wp.runes['id']}')),
+          ],
+          sentinels: garrisonAuth.sentinels,
+          refreshListenable: garrisonAuth.refresh,
+          // Simulate arriving at login with a redirect param already set
+          // (as if authGuard had redirected from /quest/42)
+          initialPath: '/login?redirect=%2Fquest%2F42',
+        );
+
+        await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
+        await tester.pumpAndSettle();
+
+        // Unauthenticated → on login page with redirect param
+        expect(find.textContaining('Login'), findsOneWidget);
+
+        // Sign in → CoreRefresh re-evaluates → guestOnly reads redirect param
+        auth.isLoggedIn.value = true;
+        await tester.pumpAndSettle();
+
+        // Should be redirected to the original quest page
+        expect(find.text('Quest:42'), findsOneWidget);
+      },
+    );
+
+    testWidgets('sign-in without redirect param goes to homePath', (
+      tester,
+    ) async {
+      final auth = _AuthPillar();
+      Titan.put(auth);
+      auth.isLoggedIn.value = false;
+
+      final garrisonAuth = Garrison.refreshAuth(
+        isAuthenticated: () => auth.isLoggedIn.value,
+        cores: [auth.isLoggedIn],
+        loginPath: '/login',
+        homePath: '/',
+        guestPaths: {'/login'},
+      );
+
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/login', (_) => const Text('Login')),
+        ],
+        sentinels: garrisonAuth.sentinels,
+        refreshListenable: garrisonAuth.refresh,
+        initialPath: '/login',
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Login'), findsOneWidget);
+
+      // Sign in without redirect query param → goes to homePath (/)
+      auth.isLoggedIn.value = true;
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home'), findsOneWidget);
+    });
+  });
 }

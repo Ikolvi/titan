@@ -616,6 +616,25 @@ Atlas(
 );
 ```
 
+### Garrison.guestOnly
+
+Creates a Sentinel that blocks authenticated users from guest-only pages (login, register).
+
+```dart
+static Sentinel guestOnly({...})
+```
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `isAuthenticated` | `bool Function()` | required | Auth check callback |
+| `guestPaths` | `Set<String>` | required | Paths only accessible to guests |
+| `redirectPath` | `String` | required | Default path to redirect authenticated users |
+| `useRedirectQuery` | `bool` | `true` | When true, checks for `redirect` query param and navigates there instead |
+
+When `useRedirectQuery` is enabled (default), the Sentinel reads the `redirect` query parameter from the URL and URI-decodes it as the redirect target. This enables seamless post-login redirect when combined with `authGuard`'s `preserveRedirect`.
+
 ### Garrison.refreshAuth
 
 Convenience factory that combines `authGuard` + `guestOnly` Sentinels with a `CoreRefresh` listenable in one call.
