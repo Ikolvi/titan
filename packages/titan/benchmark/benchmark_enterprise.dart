@@ -22,6 +22,8 @@ import 'package:titan/titan.dart';
 //  26. Snapshot — State capture & restore, diff
 //  27. Crucible — Testing harness track + change recording
 //  28. Conduit — Core-level middleware pipeline throughput
+//  29. Prism — Fine-grained state projections
+//  30. Nexus — Reactive collections (NexusList, NexusMap, NexusSet)
 // =============================================================================
 
 void main() async {
@@ -44,6 +46,7 @@ void main() async {
   await _benchCrucible();
   await _benchConduit();
   await _benchPrism();
+  await _benchNexus();
 
   print('');
   print('═══════════════════════════════════════════════════════');
@@ -1303,6 +1306,126 @@ Future<void> _benchPrism() async {
     sw.stop();
     print('  List equality 10K:   ${_ms(sw)}  (${_pad(n)} iterations)');
     source.dispose();
+  }
+
+  print('');
+}
+
+// =============================================================================
+// 30. Nexus — Reactive Collections
+// =============================================================================
+
+Future<void> _benchNexus() async {
+  print('── 30. Nexus ───────────────────────────────────────');
+
+  // 30a. NexusList add — 10K elements
+  {
+    final list = NexusList<int>();
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      list.add(i);
+    }
+    sw.stop();
+    print('  List add 10K:        ${_ms(sw)}  (${_pad(n)} iterations)');
+    list.dispose();
+  }
+
+  // 30b. NexusList vs Core<List> add — 10K (copy-on-write baseline)
+  {
+    final core = TitanState<List<int>>([]);
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      core.value = [...core.peek(), i];
+    }
+    sw.stop();
+    print('  Core<List> add 10K:  ${_ms(sw)}  (${_pad(n)} copy-on-write)');
+    core.dispose();
+  }
+
+  // 30c. NexusList removeAt — 10K removals
+  {
+    final list = NexusList<int>(initial: List.generate(10000, (i) => i));
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      list.removeAt(0);
+    }
+    sw.stop();
+    print('  List removeAt 10K:   ${_ms(sw)}  (${_pad(n)} iterations)');
+    list.dispose();
+  }
+
+  // 30d. NexusList operator []= — 10K updates
+  {
+    final list = NexusList<int>(initial: List.generate(10000, (i) => i));
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      list[i] = i * 2;
+    }
+    sw.stop();
+    print('  List update 10K:     ${_ms(sw)}  (${_pad(n)} iterations)');
+    list.dispose();
+  }
+
+  // 30e. NexusMap set — 10K entries
+  {
+    final map = NexusMap<int, int>();
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      map[i] = i;
+    }
+    sw.stop();
+    print('  Map set 10K:         ${_ms(sw)}  (${_pad(n)} iterations)');
+    map.dispose();
+  }
+
+  // 30f. NexusMap remove — 10K removals
+  {
+    final map = NexusMap<int, int>(
+      initial: {for (var i = 0; i < 10000; i++) i: i},
+    );
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      map.remove(i);
+    }
+    sw.stop();
+    print('  Map remove 10K:      ${_ms(sw)}  (${_pad(n)} iterations)');
+    map.dispose();
+  }
+
+  // 30g. NexusSet add — 10K elements
+  {
+    final set = NexusSet<int>();
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      set.add(i);
+    }
+    sw.stop();
+    print('  Set add 10K:         ${_ms(sw)}  (${_pad(n)} iterations)');
+    set.dispose();
+  }
+
+  // 30h. NexusList with Derived — 10K mutations with observer
+  {
+    final list = NexusList<int>();
+    final sum = TitanComputed(() => list.value.fold(0, (a, b) => a + b));
+    sum.value; // prime
+
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      list.add(i);
+      sum.value;
+    }
+    sw.stop();
+    print('  List+Derived 10K:    ${_ms(sw)}  (${_pad(n)} iterations)');
+    list.dispose();
   }
 
   print('');

@@ -33,6 +33,7 @@
 | [XVII](chapter-17-the-annals-record.md) | **The Annals Record** | `Annals`, `Saga`, `Volley`, `Tether`, audit trail, workflows |
 | [XVIII](chapter-18-the-conduit-flows.md) | **The Conduit Flows** | `Conduit`, Core-level middleware, `ClampConduit`, `ValidateConduit`, `FreezeConduit` |
 | [XIX](chapter-19-the-prism-reveals.md) | **The Prism Reveals** | `Prism`, fine-grained projections, `PrismEquals`, multi-source combining |
+| [XX](chapter-20-the-nexus-connects.md) | **The Nexus Connects** | `NexusList`, `NexusMap`, `NexusSet`, `NexusChange`, in-place reactive collections |
 
 ---
 

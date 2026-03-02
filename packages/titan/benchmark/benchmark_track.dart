@@ -869,6 +869,70 @@ Future<void> _runEnterpriseBenchmarks() async {
     );
     source.dispose();
   }
+
+  // 30. Nexus — Reactive collections
+  {
+    // NexusList add vs Core<List> copy-on-write
+    const n = 10000;
+    final nexus = NexusList<int>();
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      nexus.add(i);
+    }
+    sw.stop();
+    _record(
+      'Nexus List Add',
+      sw.elapsedMicroseconds / n,
+      'µs/add',
+      'enterprise',
+    );
+    nexus.dispose();
+
+    // Copy-on-write baseline
+    final core = TitanState<List<int>>([]);
+    final sw2 = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      core.value = [...core.peek(), i];
+    }
+    sw2.stop();
+    _record(
+      'Core<List> Add (COW)',
+      sw2.elapsedMicroseconds / n,
+      'µs/add',
+      'enterprise',
+    );
+    core.dispose();
+
+    // NexusMap set
+    final map = NexusMap<int, int>();
+    final sw3 = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      map[i] = i;
+    }
+    sw3.stop();
+    _record(
+      'Nexus Map Set',
+      sw3.elapsedMicroseconds / n,
+      'µs/set',
+      'enterprise',
+    );
+    map.dispose();
+
+    // NexusSet add
+    final set = NexusSet<int>();
+    final sw4 = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      set.add(i);
+    }
+    sw4.stop();
+    _record(
+      'Nexus Set Add',
+      sw4.elapsedMicroseconds / n,
+      'µs/add',
+      'enterprise',
+    );
+    set.dispose();
+  }
 }
 
 // =============================================================================

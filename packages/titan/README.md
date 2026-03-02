@@ -47,6 +47,7 @@ A signal-based reactive state management engine for Dart & Flutter — fine-grai
 | Data Query | **Quarry** | Cached data fetching (SWR) |
 | Middleware | **Conduit** | Core-level pipeline — transform, validate, reject |
 | State Selector | **Prism** | Fine-grained, memoized state projections |
+| Reactive Collection | **Nexus** | In-place reactive List, Map, Set with change records |
 
 ---
 
@@ -387,6 +388,23 @@ class ProfilePillar extends Pillar {
 }
 ```
 
+### Nexus — Reactive Collections
+
+```dart
+class InventoryPillar extends Pillar {
+  late final items = nexusList<String>(['sword', 'shield']);
+  late final tags = nexusSet<String>({'equipped'});
+  late final stats = nexusMap<String, int>({'hp': 100});
+
+  late final itemCount = derived(() => items.length);
+
+  void addItem(String item) => items.add(item); // In-place O(1)
+  void toggleTag(String tag) => tags.toggle(tag);
+}
+```
+
+In-place mutations, no copy-on-write. Granular `NexusChange` records for pattern matching.
+
 ---
 
 ## Why Titan?
@@ -407,6 +425,7 @@ class ProfilePillar extends Pillar {
 | Pagination | ❌ | ❌ | ❌ | ❌ | ✅ |
 | SWR data fetching | ❌ | ❌ | ❌ | ❌ | ✅ |
 | State middleware | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Reactive collections | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 ---
 

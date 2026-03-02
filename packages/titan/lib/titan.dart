@@ -82,6 +82,7 @@ export 'src/core/extensions.dart';
 export 'src/core/loom.dart';
 export 'src/core/observer.dart';
 export 'src/core/prism.dart';
+export 'src/core/nexus.dart';
 
 // Store pattern (advanced / legacy)
 export 'src/store/store.dart';

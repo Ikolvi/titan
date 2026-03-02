@@ -1883,4 +1883,78 @@ VestigeConsumer<MyPillar>(
 
 ---
 
+## Nexus — Reactive Collections
+
+Nexus provides in-place reactive collections (`NexusList`, `NexusMap`, `NexusSet`) that avoid copy-on-write overhead and emit granular change records.
+
+### NexusList
+
+```dart
+class TodoPillar extends Pillar {
+  late final items = nexusList<String>([], 'items');
+  late final count = derived(() => items.length);
+
+  void addItem(String item) => items.add(item);
+  void removeAt(int index) => items.removeAt(index);
+  void reorder(int from, int to) => items.move(from, to);
+}
+```
+
+**Key methods**: `add`, `addAll`, `insert`, `[]=`, `remove`, `removeAt`, `removeWhere`, `retainWhere`, `sort`, `replaceRange`, `clear`, `swap`, `move`.
+
+### NexusMap
+
+```dart
+late final scores = nexusMap<String, int>({}, 'scores');
+
+// Smart updates
+scores['Alice'] = 100;
+scores.putIfChanged('Alice', 100); // false — no notification
+scores.putIfAbsent('Bob', () => 50);
+```
+
+**Key methods**: `[]=`, `putIfChanged`, `putIfAbsent`, `addAll`, `remove`, `removeWhere`, `updateAll`, `clear`.
+
+### NexusSet
+
+```dart
+late final tags = nexusSet<String>({'all'}, 'tags');
+
+tags.toggle('featured'); // Add if absent, remove if present
+tags.intersection({'all', 'featured', 'new'}); // Read-only
+```
+
+**Key methods**: `add`, `addAll`, `remove`, `toggle`, `removeWhere`, `retainWhere`, `clear`, `intersection`, `union`, `difference`.
+
+### Change Records
+
+Every mutation sets `lastChange` for pattern-matching inspection:
+
+```dart
+switch (items.lastChange) {
+  case NexusInsert(:final index, :final element):
+    print('Inserted $element at $index');
+  case NexusRemove(:final index, :final element):
+    print('Removed $element from $index');
+  case NexusUpdate(:final index, :final oldValue, :final newValue):
+    print('Updated [$index]: $oldValue → $newValue');
+  case NexusClear(:final previousLength):
+    print('Cleared $previousLength items');
+  case NexusBatch(:final operation, :final count):
+    print('$operation affected $count items');
+  default: break;
+}
+```
+
+### Nexus vs Core<List> Performance
+
+| Approach | Cost per Add |
+|----------|-------------|
+| `Core<List<T>>` + spread | O(n) — copies entire list |
+| `NexusList<T>.add()` | O(1) amortized — in-place |
+
+All Nexus types are compatible with `titanBatch()`, `strike()`, `Derived`, and `watch()`.
+
+---
+
 [← Testing](07-testing.md) · [API Reference →](09-api-reference.md)

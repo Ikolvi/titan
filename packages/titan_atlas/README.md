@@ -340,6 +340,7 @@ void main() {
 | [Chapter XIII: The Lens Reveals](../../docs/story/chapter-13-the-lens-reveals.md) | Debug overlay |
 | [Chapter XVIII: The Conduit Flows](../../docs/story/chapter-18-the-conduit-flows.md) | Core-level middleware |
 | [Chapter XIX: The Prism Reveals](../../docs/story/chapter-19-the-prism-reveals.md) | Fine-grained state projections |
+| [Chapter XX: The Nexus Connects](../../docs/story/chapter-20-the-nexus-connects.md) | Reactive collections |
 
 ## License
 

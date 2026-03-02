@@ -49,6 +49,9 @@ abstract class Pillar
 | `core<T>(T value, {String? name, bool Function(T,T)? equals, List<Conduit<T>>? conduits})` | `TitanState<T>` | Create a managed reactive Core |
 | `derived<T>(T Function() compute, {String? name})` | `TitanComputed<T>` | Create a managed Derived value |
 | `prism<S, R>(TitanState<S> source, R Function(S) selector, {String? name, bool Function(R, R)? equals})` | `Prism<R>` | Create a managed state projection |
+| `nexusList<T>([List<T>? initial, String? name])` | `NexusList<T>` | Create a managed reactive list |
+| `nexusMap<K, V>([Map<K, V>? initial, String? name])` | `NexusMap<K, V>` | Create a managed reactive map |
+| `nexusSet<T>([Set<T>? initial, String? name])` | `NexusSet<T>` | Create a managed reactive set |
 | `epoch<T>(T value, {int maxHistory, String? name})` | `Epoch<T>` | Create a managed Core with undo/redo |
 | `watch(dynamic Function() fn, {bool fireImmediately})` | `TitanEffect` | Create a managed reactive side effect |
 
@@ -955,6 +958,101 @@ Prism<R> prism<R>(R Function(T) selector, {String? name, bool Function(R, R)? eq
 | `addListener(callback)` | `void` | Listen for value changes |
 | `removeListener(callback)` | `void` | Remove a listener |
 | `dispose()` | `void` | Dispose the Prism |
+
+---
+
+### Nexus — Reactive Collections
+
+In-place reactive collections with granular change tracking.
+
+#### NexusList\<T\>
+
+**Constructor**: `NexusList<T>({List<T>? initial, String? name})`
+
+| Property/Method | Type | Description |
+|-----------------|------|-------------|
+| `value` | `List<T>` | The underlying list (tracked read) |
+| `length` | `int` | Number of elements (tracked) |
+| `isEmpty` / `isNotEmpty` | `bool` | Emptiness checks (tracked) |
+| `first` / `last` | `T` | First/last element (tracked) |
+| `[index]` | `T` | Read element at index (tracked) |
+| `contains(element)` | `bool` | Check membership (tracked) |
+| `indexOf(element)` | `int` | Find index (tracked) |
+| `items` | `Iterable<T>` | Iterable view (tracked) |
+| `add(element)` | `void` | Append element |
+| `addAll(iterable)` | `void` | Append multiple elements |
+| `insert(index, element)` | `void` | Insert at index |
+| `[index] =` | `void` | Update element (skip if equal) |
+| `remove(element)` | `bool` | Remove first occurrence |
+| `removeAt(index)` | `T` | Remove at index |
+| `removeWhere(test)` | `int` | Remove matching, return count |
+| `retainWhere(test)` | `int` | Keep matching, return removed count |
+| `sort([compare])` | `void` | Sort in place |
+| `replaceRange(start, end, replacement)` | `void` | Replace range |
+| `clear()` | `void` | Remove all elements |
+| `swap(i, j)` | `void` | Swap two elements |
+| `move(from, to)` | `void` | Move element to new position |
+| `lastChange` | `NexusChange<T>?` | Most recent change record |
+
+#### NexusMap\<K, V\>
+
+**Constructor**: `NexusMap<K, V>({Map<K, V>? initial, String? name})`
+
+| Property/Method | Type | Description |
+|-----------------|------|-------------|
+| `value` | `Map<K, V>` | The underlying map (tracked read) |
+| `length` | `int` | Number of entries (tracked) |
+| `isEmpty` / `isNotEmpty` | `bool` | Emptiness checks (tracked) |
+| `keys` / `values` / `entries` | `Iterable` | Map views (tracked) |
+| `[key]` | `V?` | Read value for key (tracked) |
+| `containsKey(key)` | `bool` | Check key existence (tracked) |
+| `containsValue(value)` | `bool` | Check value existence (tracked) |
+| `[key] =` | `void` | Set entry |
+| `putIfChanged(key, value)` | `bool` | Set only if value differs |
+| `putIfAbsent(key, ifAbsent)` | `V` | Set if key absent |
+| `addAll(entries)` | `void` | Merge entries |
+| `remove(key)` | `V?` | Remove entry |
+| `removeWhere(test)` | `int` | Remove matching, return count |
+| `updateAll(update)` | `void` | Transform all values |
+| `clear()` | `void` | Remove all entries |
+| `lastChange` | `NexusChange<MapEntry<K, V>>?` | Most recent change record |
+
+#### NexusSet\<T\>
+
+**Constructor**: `NexusSet<T>({Set<T>? initial, String? name})`
+
+| Property/Method | Type | Description |
+|-----------------|------|-------------|
+| `value` | `Set<T>` | The underlying set (tracked read) |
+| `length` | `int` | Number of elements (tracked) |
+| `isEmpty` / `isNotEmpty` | `bool` | Emptiness checks (tracked) |
+| `contains(element)` | `bool` | Check membership (tracked) |
+| `elements` | `Iterable<T>` | Iterable view (tracked) |
+| `add(element)` | `bool` | Add element (false if exists) |
+| `addAll(iterable)` | `void` | Add multiple elements |
+| `remove(element)` | `bool` | Remove element |
+| `toggle(element)` | `bool` | Add if absent, remove if present |
+| `removeWhere(test)` | `int` | Remove matching, return count |
+| `retainWhere(test)` | `int` | Keep matching, return removed count |
+| `clear()` | `void` | Remove all elements |
+| `intersection(other)` | `Set<T>` | Intersection (read-only) |
+| `union(other)` | `Set<T>` | Union (read-only) |
+| `difference(other)` | `Set<T>` | Difference (read-only) |
+| `lastChange` | `NexusChange<T>?` | Most recent change record |
+
+#### NexusChange Hierarchy
+
+| Type | Fields | When |
+|------|--------|------|
+| `NexusInsert<T>` | `index`, `element` | List element inserted |
+| `NexusRemove<T>` | `index`, `element` | List element removed |
+| `NexusUpdate<T>` | `index`, `oldValue`, `newValue` | List element updated |
+| `NexusClear<T>` | `previousLength` | Collection cleared |
+| `NexusMapSet<K,V>` | `key`, `oldValue`, `newValue`, `isNew` | Map entry set |
+| `NexusMapRemove<K,V>` | `key`, `value` | Map entry removed |
+| `NexusSetAdd<T>` | `element` | Set element added |
+| `NexusSetRemove<T>` | `element` | Set element removed |
+| `NexusBatch<T>` | `operation`, `count` | Batch operation |
 
 ---
 

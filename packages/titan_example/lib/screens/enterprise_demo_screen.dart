@@ -44,7 +44,7 @@ class _EnterpriseTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 7,
+      length: 8,
       child: Column(
         children: [
           const TabBar(
@@ -56,6 +56,7 @@ class _EnterpriseTabs extends StatelessWidget {
               Tab(text: 'Volley'),
               Tab(text: 'Conduit'),
               Tab(text: 'Prism'),
+              Tab(text: 'Nexus'),
               Tab(text: 'Toolkit'),
             ],
           ),
@@ -68,6 +69,7 @@ class _EnterpriseTabs extends StatelessWidget {
                 _VolleyTab(),
                 _ConduitTab(),
                 _PrismTab(),
+                _NexusTab(),
                 _ToolkitTab(),
               ],
             ),
@@ -815,6 +817,168 @@ class _PrismRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Nexus Tab — Reactive Collections (NexusList, NexusMap, NexusSet)
+// ---------------------------------------------------------------------------
+
+class _NexusTab extends StatelessWidget {
+  const _NexusTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Vestige<EnterpriseDemoPillar>(
+      builder: (context, p) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // --- NexusList: Inventory ---
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NexusList — Inventory (${p.inventoryCount.value} items)',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    ...List.generate(p.inventory.length, (i) {
+                      return ListTile(
+                        dense: true,
+                        title: Text(p.inventory[i]),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, size: 18),
+                          onPressed: () => p.removeInventoryItem(i),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: () => p.addInventoryItem('Mana Potion'),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add Mana Potion'),
+                        ),
+                        FilledButton.icon(
+                          onPressed: () => p.addInventoryItem('Fire Scroll'),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add Fire Scroll'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => p.inventory.sort(),
+                          icon: const Icon(Icons.sort, size: 16),
+                          label: const Text('Sort'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => p.inventory.clear(),
+                          icon: const Icon(Icons.clear_all, size: 16),
+                          label: const Text('Clear All'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // --- NexusMap: Ability Scores ---
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NexusMap — Ability Scores (total: ${p.totalAbilityScore.value})',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    ...p.abilityScores.entries.map((e) {
+                      return ListTile(
+                        dense: true,
+                        title: Text(e.key),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove, size: 16),
+                              onPressed: () =>
+                                  p.setAbilityScore(e.key, e.value - 1),
+                            ),
+                            Text(
+                              '${e.value}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add, size: 16),
+                              onPressed: () =>
+                                  p.setAbilityScore(e.key, e.value + 1),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // --- NexusSet: Quest Tags ---
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NexusSet — Quest Tags (${p.tagCount.value} active)',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        for (final tag in [
+                          'active',
+                          'main-story',
+                          'side-quest',
+                          'daily',
+                          'legendary',
+                          'pvp',
+                        ])
+                          FilterChip(
+                            label: Text(tag),
+                            selected: p.questTags.contains(tag),
+                            onSelected: (_) => p.toggleQuestTag(tag),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Active: {${p.questTags.elements.join(', ')}}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -32,6 +32,7 @@ void main() {
   _benchTetherCall();
   _benchConduitPipeline();
   _benchPrismProjection();
+  _benchNexusListAdd();
 
   // Output JSON
   print(
@@ -456,6 +457,22 @@ void _benchPrismProjection() {
   final usPerProjection = sw.elapsedMicroseconds / n;
   _record('Prism Projection (10K)', 'µs/projection', usPerProjection);
   source.dispose();
+}
+
+// ---------------------------------------------------------------------------
+// 17. Nexus List Add (10K in-place vs copy-on-write)
+// ---------------------------------------------------------------------------
+void _benchNexusListAdd() {
+  const n = 10000;
+  final list = NexusList<int>();
+  final sw = Stopwatch()..start();
+  for (var i = 0; i < n; i++) {
+    list.add(i);
+  }
+  sw.stop();
+  final usPerAdd = sw.elapsedMicroseconds / n;
+  _record('Nexus List Add (10K)', 'µs/add', usPerAdd);
+  list.dispose();
 }
 
 // =============================================================================

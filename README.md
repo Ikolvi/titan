@@ -51,6 +51,7 @@ A uniquely powerful reactive state management architecture for Flutter — struc
 | Debug Overlay | **Lens** | In-app debug panel for Pillars, Herald, Vigil, Chronicle |
 | Middleware | **Conduit** | Core-level pipeline — transform, validate, reject value changes |
 | State Selector | **Prism** | Fine-grained, memoized state projections with structural equality |
+| Reactive Collection | **Nexus** | In-place reactive List, Map, Set with granular change records |
 
 ---
 
@@ -127,6 +128,7 @@ Vestige<CounterPillar>(
 | Multi-store consumer | ❌ | ✅ MultiBlocBuilder | ✅ Multiple watches | ❌ | ✅ Confluence |
 | Debug overlay | ❌ | ❌ DevTools only | ❌ DevTools only | ❌ | ✅ Lens |
 | State middleware | ❌ | ❌ | ❌ | ❌ | ✅ Conduit |
+| Reactive collections | ❌ | ❌ | ❌ | ❌ | ✅ Nexus |
 
 ### Vs Bloc
 

@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Pillar integration via `prism(source, selector)`
   - 25 tests, benchmark #29
   - Story chapter XIX: "The Prism Reveals"
+- **Nexus** — Reactive collections with in-place mutation
+  - `NexusList<T>`, `NexusMap<K,V>`, `NexusSet<T>` — zero copy-on-write overhead
+  - `NexusChange<T>` sealed class hierarchy for granular change records
+  - Pillar factories: `nexusList()`, `nexusMap()`, `nexusSet()`
+  - 90 tests, benchmark #30
+  - Story chapter XX: "The Nexus Connects"
 
 ## [0.0.3] - 2025-07-12
 

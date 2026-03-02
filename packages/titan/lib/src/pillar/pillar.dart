@@ -8,6 +8,7 @@ import '../core/conduit.dart';
 import '../core/effect.dart';
 import '../core/epoch.dart';
 import '../core/loom.dart';
+import '../core/nexus.dart';
 import '../core/observer.dart';
 import '../core/prism.dart';
 import '../core/reactive.dart';
@@ -228,6 +229,57 @@ abstract class Pillar {
     );
     _managedNodes.add(p);
     return p;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Nexus creation — Reactive collections
+  // ---------------------------------------------------------------------------
+
+  /// Creates a [NexusList] (reactive list) managed by this Pillar.
+  ///
+  /// Unlike `core<List<T>>()` which copies on every mutation, NexusList
+  /// mutates in-place with granular change tracking.
+  ///
+  /// ```dart
+  /// late final items = nexusList<String>(['sword', 'shield']);
+  /// late final count = derived(() => items.length);
+  /// ```
+  @protected
+  NexusList<T> nexusList<T>([List<T>? initial, String? name]) {
+    _assertNotDisposed();
+    final list = NexusList<T>(initial: initial, name: name);
+    _managedNodes.add(list);
+    return list;
+  }
+
+  /// Creates a [NexusMap] (reactive map) managed by this Pillar.
+  ///
+  /// ```dart
+  /// late final scores = nexusMap<String, int>({'Alice': 10});
+  /// late final topPlayer = derived(() =>
+  ///   scores.isEmpty ? 'None' : scores.entries.first.key,
+  /// );
+  /// ```
+  @protected
+  NexusMap<K, V> nexusMap<K, V>([Map<K, V>? initial, String? name]) {
+    _assertNotDisposed();
+    final map = NexusMap<K, V>(initial: initial, name: name);
+    _managedNodes.add(map);
+    return map;
+  }
+
+  /// Creates a [NexusSet] (reactive set) managed by this Pillar.
+  ///
+  /// ```dart
+  /// late final tags = nexusSet<String>({'dart', 'flutter'});
+  /// late final hasFlutter = derived(() => tags.contains('flutter'));
+  /// ```
+  @protected
+  NexusSet<T> nexusSet<T>([Set<T>? initial, String? name]) {
+    _assertNotDisposed();
+    final set = NexusSet<T>(initial: initial, name: name);
+    _managedNodes.add(set);
+    return set;
   }
 
   // ---------------------------------------------------------------------------

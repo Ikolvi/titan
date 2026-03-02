@@ -277,3 +277,4 @@ Kael smiled. That was the Prism's lesson: complexity didn't come from having too
 | [XVII](chapter-17-the-annals-record.md) | The Annals Record |
 | [XVIII](chapter-18-the-conduit-flows.md) | The Conduit Flows |
 | **XIX** | **The Prism Reveals** ← You are here |
+| [XX](chapter-20-the-nexus-connects.md) | The Nexus Connects |

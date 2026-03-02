@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `PrismCoreExtension<T>` — `.prism()` extension method on `TitanState<T>`
   - Pillar factory: `prism<S,R>(source, selector)` with managed lifecycle
   - 25 new tests, benchmark #29 added
+- **Nexus** — Reactive collections with in-place mutation and granular change tracking
+  - `NexusList<T>` — reactive list with `add`, `addAll`, `insert`, `remove`, `removeAt`, `sort`, `swap`, `move`
+  - `NexusMap<K,V>` — reactive map with `[]=`, `putIfChanged`, `putIfAbsent`, `addAll`, `remove`, `removeWhere`
+  - `NexusSet<T>` — reactive set with `add`, `remove`, `toggle`, `intersection`, `union`, `difference`
+  - `NexusChange<T>` sealed class hierarchy for pattern-matching change records
+  - Pillar factories: `nexusList()`, `nexusMap()`, `nexusSet()` with managed lifecycle
+  - Zero copy-on-write overhead — O(1) amortized mutations vs O(n) spread copies
+  - 90 new tests, benchmark #30 added
 
 ## [0.1.1] - 2026-03-02
 

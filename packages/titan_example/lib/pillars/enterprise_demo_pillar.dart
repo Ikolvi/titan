@@ -281,6 +281,55 @@ class EnterpriseDemoPillar extends Pillar {
     name: 'experimentalPublish',
   );
 
+  // --------------- Nexus (Reactive Collections) ---------------
+
+  /// An inventory of quest items, managed as a reactive list.
+  late final inventory = nexusList<String>([
+    'Sword of Dawn',
+    'Iron Shield',
+    'Health Potion',
+  ], 'inventory');
+
+  /// Hero ability scores stored in a reactive map.
+  late final abilityScores = nexusMap<String, int>({
+    'STR': 14,
+    'DEX': 12,
+    'CON': 13,
+    'INT': 10,
+    'WIS': 8,
+  }, 'abilityScores');
+
+  /// Active quest tags as a reactive set.
+  late final questTags = nexusSet<String>({
+    'active',
+    'main-story',
+  }, 'questTags');
+
+  /// Derived: total inventory count.
+  late final inventoryCount = derived(() => inventory.length);
+
+  /// Derived: sum of all ability scores.
+  late final totalAbilityScore = derived(
+    () => abilityScores.values.fold(0, (a, b) => a + b),
+  );
+
+  /// Derived: number of active tags.
+  late final tagCount = derived(() => questTags.length);
+
+  /// Add a new item to inventory.
+  void addInventoryItem(String item) => inventory.add(item);
+
+  /// Remove an item from inventory by index.
+  String removeInventoryItem(int index) => inventory.removeAt(index);
+
+  /// Update an ability score.
+  void setAbilityScore(String ability, int score) {
+    abilityScores[ability] = score;
+  }
+
+  /// Toggle a quest tag.
+  void toggleQuestTag(String tag) => questTags.toggle(tag);
+
   // --------------- Lifecycle ---------------
 
   @override
