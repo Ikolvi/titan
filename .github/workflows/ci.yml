@@ -138,8 +138,8 @@ jobs:
           if git diff --cached --quiet; then
             echo "No benchmark changes to commit"
           else
-            git pull --rebase origin main
             git commit -m "docs: update benchmark history [skip ci]"
+            git pull --rebase origin main
             git push
           fi
 
