@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:titan_bastion/titan_bastion.dart';
+import 'package:titan_colossus/titan_colossus.dart';
 
 void main() {
   setUp(() {

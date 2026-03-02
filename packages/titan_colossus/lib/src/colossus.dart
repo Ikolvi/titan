@@ -2,6 +2,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 
 import 'alerts/tremor.dart';
+import 'integration/lens.dart';
 import 'export/inscribe.dart';
 import 'integration/colossus_lens_tab.dart';
 import 'integration/shade_lens_tab.dart';

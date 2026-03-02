@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 
 import '../colossus.dart';
+import 'lens.dart';
 import '../export/inscribe.dart';
 import '../export/inscribe_io.dart';
 import '../recording/imprint.dart';

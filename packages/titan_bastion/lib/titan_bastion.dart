@@ -58,7 +58,6 @@ export 'package:titan/titan.dart';
 export 'src/widgets/vestige.dart';
 export 'src/widgets/beacon.dart';
 export 'src/widgets/confluence.dart';
-export 'src/widgets/lens.dart';
 export 'src/widgets/animated_vestige.dart';
 export 'src/widgets/pillar_scope.dart';
 export 'src/widgets/vestige_when.dart';
