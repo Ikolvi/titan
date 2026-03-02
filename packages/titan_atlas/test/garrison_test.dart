@@ -1,4 +1,4 @@
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:titan_atlas/titan_atlas.dart';
 
 void main() {
@@ -201,12 +201,11 @@ void main() {
 
     group('composite', () {
       test('evaluates guards in order', () {
-        var isLoggedIn = true;
-        var isVerified = false;
+        final loginStatus = <String, bool>{'loggedIn': true, 'verified': false};
 
         final sentinel = Garrison.composite([
-          (path, _) => isLoggedIn ? null : '/login',
-          (path, _) => isVerified ? null : '/verify',
+          (path, _) => loginStatus['loggedIn']! ? null : '/login',
+          (path, _) => loginStatus['verified']! ? null : '/verify',
         ]);
 
         // Logged in but not verified
