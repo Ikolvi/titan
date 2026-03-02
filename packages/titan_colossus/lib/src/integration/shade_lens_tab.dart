@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 
@@ -119,31 +118,18 @@ class _ShadeLensPillar extends Pillar {
     _loadAutoReplayConfig();
     _loadSavedSessions();
 
-    // Auto-stop recording when Lens reopens — gives the user immediate
-    // access to Save/Replay without having to manually click Stop.
-    // Scheduled to post-frame to avoid setState during build (onInit
-    // runs during Beacon initState, and setting Core values would
-    // trigger a Vestige rebuild mid-build).
+    // If Shade was recording when Lens opens, sync the FAB state
     if (colossus.shade.isRecording) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (colossus.shade.isRecording) {
-          final session = colossus.shade.stopRecording();
-          lastSession.value = session;
-          status.value =
-              'Recording auto-stopped — ${session.eventCount} events in '
-              '${session.duration.inMilliseconds}ms';
-          // Auto-save to vault if available
-          if (colossus.vault != null) {
-            _autoSave(session);
-          }
-        }
-      });
+      _activateFabRecording();
     }
   }
 
   // -- Actions --------------------------------------------------------------
 
   /// Start recording gestures, hiding the Lens overlay first.
+  ///
+  /// Activates the Lens FAB recording mode so the user can stop
+  /// recording by tapping the FAB without reopening the Shade tab.
   void startRecording() {
     Lens.hide();
     lastResult.value = null;
@@ -151,12 +137,14 @@ class _ShadeLensPillar extends Pillar {
     colossus.shade.startRecording(
       name: 'shade_${DateTime.now().millisecondsSinceEpoch}',
     );
+    _activateFabRecording();
   }
 
   /// Stop recording and capture the session.
   void stopRecording() {
     final session = colossus.shade.stopRecording();
     lastSession.value = session;
+    _deactivateFabRecording();
     status.value =
         'Recorded ${session.eventCount} events in '
         '${session.duration.inMilliseconds}ms';
@@ -165,6 +153,7 @@ class _ShadeLensPillar extends Pillar {
   /// Cancel the current recording.
   void cancelRecording() {
     colossus.shade.cancelRecording();
+    _deactivateFabRecording();
     status.value = 'Recording cancelled';
   }
 
@@ -283,6 +272,33 @@ class _ShadeLensPillar extends Pillar {
   }
 
   // -- Private helpers -------------------------------------------------------
+
+  /// Turn the Lens FAB into a "stop recording" button.
+  void _activateFabRecording() {
+    Lens.activeRecording.value = true;
+    Lens.onStopRecording = _stopAndSaveFromFab;
+  }
+
+  /// Reset the Lens FAB to its normal state.
+  void _deactivateFabRecording() {
+    Lens.activeRecording.value = false;
+    Lens.onStopRecording = null;
+  }
+
+  /// Called when the user taps the FAB while recording.
+  void _stopAndSaveFromFab() {
+    if (!colossus.shade.isRecording) return;
+    final session = colossus.shade.stopRecording();
+    lastSession.value = session;
+    _deactivateFabRecording();
+    status.value =
+        'Recorded ${session.eventCount} events in '
+        '${session.duration.inMilliseconds}ms';
+    // Auto-save to vault if available
+    if (colossus.vault != null) {
+      _autoSave(session);
+    }
+  }
 
   Future<void> _autoSave(ShadeSession session) async {
     try {

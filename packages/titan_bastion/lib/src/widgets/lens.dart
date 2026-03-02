@@ -152,6 +152,21 @@ class Lens extends StatefulWidget {
   static void toggle() => _activeInstance?._toggle();
 
   // -------------------------------------------------------------------------
+  // Recording overlay — allows plugins to take over the FAB
+  // -------------------------------------------------------------------------
+
+  /// Notifier that external plugins (e.g. Shade) can set to `true`
+  /// to turn the Lens FAB into a "stop recording" button.
+  ///
+  /// When `true`, the FAB shows a red pulsing record icon.
+  /// Tapping it calls [onStopRecording] instead of toggling Lens.
+  static final ValueNotifier<bool> activeRecording = ValueNotifier(false);
+
+  /// Callback invoked when the FAB is tapped while [activeRecording]
+  /// is `true`. Typically stops recording and saves the session.
+  static VoidCallback? onStopRecording;
+
+  // -------------------------------------------------------------------------
   // Plugin API — allows external packages to add custom tabs
   // -------------------------------------------------------------------------
 
@@ -258,11 +273,21 @@ class _LensState extends State<Lens> {
       child: Stack(
         children: [
           widget.child,
-          // Floating action button to toggle
+          // Floating action button — toggles Lens or stops recording
           Positioned(
             right: 16,
             bottom: 80,
-            child: _LensFab(onPressed: _toggle, isOpen: _visible),
+            child: _LensFab(
+              onPressed: () {
+                // If recording, stop recording instead of toggling
+                if (Lens.activeRecording.value) {
+                  Lens.onStopRecording?.call();
+                } else {
+                  _toggle();
+                }
+              },
+              isOpen: _visible,
+            ),
           ),
           // Debug panel
           if (_visible)
@@ -299,32 +324,117 @@ class _LensState extends State<Lens> {
 // Floating Action Button
 // ---------------------------------------------------------------------------
 
-class _LensFab extends StatelessWidget {
+class _LensFab extends StatefulWidget {
   final VoidCallback onPressed;
   final bool isOpen;
 
   const _LensFab({required this.onPressed, required this.isOpen});
 
   @override
+  State<_LensFab> createState() => _LensFabState();
+}
+
+class _LensFabState extends State<_LensFab> {
+  @override
+  void initState() {
+    super.initState();
+    Lens.activeRecording.addListener(_onRecordingChanged);
+  }
+
+  void _onRecordingChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    Lens.activeRecording.removeListener(_onRecordingChanged);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isRecording = Lens.activeRecording.value;
+
+    // Three states: recording (red pulse), open (close icon), idle (bug icon)
+    final Color fabColor;
+    final IconData fabIcon;
+    if (isRecording) {
+      fabColor = Colors.redAccent;
+      fabIcon = Icons.stop_circle;
+    } else if (widget.isOpen) {
+      fabColor = Colors.redAccent;
+      fabIcon = Icons.close;
+    } else {
+      fabColor = Colors.deepPurple;
+      fabIcon = Icons.bug_report;
+    }
+
     return Material(
       elevation: 6,
       shape: const CircleBorder(),
-      color: isOpen ? Colors.redAccent : Colors.deepPurple,
+      color: fabColor,
       child: InkWell(
         customBorder: const CircleBorder(),
-        onTap: onPressed,
+        onTap: widget.onPressed,
         child: Container(
           width: 48,
           height: 48,
           alignment: Alignment.center,
-          child: Icon(
-            isOpen ? Icons.close : Icons.bug_report,
-            color: Colors.white,
-            size: 24,
-          ),
+          child: isRecording
+              ? const _PulsingIcon(
+                  icon: Icons.stop_circle,
+                  color: Colors.white,
+                  size: 24,
+                )
+              : Icon(fabIcon, color: Colors.white, size: 24),
         ),
       ),
+    );
+  }
+}
+
+/// Animated pulsing icon for the recording state.
+class _PulsingIcon extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final double size;
+
+  const _PulsingIcon({
+    required this.icon,
+    required this.color,
+    required this.size,
+  });
+
+  @override
+  State<_PulsingIcon> createState() => _PulsingIconState();
+}
+
+class _PulsingIconState extends State<_PulsingIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) =>
+          Opacity(opacity: 0.5 + 0.5 * _controller.value, child: child),
+      child: Icon(widget.icon, color: widget.color, size: widget.size),
     );
   }
 }
