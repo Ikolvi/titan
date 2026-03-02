@@ -7,7 +7,8 @@ import '../pillars/quest_detail_pillar.dart';
 /// Quest Detail Screen — single quest view using Spark hooks.
 ///
 /// Demonstrates: Quarry (data fetching with SWR), Vestige (auto-tracking),
-/// Spark (useEffect for loading trigger), Atlas (waypoint runes for URL params).
+/// Spark (useEffect + useIsMounted for safe loading trigger), Atlas
+/// (waypoint runes for URL params).
 class QuestDetailScreen extends Spark {
   final String questId;
 
@@ -15,10 +16,14 @@ class QuestDetailScreen extends Spark {
 
   @override
   Widget ignite(BuildContext context) {
+    final isMounted = useIsMounted();
+
     // Trigger quest loading on mount — replaces StatefulWidget.initState
     useEffect(() {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.pillar<QuestDetailPillar>().loadQuest(questId);
+        if (isMounted()) {
+          context.pillar<QuestDetailPillar>().loadQuest(questId);
+        }
       });
       return null;
     }, [questId]);

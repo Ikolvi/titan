@@ -3,10 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 
-/// Spark Demo Screen — showcases hooks-style widgets.
+/// Spark Demo Screen — comprehensive hooks showcase.
 ///
-/// Demonstrates: Spark, useCore, useDerived, useEffect, useMemo, useRef,
-/// useTextController, useAnimationController, useFocusNode, useStream.
+/// Demonstrates all Spark hooks:
+/// - **Core**: [useCore], [useDerived], [useEffect], [useMemo], [useRef]
+/// - **Controllers**: [useTextController], [useAnimationController],
+///   [useFocusNode]
+/// - **Async**: [useStream], [useFuture]
+/// - **State**: [useCallback], [usePrevious], [useReducer],
+///   [useValueListenable], [useValueChanged]
+/// - **Timing**: [useDebounced]
+/// - **Lifecycle**: [useAnimation], [useAppLifecycleState], [useIsMounted]
 class SparkDemoScreen extends Spark {
   const SparkDemoScreen({super.key});
 
@@ -16,26 +23,51 @@ class SparkDemoScreen extends Spark {
     final count = useCore(0, name: 'counter');
     final heroName = useCore('Kael', name: 'hero-name');
     final doubled = useDerived(() => count.value * 2);
+    final prevCount = usePrevious(count.value);
 
     // --- Controller hooks (auto-disposed) ---
     final nameCtrl = useTextController(text: heroName.value);
+    final charCount = useValueListenable(nameCtrl);
     final anim = useAnimationController(
       duration: const Duration(milliseconds: 600),
     );
+    final opacity = useAnimation(anim);
     final focusNode = useFocusNode(debugLabel: 'hero-name');
+
+    // --- Debounced hero name (updates 500ms after typing stops) ---
+    final debouncedName = useDebounced(heroName.value, _kDebounceDuration);
+
+    // --- Memoized callbacks (stable references for child widgets) ---
+    final increment = useCallback(() => count.value++, const []);
+    final reset = useCallback(() => count.value = 0, const []);
 
     // --- Lifecycle hooks ---
     final renderCount = useRef(0);
     renderCount.value++;
+    final isMounted = useIsMounted();
+    final lifecycle = useAppLifecycleState();
 
     useEffect(() {
       anim.repeat(reverse: true);
       return null;
-    }, []);
+    }, const []);
 
     final greeting = useMemo(() => 'Hail, ${heroName.value}! (computed)', [
       heroName.value,
     ]);
+
+    // --- Fire a snackbar when count crosses a milestone ---
+    useValueChanged<int, void>(count.value, (oldValue, _) {
+      if (count.value > 0 && count.value % 5 == 0 && isMounted()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🏆 Milestone! Count reached ${count.value}'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+      return;
+    });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Spark Demo')),
@@ -44,7 +76,7 @@ class SparkDemoScreen extends Spark {
         child: ListView(
           children: [
             // --- Section: Reactive State ---
-            _sectionTitle('useCore & useDerived'),
+            _sectionTitle('useCore, useDerived & usePrevious'),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -56,17 +88,28 @@ class SparkDemoScreen extends Spark {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     Text('Doubled: ${doubled.value}'),
+                    Text(
+                      'Previous: ${prevCount ?? "–"}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'useValueChanged fires at every 5th count',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
                         FilledButton.icon(
-                          onPressed: () => count.value++,
+                          onPressed: increment,
                           icon: const Icon(Icons.add),
                           label: const Text('Increment'),
                         ),
                         const SizedBox(width: 8),
                         OutlinedButton.icon(
-                          onPressed: () => count.value = 0,
+                          onPressed: reset,
                           icon: const Icon(Icons.refresh),
                           label: const Text('Reset'),
                         ),
@@ -80,7 +123,10 @@ class SparkDemoScreen extends Spark {
             const SizedBox(height: 16),
 
             // --- Section: Controller Hooks ---
-            _sectionTitle('useTextController & useFocusNode'),
+            _sectionTitle(
+              'useTextController, useFocusNode, '
+              'useValueListenable & useDebounced',
+            ),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -98,6 +144,16 @@ class SparkDemoScreen extends Spark {
                     ),
                     const SizedBox(height: 8),
                     Text('Hero: ${heroName.value}'),
+                    Text(
+                      'Characters: ${charCount.text.length}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Text(
+                      'Debounced (500ms): ${debouncedName ?? "…"}',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.deepPurple),
+                    ),
                   ],
                 ),
               ),
@@ -119,19 +175,22 @@ class SparkDemoScreen extends Spark {
 
             const SizedBox(height: 16),
 
-            // --- Section: useAnimationController ---
-            _sectionTitle('useAnimationController'),
+            // --- Section: useAnimation ---
+            _sectionTitle('useAnimationController & useAnimation'),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    FadeTransition(
-                      opacity: anim,
+                    Opacity(
+                      opacity: opacity,
                       child: const Icon(Icons.star, size: 48),
                     ),
                     const SizedBox(height: 8),
-                    const Text('Pulsing animation (auto-disposed)'),
+                    Text(
+                      'Opacity: ${opacity.toStringAsFixed(2)} '
+                      '(useAnimation rebuilds per-frame)',
+                    ),
                   ],
                 ),
               ),
@@ -147,6 +206,52 @@ class SparkDemoScreen extends Spark {
                 child: Text(
                   'This Spark rendered ${renderCount.value} time(s)',
                   style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // --- Section: useFuture ---
+            _sectionTitle('useFuture (async data)'),
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: _HeroLookupSpark(),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // --- Section: useReducer ---
+            _sectionTitle('useReducer (reducer pattern)'),
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: _QuestCounterSpark(),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // --- Section: useAppLifecycleState ---
+            _sectionTitle('useAppLifecycleState'),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      lifecycle == AppLifecycleState.resumed
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: lifecycle == AppLifecycleState.resumed
+                          ? Colors.green
+                          : Colors.grey,
+                    ),
+                    const SizedBox(width: 8),
+                    Text('Lifecycle: ${lifecycle.name}'),
+                  ],
                 ),
               ),
             ),
@@ -186,6 +291,116 @@ class SparkDemoScreen extends Spark {
     );
   }
 }
+
+const _kDebounceDuration = Duration(milliseconds: 500);
+
+// =============================================================================
+// _HeroLookupSpark — demonstrates useFuture + useIsMounted
+// =============================================================================
+
+/// Simulates fetching a hero from a remote API.
+Future<Map<String, dynamic>> _fetchHero(String name) async {
+  await Future<void>.delayed(const Duration(seconds: 1));
+  return {'name': name, 'class': 'Sentinel', 'glory': 2450, 'rank': 'Champion'};
+}
+
+/// Shows [useFuture] with [AsyncValue.when] pattern. The hero data
+/// loads asynchronously and [useIsMounted] guards post-async safety.
+class _HeroLookupSpark extends Spark {
+  const _HeroLookupSpark();
+
+  @override
+  Widget ignite(BuildContext context) {
+    final snapshot = useFuture(_fetchHero('Kael'), keys: const ['Kael']);
+
+    return snapshot.when(
+      onData: (hero) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${hero['name']} — ${hero['class']}',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Text('Glory: ${hero['glory']}  •  Rank: ${hero['rank']}'),
+        ],
+      ),
+      onLoading: () => const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 8),
+          Text('Loading hero data…'),
+        ],
+      ),
+      onError: (e, _) => Text('Error: $e'),
+    );
+  }
+}
+
+// =============================================================================
+// _QuestCounterSpark — demonstrates useReducer
+// =============================================================================
+
+/// Uses [useReducer] with a discriminated action type to manage quest
+/// completion state — a compact alternative to a full Pillar when state
+/// is local to one widget.
+class _QuestCounterSpark extends Spark {
+  const _QuestCounterSpark();
+
+  @override
+  Widget ignite(BuildContext context) {
+    final store = useReducer<int, String>(
+      (state, action) => switch (action) {
+        'complete' => state + 1,
+        'fail' => (state - 1).clamp(0, 999),
+        'reset' => 0,
+        _ => state,
+      },
+      initialState: 0,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Quests completed: ${store.state}',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: [
+            FilledButton.icon(
+              onPressed: () => store.dispatch('complete'),
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text('Complete'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => store.dispatch('fail'),
+              icon: const Icon(Icons.close, size: 18),
+              label: const Text('Fail'),
+            ),
+            TextButton.icon(
+              onPressed: () => store.dispatch('reset'),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Reset'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// =============================================================================
+// _QuestFeedSpark — demonstrates useStream
+// =============================================================================
 
 /// Simulated quest activity feed that emits events periodically.
 ///

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:titan_bastion/titan_bastion.dart';
 import 'package:titan_colossus/titan_colossus.dart';
 
 /// Shade Demo Screen — gesture recording & macro replay.
@@ -193,8 +194,7 @@ class _ShadeDemoScreenState extends State<ShadeDemoScreen> {
                   ),
                 ),
                 const Spacer(),
-                if (isRecording)
-                  _RecordingIndicator(shade: _shade, colors: colors),
+                if (isRecording) _RecordingIndicator(colors: colors),
               ],
             ),
             const SizedBox(height: 12),
@@ -837,65 +837,48 @@ enum _ShadeStatus { idle, recording, replaying }
 // Recording indicator — pulsing red dot with event count
 // ---------------------------------------------------------------------------
 
-class _RecordingIndicator extends StatefulWidget {
-  final Shade shade;
+/// Pulsing red dot with "REC" label — converted from StatefulWidget to Spark.
+///
+/// Uses [useAnimationController] + [useAnimation] to eliminate manual
+/// controller lifecycle (initState, dispose) and [AnimatedBuilder].
+class _RecordingIndicator extends Spark {
   final ColorScheme colors;
 
-  const _RecordingIndicator({required this.shade, required this.colors});
+  const _RecordingIndicator({required this.colors});
 
   @override
-  State<_RecordingIndicator> createState() => _RecordingIndicatorState();
-}
-
-class _RecordingIndicatorState extends State<_RecordingIndicator>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
+  Widget ignite(BuildContext context) {
+    final controller = useAnimationController(
       duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
-  }
+    );
+    final pulse = useAnimation(controller);
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+    useEffect(() {
+      controller.repeat(reverse: true);
+      return null;
+    }, const []);
 
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: widget.colors.error.withValues(
-                  alpha: 0.5 + _controller.value * 0.5,
-                ),
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'REC',
-              style: TextStyle(
-                color: widget.colors.error,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        );
-      },
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: colors.error.withValues(alpha: 0.5 + pulse * 0.5),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'REC',
+          style: TextStyle(
+            color: colors.error,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -980,33 +963,31 @@ class _PlaygroundButton extends StatelessWidget {
 // Playground slider
 // ---------------------------------------------------------------------------
 
-class _PlaygroundSlider extends StatefulWidget {
+/// Playground slider — converted from StatefulWidget to Spark.
+///
+/// Uses [useCore] for the slider value instead of manual [setState].
+class _PlaygroundSlider extends Spark {
   final ColorScheme colors;
 
   const _PlaygroundSlider({required this.colors});
 
   @override
-  State<_PlaygroundSlider> createState() => _PlaygroundSliderState();
-}
+  Widget ignite(BuildContext context) {
+    final value = useCore(0.5);
 
-class _PlaygroundSliderState extends State<_PlaygroundSlider> {
-  double _value = 0.5;
-
-  @override
-  Widget build(BuildContext context) {
     return Row(
       children: [
         const Icon(Icons.exposure_minus_1, size: 16),
         Expanded(
           child: Slider(
-            value: _value,
-            onChanged: (v) => setState(() => _value = v),
-            activeColor: widget.colors.primary,
+            value: value.value,
+            onChanged: (v) => value.value = v,
+            activeColor: colors.primary,
           ),
         ),
         const Icon(Icons.exposure_plus_1, size: 16),
         const SizedBox(width: 8),
-        Text('${(_value * 100).toInt()}%'),
+        Text('${(value.value * 100).toInt()}%'),
       ],
     );
   }

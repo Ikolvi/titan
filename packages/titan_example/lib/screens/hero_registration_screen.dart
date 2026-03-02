@@ -187,7 +187,12 @@ class _RegistrationForm extends StatelessWidget {
 // Reusable Scroll-backed TextField
 // ---------------------------------------------------------------------------
 
-class _ScrollTextField extends StatefulWidget {
+/// Reusable Scroll-backed TextField — converted from StatefulWidget to Spark.
+///
+/// Uses [useTextController] for auto-disposed controller and
+/// [useValueChanged] to sync external value changes, eliminating
+/// manual didUpdateWidget/dispose boilerplate.
+class _ScrollTextField extends Spark {
   final String label;
   final String value;
   final String? error;
@@ -209,39 +214,28 @@ class _ScrollTextField extends StatefulWidget {
   });
 
   @override
-  State<_ScrollTextField> createState() => _ScrollTextFieldState();
-}
+  Widget ignite(BuildContext context) {
+    final controller = useTextController(text: value);
 
-class _ScrollTextFieldState extends State<_ScrollTextField> {
-  late final _controller = TextEditingController(text: widget.value);
+    // Sync external value → controller when parent pushes a new value
+    useValueChanged<String, void>(value, (_, _) {
+      if (value != controller.text) {
+        controller.text = value;
+      }
+      return;
+    });
 
-  @override
-  void didUpdateWidget(_ScrollTextField old) {
-    super.didUpdateWidget(old);
-    if (widget.value != _controller.text) {
-      _controller.text = widget.value;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return TextField(
-      controller: _controller,
-      keyboardType: widget.keyboardType,
-      maxLines: widget.maxLines,
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
       decoration: InputDecoration(
-        labelText: widget.label,
+        labelText: label,
         border: const OutlineInputBorder(),
-        errorText: widget.isTouched ? widget.error : null,
+        errorText: isTouched ? error : null,
       ),
-      onChanged: widget.onChanged,
-      onTapOutside: (_) => widget.onBlur(),
+      onChanged: onChanged,
+      onTapOutside: (_) => onBlur(),
     );
   }
 }
