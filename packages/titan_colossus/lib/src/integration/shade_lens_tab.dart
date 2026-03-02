@@ -374,9 +374,13 @@ class _ShadeLensPillar extends Pillar {
     );
     isReplaying.value = false;
     lastResult.value = result;
-    status.value = result.wasCancelled
-        ? 'Replay cancelled'
-        : 'Replay complete — check Perf tab for metrics';
+    if (result.routeChanged) {
+      status.value = 'Replay stopped — invalid route: ${result.invalidRoute}';
+    } else {
+      status.value = result.wasCancelled
+          ? 'Replay cancelled'
+          : 'Replay complete — check Perf tab for metrics';
+    }
   }
 }
 
@@ -818,15 +822,53 @@ Widget _buildReplayResult(_ShadeLensPillar p) {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          result.wasCancelled ? 'Replay Cancelled' : 'Replay Complete',
+          result.routeChanged
+              ? 'Invalid Route Detected'
+              : result.wasCancelled
+              ? 'Replay Cancelled'
+              : 'Replay Complete',
           style: TextStyle(
-            color: result.wasCancelled
+            color: result.routeChanged
+                ? Colors.redAccent
+                : result.wasCancelled
                 ? Colors.orangeAccent
                 : Colors.greenAccent,
             fontSize: 10,
             fontWeight: FontWeight.w700,
           ),
         ),
+        if (result.routeChanged) ...[
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.redAccent.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: Colors.redAccent.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.wrong_location_outlined,
+                  color: Colors.redAccent,
+                  size: 12,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Route changed to: ${result.invalidRoute}',
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 9,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 4),
         _LensInfoRow(
           label: 'Dispatched',

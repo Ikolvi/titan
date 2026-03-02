@@ -389,4 +389,193 @@ void main() {
       expect(result, isA<PhantomResult>());
     });
   });
+
+  // ---------------------------------------------------------
+  // Phantom — route validation
+  // ---------------------------------------------------------
+
+  group('Phantom route validation', () {
+    test('creates with validateRoute defaults to true', () {
+      final phantom = Phantom();
+      expect(phantom.validateRoute, true);
+    });
+
+    test('creates with validateRoute set to false', () {
+      final phantom = Phantom(validateRoute: false);
+      expect(phantom.validateRoute, false);
+    });
+
+    test('no-op when session has no startRoute', () async {
+      final shade = Shade();
+      shade.getCurrentRoute = () => '/different';
+
+      final phantom = Phantom(shade: shade, validateRoute: true);
+
+      final session = ShadeSession(
+        id: 'no_start_route',
+        name: 'no_start_route',
+        recordedAt: DateTime(2025, 1, 1),
+        duration: Duration.zero,
+        screenWidth: 375,
+        screenHeight: 812,
+        devicePixelRatio: 2.0,
+        startRoute: null,
+        imprints: [],
+      );
+
+      final result = await phantom.replay(session);
+
+      expect(result.wasCancelled, false);
+      expect(result.routeChanged, false);
+      expect(result.invalidRoute, isNull);
+    });
+
+    test('no-op when shade has no getCurrentRoute', () async {
+      final shade = Shade();
+      // No getCurrentRoute set
+
+      final phantom = Phantom(shade: shade, validateRoute: true);
+
+      final session = ShadeSession(
+        id: 'no_callback',
+        name: 'no_callback',
+        recordedAt: DateTime(2025, 1, 1),
+        duration: Duration.zero,
+        screenWidth: 375,
+        screenHeight: 812,
+        devicePixelRatio: 2.0,
+        startRoute: '/quests',
+        imprints: [],
+      );
+
+      final result = await phantom.replay(session);
+
+      expect(result.wasCancelled, false);
+      expect(result.routeChanged, false);
+    });
+
+    test('skipped when validateRoute is false', () async {
+      final shade = Shade();
+      shade.getCurrentRoute = () => '/login';
+
+      final phantom = Phantom(
+        shade: shade,
+        validateRoute: false,
+        suppressKeyboard: false,
+      );
+
+      final session = ShadeSession(
+        id: 'skip_validation',
+        name: 'skip_validation',
+        recordedAt: DateTime(2025, 1, 1),
+        duration: const Duration(seconds: 1),
+        screenWidth: 375,
+        screenHeight: 812,
+        devicePixelRatio: 2.0,
+        startRoute: '/quests',
+        imprints: [
+          Imprint(
+            type: ImprintType.textInput,
+            positionX: 0,
+            positionY: 0,
+            timestamp: const Duration(milliseconds: 10),
+            text: 'test',
+          ),
+        ],
+      );
+
+      final result = await phantom.replay(session);
+
+      // Should complete without cancellation even though routes differ
+      expect(result.wasCancelled, false);
+      expect(result.routeChanged, false);
+      expect(result.eventsDispatched, 1);
+    });
+  });
+
+  // ---------------------------------------------------------
+  // PhantomResult — route changed fields
+  // ---------------------------------------------------------
+
+  group('PhantomResult route fields', () {
+    test('defaults routeChanged to false', () {
+      final result = PhantomResult(
+        sessionName: 'test',
+        eventsDispatched: 10,
+        eventsSkipped: 0,
+        expectedDuration: const Duration(seconds: 5),
+        actualDuration: const Duration(seconds: 5),
+        wasNormalized: false,
+        wasCancelled: false,
+      );
+
+      expect(result.routeChanged, false);
+      expect(result.invalidRoute, isNull);
+    });
+
+    test('includes routeChanged in toMap', () {
+      final result = PhantomResult(
+        sessionName: 'test',
+        eventsDispatched: 5,
+        eventsSkipped: 0,
+        expectedDuration: const Duration(seconds: 5),
+        actualDuration: const Duration(seconds: 2),
+        wasNormalized: false,
+        wasCancelled: true,
+        routeChanged: true,
+        invalidRoute: '/login',
+      );
+      final map = result.toMap();
+
+      expect(map['routeChanged'], true);
+      expect(map['invalidRoute'], '/login');
+    });
+
+    test('excludes invalidRoute from toMap when null', () {
+      final result = PhantomResult(
+        sessionName: 'test',
+        eventsDispatched: 10,
+        eventsSkipped: 0,
+        expectedDuration: const Duration(seconds: 5),
+        actualDuration: const Duration(seconds: 5),
+        wasNormalized: false,
+        wasCancelled: false,
+      );
+      final map = result.toMap();
+
+      expect(map['routeChanged'], false);
+      expect(map.containsKey('invalidRoute'), false);
+    });
+
+    test('toString shows ROUTE_CHANGED', () {
+      final result = PhantomResult(
+        sessionName: 'checkout',
+        eventsDispatched: 3,
+        eventsSkipped: 0,
+        expectedDuration: const Duration(seconds: 10),
+        actualDuration: const Duration(seconds: 1),
+        wasNormalized: false,
+        wasCancelled: true,
+        routeChanged: true,
+        invalidRoute: '/login',
+      );
+
+      expect(result.toString(), contains('ROUTE_CHANGED'));
+      expect(result.toString(), contains('/login'));
+    });
+
+    test('toString omits ROUTE_CHANGED when false', () {
+      final result = PhantomResult(
+        sessionName: 'test',
+        eventsDispatched: 10,
+        eventsSkipped: 0,
+        expectedDuration: const Duration(seconds: 5),
+        actualDuration: const Duration(seconds: 5),
+        wasNormalized: false,
+        wasCancelled: false,
+      );
+
+      expect(result.toString(), isNot(contains('ROUTE_CHANGED')));
+    });
+  });
 }

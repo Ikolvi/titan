@@ -615,6 +615,7 @@ class Colossus extends Pillar {
     bool normalizePositions = true,
     bool resetBeforeReplay = true,
     bool requireMatchingRoute = false,
+    bool validateRoute = true,
     bool waitForSettled = false,
     Duration settleTimeout = const Duration(seconds: 5),
     void Function(int current, int total)? onProgress,
@@ -643,6 +644,7 @@ class Colossus extends Pillar {
       shade: shade,
       waitForSettled: waitForSettled,
       settleTimeout: settleTimeout,
+      validateRoute: validateRoute,
       onProgress: onProgress,
     );
 
@@ -654,11 +656,19 @@ class Colossus extends Pillar {
 
     final result = await phantom.replay(session);
 
-    _chronicle?.info(
-      'Phantom replay ${result.wasCancelled ? 'cancelled' : 'complete'}: '
-      '${result.eventsDispatched}/${result.totalEvents} events dispatched '
-      'in ${result.actualDuration.inMilliseconds}ms',
-    );
+    if (result.routeChanged) {
+      _chronicle?.warning(
+        'Phantom replay stopped — route changed to '
+        '"${result.invalidRoute}" '
+        '(${result.eventsDispatched}/${result.totalEvents} events)',
+      );
+    } else {
+      _chronicle?.info(
+        'Phantom replay ${result.wasCancelled ? 'cancelled' : 'complete'}: '
+        '${result.eventsDispatched}/${result.totalEvents} events dispatched '
+        'in ${result.actualDuration.inMilliseconds}ms',
+      );
+    }
 
     return result;
   }

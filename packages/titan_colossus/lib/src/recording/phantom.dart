@@ -134,6 +134,19 @@ class Phantom {
   /// The app can use this to simulate key input or update UI.
   void Function(Imprint imprint)? onKeyEvent;
 
+  /// Whether to validate the current route during replay.
+  ///
+  /// When `true` and [shade] has a `getCurrentRoute` callback,
+  /// Phantom checks the route after each pointer-up event. If the
+  /// route has changed from the session's [ShadeSession.startRoute],
+  /// the replay is stopped with [PhantomResult.routeChanged] set
+  /// to `true`.
+  ///
+  /// This catches scenarios where an API response redirects the
+  /// user (e.g., expired token → login page), making subsequent
+  /// replay events invalid.
+  final bool validateRoute;
+
   bool _isReplaying = false;
   bool _cancelRequested = false;
 
@@ -160,6 +173,7 @@ class Phantom {
     this.suppressKeyboard = true,
     this.waitForSettled = false,
     this.settleTimeout = const Duration(seconds: 5),
+    this.validateRoute = true,
     this.onProgress,
     this.onComplete,
     this.onCancelled,
@@ -294,6 +308,20 @@ class Phantom {
           if (waitForSettled && imprint.type == ImprintType.pointerUp) {
             await _waitForSettled();
           }
+
+          // Route guard: after pointer-up events, check that the
+          // route hasn't changed unexpectedly (e.g., API redirect).
+          if (validateRoute && imprint.type == ImprintType.pointerUp) {
+            final routeResult = _checkRouteValidity(
+              session,
+              dispatched: dispatched,
+              skipped: skipped,
+              replayStart: replayStart,
+              scaleX: scaleX,
+              scaleY: scaleY,
+            );
+            if (routeResult != null) return routeResult;
+          }
         } else {
           skipped++;
         }
@@ -366,6 +394,51 @@ class Phantom {
     if (_isReplaying) {
       _cancelRequested = true;
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Route validation
+  // -----------------------------------------------------------------------
+
+  /// Check if the current route still matches the session's start route.
+  ///
+  /// Returns a [PhantomResult] with [PhantomResult.routeChanged] if the
+  /// route has changed, or `null` if the route is still valid.
+  PhantomResult? _checkRouteValidity(
+    ShadeSession session, {
+    required int dispatched,
+    required int skipped,
+    required DateTime replayStart,
+    required double scaleX,
+    required double scaleY,
+  }) {
+    if (session.startRoute == null) return null;
+    final getCurrentRoute = shade?.getCurrentRoute;
+    if (getCurrentRoute == null) return null;
+
+    final currentRoute = getCurrentRoute();
+    if (currentRoute == null) return null;
+    if (currentRoute == session.startRoute) return null;
+
+    // Route changed — stop replay
+    _isReplaying = false;
+    _cancelRequested = false;
+    shade?.isReplaying = false;
+
+    final result = PhantomResult(
+      sessionName: session.name,
+      eventsDispatched: dispatched,
+      eventsSkipped: skipped,
+      expectedDuration: session.duration,
+      actualDuration: DateTime.now().difference(replayStart),
+      wasNormalized: normalizePositions && (scaleX != 1 || scaleY != 1),
+      wasCancelled: true,
+      routeChanged: true,
+      invalidRoute: currentRoute,
+    );
+
+    onComplete?.call(result);
+    return result;
   }
 
   // -----------------------------------------------------------------------
@@ -619,6 +692,18 @@ class PhantomResult {
   /// Whether the replay was cancelled before completion.
   final bool wasCancelled;
 
+  /// Whether the replay was stopped due to an unexpected route change.
+  ///
+  /// When `true`, the app navigated away from the expected route
+  /// during replay (e.g., an API response triggered a redirect).
+  /// Check [invalidRoute] for the detected route.
+  final bool routeChanged;
+
+  /// The unexpected route detected when [routeChanged] is `true`.
+  ///
+  /// `null` if the route did not change or could not be determined.
+  final String? invalidRoute;
+
   /// Creates a [PhantomResult].
   const PhantomResult({
     required this.sessionName,
@@ -628,6 +713,8 @@ class PhantomResult {
     required this.actualDuration,
     required this.wasNormalized,
     required this.wasCancelled,
+    this.routeChanged = false,
+    this.invalidRoute,
   });
 
   /// Total events in the session (dispatched + skipped).
@@ -650,6 +737,8 @@ class PhantomResult {
     'actualDurationUs': actualDuration.inMicroseconds,
     'wasNormalized': wasNormalized,
     'wasCancelled': wasCancelled,
+    'routeChanged': routeChanged,
+    if (invalidRoute != null) 'invalidRoute': invalidRoute,
     'speedRatio': speedRatio,
   };
 
@@ -658,5 +747,6 @@ class PhantomResult {
       'PhantomResult($sessionName, '
       '$eventsDispatched/$totalEvents events, '
       '${actualDuration.inMilliseconds}ms'
-      '${wasCancelled ? ' [CANCELLED]' : ''})';
+      '${wasCancelled ? ' [CANCELLED]' : ''}'
+      '${routeChanged ? ' [ROUTE_CHANGED: $invalidRoute]' : ''})';
 }
