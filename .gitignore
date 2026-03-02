@@ -12,3 +12,6 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 pubspec.lock
+
+# Benchmark results (local tracking)
+**/benchmark/results/

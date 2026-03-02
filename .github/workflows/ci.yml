@@ -71,13 +71,29 @@ jobs:
       - name: Bootstrap
         run: melos bootstrap
 
-      - name: Run Core Benchmarks
+      - name: Restore Previous Benchmark Baseline
+        uses: actions/cache/restore@v4
+        with:
+          path: packages/titan/benchmark/results
+          key: benchmark-baseline-${{ github.ref_name }}
+          restore-keys: |
+            benchmark-baseline-main
+            benchmark-baseline-
+
+      - name: Run Benchmark Tracker
         working-directory: packages/titan
-        run: dart run benchmark/benchmark.dart | tee benchmark_output.txt
+        run: dart run benchmark/benchmark_track.dart | tee benchmark_output.txt
 
       - name: Run CI Benchmarks (JSON)
         working-directory: packages/titan
         run: dart run benchmark/benchmark_ci.dart > benchmark_results.json
+
+      - name: Save Benchmark Baseline
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: packages/titan/benchmark/results
+          key: benchmark-baseline-main-${{ github.sha }}
 
       - name: Generate Benchmark Summary
         working-directory: packages/titan
@@ -95,4 +111,7 @@ jobs:
           path: |
             packages/titan/benchmark_output.txt
             packages/titan/benchmark_results.json
+            packages/titan/benchmark/results/latest.json
           retention-days: 90
+          overwrite: true
+          overwrite: true

@@ -157,7 +157,7 @@ void main() {
 
       final snap = pillar.snapshot();
       expect(
-        () => (snap.values as Map<String, dynamic>)['count'] = 999,
+        () => (snap.values)['count'] = 999,
         throwsUnsupportedError,
       );
       pillar.dispose();

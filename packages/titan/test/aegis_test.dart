@@ -28,11 +28,9 @@ void main() {
     });
 
     test('throws after all attempts exhausted', () async {
-      var attempts = 0;
       expect(
         () async => await Aegis.run(
           () async {
-            attempts++;
             throw Exception('always fails');
           },
           maxAttempts: 3,
@@ -91,7 +89,7 @@ void main() {
           baseDelay: Duration(milliseconds: 50),
           strategy: BackoffStrategy.constant,
           jitter: false,
-          onRetry: (_, __, delay) => delays.add(delay),
+          onRetry: (_, _, delay) => delays.add(delay),
         );
       } catch (_) {}
 
@@ -110,7 +108,7 @@ void main() {
           baseDelay: Duration(milliseconds: 100),
           strategy: BackoffStrategy.exponential,
           jitter: false,
-          onRetry: (_, __, delay) => delays.add(delay),
+          onRetry: (_, _, delay) => delays.add(delay),
         );
       } catch (_) {}
 
@@ -131,7 +129,7 @@ void main() {
           baseDelay: Duration(milliseconds: 100),
           strategy: BackoffStrategy.linear,
           jitter: false,
-          onRetry: (_, __, delay) => delays.add(delay),
+          onRetry: (_, _, delay) => delays.add(delay),
         );
       } catch (_) {}
 
@@ -153,7 +151,7 @@ void main() {
           maxDelay: Duration(milliseconds: 500),
           strategy: BackoffStrategy.exponential,
           jitter: false,
-          onRetry: (_, __, delay) => delays.add(delay),
+          onRetry: (_, _, delay) => delays.add(delay),
         );
       } catch (_) {}
 
@@ -172,7 +170,7 @@ void main() {
           baseDelay: Duration(milliseconds: 100),
           strategy: BackoffStrategy.constant,
           jitter: true,
-          onRetry: (_, __, delay) => delays.add(delay),
+          onRetry: (_, _, delay) => delays.add(delay),
         );
       } catch (_) {}
 
@@ -184,15 +182,13 @@ void main() {
     });
 
     test('preserves stack trace', () async {
-      try {
-        await Aegis.run(
+      expect(
+        () async => await Aegis.run(
           () async => throw ArgumentError('bad arg'),
           maxAttempts: 1,
-        );
-        fail('Should have thrown');
-      } catch (e) {
-        expect(e, isA<ArgumentError>());
-      }
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
     });
 
     test('runWithConfig returns AegisResult with metadata', () async {
