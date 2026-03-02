@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' show min, max;
 
 // =============================================================================
 // Titan CI Benchmark Report Generator
@@ -178,6 +179,9 @@ void main(List<String> args) {
 
   md.writeln();
 
+  // Performance trend charts (Mermaid line graphs)
+  _writeTrendCharts(md, parsed);
+
   // Write file
   outputFile.writeAsStringSync(md.toString());
   print('✓ Benchmark report written to $outputPath');
@@ -351,4 +355,162 @@ class _ParsedMarkdown {
   final List<Map<String, String>> rows;
 
   _ParsedMarkdown({required this.metricNames, required this.rows});
+}
+
+// =============================================================================
+// Trend Chart Generation
+// =============================================================================
+
+/// Chart grouping definition.
+typedef _ChartGroup = ({
+  String title,
+  String yLabel,
+  List<String> metrics,
+  bool divideByMillion,
+});
+
+/// Predefined chart groups for trend visualization.
+const List<_ChartGroup> _chartGroups = [
+  (
+    title: 'Core Latency',
+    yLabel: 'µs',
+    metrics: ['Pillar Lifecycle (10K)', 'Prism Projection (10K)'],
+    divideByMillion: false,
+  ),
+  (
+    title: 'Sub-µs Latency',
+    yLabel: 'µs',
+    metrics: [
+      'Diamond Pattern (1K)',
+      'Loom Transition (30K)',
+      'Conduit Pipeline (10K)',
+      'Nexus List Add (10K)',
+    ],
+    divideByMillion: false,
+  ),
+  (
+    title: 'Throughput',
+    yLabel: 'M ops/sec',
+    metrics: [
+      'Notification Throughput',
+      'Herald Throughput (10 listeners)',
+      'Vigil Capture',
+      'Annals Record (100K, cap=1K)',
+    ],
+    divideByMillion: true,
+  ),
+];
+
+/// Writes Mermaid xychart-beta line charts for performance trend visualization.
+///
+/// Generates one chart per [_chartGroups] entry, using historical data from
+/// [parsed]. Each chart shows metric values over CI runs with commit hashes
+/// on the x-axis. Requires at least 2 data points to render.
+void _writeTrendCharts(StringBuffer md, _ParsedMarkdown parsed) {
+  if (parsed.rows.length < 2) return;
+
+  md.writeln('## Performance Trends');
+  md.writeln();
+  md.writeln(
+    '> Auto-generated line charts tracking metric trends across CI runs.',
+  );
+  md.writeln();
+
+  // Collect x-axis labels (short commit hashes)
+  final xLabels = parsed.rows.map((r) => '"${r['_commit'] ?? '?'}"').toList();
+  final xAxis = xLabels.join(', ');
+
+  for (final group in _chartGroups) {
+    // Verify at least one metric has data
+    final hasData = group.metrics.any(
+      (m) => parsed.rows.any((r) => _parseValue(r[m] ?? '-') != null),
+    );
+    if (!hasData) continue;
+
+    // Extract numeric series per metric and compute y-axis bounds
+    final seriesData = <String, List<double>>{};
+    var yMin = double.infinity;
+    var yMax = double.negativeInfinity;
+
+    for (final metric in group.metrics) {
+      final values = <double>[];
+      for (final row in parsed.rows) {
+        var value = _parseValue(row[metric] ?? '-');
+        if (value != null && group.divideByMillion) value /= 1e6;
+        values.add(value ?? -1);
+      }
+
+      // Fill missing values (-1) with nearest neighbor to avoid misleading
+      // dips in the chart. Forward-fill first, then back-fill.
+      for (var i = 0; i < values.length; i++) {
+        if (values[i] < 0) {
+          // Try forward neighbor
+          final next = values.skip(i + 1).where((v) => v >= 0).firstOrNull;
+          values[i] = next ?? 0;
+        }
+      }
+      for (var i = values.length - 1; i >= 0; i--) {
+        if (values[i] < 0) {
+          final prev = values.take(i).where((v) => v >= 0).lastOrNull;
+          values[i] = prev ?? 0;
+        }
+      }
+
+      for (final v in values) {
+        if (v > 0) {
+          yMin = min(yMin, v);
+          yMax = max(yMax, v);
+        }
+      }
+
+      seriesData[metric] = values;
+    }
+
+    // Calculate y-axis range with 10% padding
+    final span = yMax - yMin;
+    final padding = span > 0 ? span * 0.15 : yMax * 0.15;
+    final axisMin = max(0.0, yMin - padding);
+    final axisMax = yMax + padding;
+
+    // Determine decimal precision based on value magnitude
+    final precision = axisMax < 1 ? 3 : (axisMax < 10 ? 2 : 1);
+
+    md.writeln('### ${group.title}');
+    md.writeln();
+    md.writeln('```mermaid');
+    md.writeln('---');
+    md.writeln('config:');
+    md.writeln('    xyChart:');
+    md.writeln('        width: 900');
+    md.writeln('        height: 400');
+    md.writeln('---');
+    md.writeln('xychart-beta');
+    md.writeln('    title "${group.title} (${group.yLabel})"');
+    md.writeln('    x-axis [$xAxis]');
+    md.writeln(
+      '    y-axis "${group.yLabel}" '
+      '${axisMin.toStringAsFixed(precision)} --> '
+      '${axisMax.toStringAsFixed(precision)}',
+    );
+
+    for (final metric in group.metrics) {
+      final values = seriesData[metric]!;
+      final valStr = values.map((v) => v.toStringAsFixed(precision)).join(', ');
+      md.writeln('    line [$valStr]');
+    }
+
+    md.writeln('```');
+    md.writeln();
+
+    // Text legend mapping line order to metric names
+    md.writeln('<details>');
+    md.writeln('<summary>Legend</summary>');
+    md.writeln();
+    for (var i = 0; i < group.metrics.length; i++) {
+      md.writeln('${i + 1}. **${group.metrics[i]}**');
+    }
+    md.writeln();
+    md.writeln('</details>');
+    md.writeln();
+  }
 }
