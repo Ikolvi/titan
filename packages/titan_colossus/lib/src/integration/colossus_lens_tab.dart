@@ -119,17 +119,27 @@ class _ColossusTabContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Beacon(
       pillars: [() => _PerfRecordingPillar(colossus)],
-      child: DefaultTabController(
-        length: 5,
-        child: Column(
-          children: [
-            const _SubTabBar(),
-            // Perf recording bar uses Vestige for reactive rebuilds
-            Vestige<_PerfRecordingPillar>(
-              builder: (context, p) => _buildPerfRecordingBar(p),
-            ),
-            Expanded(child: _ColossusTabBody(colossus: colossus)),
-          ],
+      // Localizations is required because TabBar/TabBarView need
+      // MaterialLocalizations, but the Lens overlay only provides
+      // Directionality — not a full MaterialApp.
+      child: Localizations(
+        locale: const Locale('en'),
+        delegates: const [
+          DefaultMaterialLocalizations.delegate,
+          DefaultWidgetsLocalizations.delegate,
+        ],
+        child: DefaultTabController(
+          length: 5,
+          child: Column(
+            children: [
+              const _SubTabBar(),
+              // Perf recording bar uses Vestige for reactive rebuilds
+              Vestige<_PerfRecordingPillar>(
+                builder: (context, p) => _buildPerfRecordingBar(p),
+              ),
+              Expanded(child: _ColossusTabBody(colossus: colossus)),
+            ],
+          ),
         ),
       ),
     );
