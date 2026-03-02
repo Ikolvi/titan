@@ -26,9 +26,8 @@ class _ShadeDemoScreenState extends State<ShadeDemoScreen> {
   _ShadeStatus _status = _ShadeStatus.idle;
   int _replayProgress = 0;
   int _replayTotal = 0;
-  String _sessionName = '';
-
   // ShadeTextControllers for text input tracking
+  late final ShadeTextController _sessionNameController;
   late final ShadeTextController _heroNameController;
   late final ShadeTextController _questNoteController;
 
@@ -40,6 +39,10 @@ class _ShadeDemoScreenState extends State<ShadeDemoScreen> {
     _shade = Colossus.isActive ? Colossus.instance.shade : Shade();
 
     // Initialize ShadeTextControllers for automatic text capture
+    _sessionNameController = ShadeTextController(
+      shade: _shade,
+      fieldId: 'session_name',
+    );
     _heroNameController = ShadeTextController(
       shade: _shade,
       fieldId: 'hero_name',
@@ -65,6 +68,7 @@ class _ShadeDemoScreenState extends State<ShadeDemoScreen> {
 
   @override
   void dispose() {
+    _sessionNameController.dispose();
     _heroNameController.dispose();
     _questNoteController.dispose();
     super.dispose();
@@ -200,13 +204,13 @@ class _ShadeDemoScreenState extends State<ShadeDemoScreen> {
             const SizedBox(height: 12),
             if (!isRecording) ...[
               TextField(
+                controller: _sessionNameController,
                 decoration: const InputDecoration(
                   labelText: 'Session Name',
                   hintText: 'e.g. quest_browse_flow',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.label_outline),
                 ),
-                onChanged: (v) => _sessionName = v,
               ),
               const SizedBox(height: 12),
             ],
@@ -694,7 +698,8 @@ class _ShadeDemoScreenState extends State<ShadeDemoScreen> {
   // -----------------------------------------------------------------------
 
   void _startRecording() {
-    _shade.startRecording(name: _sessionName.isNotEmpty ? _sessionName : null);
+    final name = _sessionNameController.text.trim();
+    _shade.startRecording(name: name.isNotEmpty ? name : null);
     setState(() => _status = _ShadeStatus.recording);
   }
 

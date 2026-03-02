@@ -204,33 +204,52 @@ class HeroProfileScreen extends StatelessWidget {
   }
 
   void _showRenameDialog(BuildContext context, QuestboardPillar board) {
-    final controller = TextEditingController(text: board.heroName.value);
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Rename Hero'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'New name',
-            border: OutlineInputBorder(),
-          ),
+      builder: (_) => _RenameDialog(board: board),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rename Dialog — Spark-based for auto-recording via useTextController
+// ---------------------------------------------------------------------------
+
+/// Rename dialog using [Spark] so [useTextController] auto-creates a
+/// [ShadeTextController] when Colossus is active, making text input
+/// recordable.
+class _RenameDialog extends Spark {
+  final QuestboardPillar board;
+
+  const _RenameDialog({required this.board});
+
+  @override
+  Widget ignite(BuildContext context) {
+    final controller = useTextController(text: board.heroName.value);
+
+    return AlertDialog(
+      title: const Text('Rename Hero'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: const InputDecoration(
+          labelText: 'New name',
+          border: OutlineInputBorder(),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              board.renameHero(controller.text);
-              Navigator.of(ctx).pop();
-            },
-            child: const Text('Rename'),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            board.renameHero(controller.text);
+            Navigator.of(context).pop();
+          },
+          child: const Text('Rename'),
+        ),
+      ],
     );
   }
 }
