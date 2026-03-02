@@ -22,6 +22,9 @@ import 'package:titan/titan.dart';
 //   --compare      Compare against a specific saved file
 //   --history      Show all saved benchmark runs
 //   --threshold    Regression threshold percentage (default: 10)
+//   --noise-floor  Absolute floor in µs below which % regressions are
+//                  suppressed (default: 0.100). Prevents false alarms
+//                  from sub-100ns noise.
 //   --samples      Number of samples per benchmark for median (default: 3)
 //
 // =============================================================================
@@ -36,6 +39,8 @@ void main(List<String> args) async {
   final baselineName = _getArg(args, '--baseline');
   final compareFile = _getArg(args, '--compare');
   final threshold = double.tryParse(_getArg(args, '--threshold') ?? '') ?? 10.0;
+  final noiseFloor =
+      double.tryParse(_getArg(args, '--noise-floor') ?? '') ?? 0.100;
   _samples = int.tryParse(_getArg(args, '--samples') ?? '') ?? 3;
 
   final resultsDir = Directory('benchmark/results');
@@ -136,7 +141,7 @@ void main(List<String> args) async {
   }
 
   // Print comparison report
-  _printReport(previous, threshold);
+  _printReport(previous, threshold, noiseFloor);
 
   // Save results
   if (save) {
@@ -939,7 +944,11 @@ Future<void> _runEnterpriseBenchmarks() async {
 // Report Generation
 // =============================================================================
 
-void _printReport(Map<String, dynamic>? previous, double threshold) {
+void _printReport(
+  Map<String, dynamic>? previous,
+  double threshold,
+  double noiseFloor,
+) {
   print('');
   print('═══════════════════════════════════════════════════════');
   print('  RESULTS');
@@ -984,10 +993,23 @@ void _printReport(Map<String, dynamic>? previous, double threshold) {
         final prevValue = (prevData['value'] as num).toDouble();
         final change = _calculateChange(result.value, prevValue, result.unit);
         final changeStr = _formatChange(change);
-        final flag = _regressionFlag(change, threshold);
+        final flag = _regressionFlag(
+          change,
+          threshold,
+          currentValue: result.value,
+          previousValue: prevValue,
+          unit: result.unit,
+          noiseFloor: noiseFloor,
+        );
 
-        if (change > threshold) regressionCount++;
-        if (change < -threshold) improvementCount++;
+        final isNoise = _isBelowNoiseFloor(
+          result.value,
+          prevValue,
+          result.unit,
+          noiseFloor,
+        );
+        if (!isNoise && change > threshold) regressionCount++;
+        if (!isNoise && change < -threshold) improvementCount++;
 
         print('  │  $name: $valueStr  $changeStr $flag');
       } else {
@@ -1004,7 +1026,8 @@ void _printReport(Map<String, dynamic>? previous, double threshold) {
     print(
       '  Summary: $regressionCount regressions, '
       '$improvementCount improvements '
-      '(threshold: ±${threshold.toStringAsFixed(0)}%)',
+      '(threshold: ±${threshold.toStringAsFixed(0)}%, '
+      'noise floor: ${noiseFloor.toStringAsFixed(3)} µs)',
     );
     if (regressionCount > 0) {
       print('  ⚠ REGRESSIONS DETECTED — investigate before committing');
@@ -1045,11 +1068,46 @@ String _formatChange(double change) {
   return '($sign${change.toStringAsFixed(1)}%)'.padLeft(10);
 }
 
-String _regressionFlag(double change, double threshold) {
+String _regressionFlag(
+  double change,
+  double threshold, {
+  required double currentValue,
+  required double previousValue,
+  required String unit,
+  required double noiseFloor,
+}) {
+  // Suppress flags for sub-noise-floor metrics (e.g. <100ns) where
+  // percentage swings are dominated by GC and measurement jitter.
+  if (_isBelowNoiseFloor(currentValue, previousValue, unit, noiseFloor)) {
+    return '  ';
+  }
   if (change > threshold * 2) return '🔴';
   if (change > threshold) return '🟡';
   if (change < -threshold) return '🟢';
   return '  ';
+}
+
+/// Returns true if both current and previous values are below the noise
+/// floor for lower-is-better metrics. Higher-is-better metrics (throughput)
+/// are never noise-floored.
+bool _isBelowNoiseFloor(
+  double current,
+  double previous,
+  String unit,
+  double noiseFloor,
+) {
+  // Only apply noise floor to lower-is-better (latency) metrics.
+  // Throughput metrics (/sec, lookups/sec, x) have large absolute values
+  // and aren't affected by sub-µs noise.
+  final higherIsBetter =
+      unit.contains('/sec') ||
+      unit.contains('lookups/sec') ||
+      unit.contains('records/sec') ||
+      unit == 'x';
+  if (higherIsBetter) return false;
+
+  // If both values are below the noise floor, suppress.
+  return current < noiseFloor && previous < noiseFloor;
 }
 
 String _formatValue(double value, String unit) {
