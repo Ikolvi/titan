@@ -136,7 +136,9 @@ class _LoomTab extends StatelessWidget {
               if (history.isEmpty)
                 const Text('No transitions yet')
               else
-                ...history.reversed.take(10).map(
+                ...history.reversed
+                    .take(10)
+                    .map(
                       (t) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Text(
@@ -153,20 +155,20 @@ class _LoomTab extends StatelessWidget {
   }
 
   IconData _statusIcon(QuestStatus s) => switch (s) {
-        QuestStatus.available => Icons.flag_outlined,
-        QuestStatus.claiming => Icons.hourglass_top,
-        QuestStatus.active => Icons.play_arrow,
-        QuestStatus.completed => Icons.check_circle,
-        QuestStatus.failed => Icons.error,
-      };
+    QuestStatus.available => Icons.flag_outlined,
+    QuestStatus.claiming => Icons.hourglass_top,
+    QuestStatus.active => Icons.play_arrow,
+    QuestStatus.completed => Icons.check_circle,
+    QuestStatus.failed => Icons.error,
+  };
 
   Color _statusColor(QuestStatus s) => switch (s) {
-        QuestStatus.available => Colors.blue.shade100,
-        QuestStatus.claiming => Colors.orange.shade100,
-        QuestStatus.active => Colors.green.shade100,
-        QuestStatus.completed => Colors.teal.shade100,
-        QuestStatus.failed => Colors.red.shade100,
-      };
+    QuestStatus.available => Colors.blue.shade100,
+    QuestStatus.claiming => Colors.orange.shade100,
+    QuestStatus.active => Colors.green.shade100,
+    QuestStatus.completed => Colors.teal.shade100,
+    QuestStatus.failed => Colors.red.shade100,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -199,13 +201,13 @@ class _BulwarkTab extends StatelessWidget {
                     breakerState == BulwarkState.closed
                         ? Icons.check_circle
                         : breakerState == BulwarkState.halfOpen
-                            ? Icons.warning
-                            : Icons.block,
+                        ? Icons.warning
+                        : Icons.block,
                     color: breakerState == BulwarkState.closed
                         ? Colors.green
                         : breakerState == BulwarkState.halfOpen
-                            ? Colors.orange
-                            : Colors.red,
+                        ? Colors.orange
+                        : Colors.red,
                   ),
                   title: Text('State: ${breakerState.name}'),
                   subtitle: Text('Failures: $failures / 3'),
@@ -341,12 +343,12 @@ class _SagaTab extends StatelessWidget {
   }
 
   IconData _sagaIcon(SagaStatus s) => switch (s) {
-        SagaStatus.idle => Icons.pause_circle,
-        SagaStatus.running => Icons.play_circle,
-        SagaStatus.completed => Icons.check_circle,
-        SagaStatus.compensating => Icons.undo,
-        SagaStatus.failed => Icons.error,
-      };
+    SagaStatus.idle => Icons.pause_circle,
+    SagaStatus.running => Icons.play_circle,
+    SagaStatus.completed => Icons.check_circle,
+    SagaStatus.compensating => Icons.undo,
+    SagaStatus.failed => Icons.error,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -377,8 +379,8 @@ class _VolleyTab extends StatelessWidget {
                     status == VolleyStatus.running
                         ? Icons.sync
                         : status == VolleyStatus.done
-                            ? Icons.done_all
-                            : Icons.hourglass_empty,
+                        ? Icons.done_all
+                        : Icons.hourglass_empty,
                   ),
                   title: Text('Status: ${status.name}'),
                   subtitle: status == VolleyStatus.running
@@ -394,11 +396,11 @@ class _VolleyTab extends StatelessWidget {
                           ],
                         )
                       : status == VolleyStatus.done
-                          ? Text(
-                              '${batch.successCount} succeeded, '
-                              '${batch.completedCount - batch.successCount} failed',
-                            )
-                          : null,
+                      ? Text(
+                          '${batch.successCount} succeeded, '
+                          '${batch.completedCount - batch.successCount} failed',
+                        )
+                      : null,
                 ),
               ),
               const SizedBox(height: 16),
@@ -483,12 +485,13 @@ class _ToolkitTab extends StatelessWidget {
                       Wrap(
                         spacing: 8,
                         children: p.tags.value
-                            .map((t) => Chip(
-                                  label: Text(t),
-                                  onDeleted: () => p.tags.removeWhere(
-                                    (tag) => tag == t,
-                                  ),
-                                ))
+                            .map(
+                              (t) => Chip(
+                                label: Text(t),
+                                onDeleted: () =>
+                                    p.tags.removeWhere((tag) => tag == t),
+                              ),
+                            )
                             .toList(),
                       ),
                       const SizedBox(height: 8),
@@ -512,9 +515,7 @@ class _ToolkitTab extends StatelessWidget {
                       leading: const Icon(Icons.flag),
                       title: const Text('experimental_publish'),
                       trailing: Text(
-                        Sigil.isEnabled('experimental_publish')
-                            ? 'ON'
-                            : 'OFF',
+                        Sigil.isEnabled('experimental_publish') ? 'ON' : 'OFF',
                         style: TextStyle(
                           color: Sigil.isEnabled('experimental_publish')
                               ? Colors.green
@@ -527,9 +528,7 @@ class _ToolkitTab extends StatelessWidget {
                       leading: const Icon(Icons.tune),
                       title: const Text('batch_enabled'),
                       trailing: Text(
-                        Sigil.isEnabled('batch_enabled')
-                            ? 'ON'
-                            : 'OFF',
+                        Sigil.isEnabled('batch_enabled') ? 'ON' : 'OFF',
                         style: TextStyle(
                           color: Sigil.isEnabled('batch_enabled')
                               ? Colors.green
@@ -554,7 +553,9 @@ class _ToolkitTab extends StatelessWidget {
                     children: [
                       Text('${Annals.length} entries recorded'),
                       const SizedBox(height: 8),
-                      ...Annals.entries.reversed.take(5).map(
+                      ...Annals.entries.reversed
+                          .take(5)
+                          .map(
                             (e) => Padding(
                               padding: const EdgeInsets.symmetric(vertical: 2),
                               child: Text(
@@ -607,9 +608,9 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
     );
   }
 }

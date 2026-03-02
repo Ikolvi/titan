@@ -101,9 +101,7 @@ class QuestboardPillar extends Pillar {
       glory.value += quest.gloryReward;
       questsCompleted.value++;
     });
-    log.info(
-      'Quest completed: "${quest.title}" (+${quest.gloryReward} glory)',
-    );
+    log.info('Quest completed: "${quest.title}" (+${quest.gloryReward} glory)');
   }
 
   /// Rename the hero (tracked in Epoch for undo/redo).

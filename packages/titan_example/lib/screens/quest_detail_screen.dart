@@ -89,8 +89,7 @@ class _QuestDetailScreenState extends State<QuestDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Stale indicator (SWR background refresh)
-                if (quest.isFetching.value)
-                  const LinearProgressIndicator(),
+                if (quest.isFetching.value) const LinearProgressIndicator(),
 
                 // Title
                 Text(
@@ -124,15 +123,9 @@ class _QuestDetailScreenState extends State<QuestDetailScreen> {
                 const SizedBox(height: 24),
 
                 // Description
-                Text(
-                  'Description',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text('Description', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
-                Text(
-                  data.description,
-                  style: theme.textTheme.bodyLarge,
-                ),
+                Text(data.description, style: theme.textTheme.bodyLarge),
                 const SizedBox(height: 24),
 
                 // Quest ID

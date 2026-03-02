@@ -56,14 +56,12 @@ class HeroProfileScreen extends StatelessWidget {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.undo),
-                    onPressed:
-                        board.heroName.canUndo ? board.undoName : null,
+                    onPressed: board.heroName.canUndo ? board.undoName : null,
                     tooltip: 'Undo name change',
                   ),
                   IconButton(
                     icon: const Icon(Icons.redo),
-                    onPressed:
-                        board.heroName.canRedo ? board.redoName : null,
+                    onPressed: board.heroName.canRedo ? board.redoName : null,
                     tooltip: 'Redo name change',
                   ),
                   IconButton(
@@ -146,14 +144,13 @@ class HeroProfileScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       SegmentedButton<HeroClass>(
                         segments: HeroClass.values
-                            .map((c) => ButtonSegment(
-                                  value: c,
-                                  label: Text(c.label),
-                                ))
+                            .map(
+                              (c) =>
+                                  ButtonSegment(value: c, label: Text(c.label)),
+                            )
                             .toList(),
                         selected: {board.heroClass.value},
-                        onSelectionChanged: (s) =>
-                            board.changeClass(s.first),
+                        onSelectionChanged: (s) => board.changeClass(s.first),
                       ),
                     ],
                   ),
@@ -173,17 +170,19 @@ class HeroProfileScreen extends StatelessWidget {
                       if (board.heroName.history.isEmpty)
                         const Text('No name changes yet')
                       else
-                        ...board.heroName.history
-                            .reversed
+                        ...board.heroName.history.reversed
                             .take(5)
-                            .map((name) => Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 2),
-                                  child: Text(
-                                    '• $name',
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                )),
+                            .map(
+                              (name) => Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 2,
+                                ),
+                                child: Text(
+                                  '• $name',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              ),
+                            ),
                     ],
                   ),
                 ),
@@ -264,14 +263,11 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ),

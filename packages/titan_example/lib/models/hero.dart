@@ -25,16 +25,15 @@ class Hero {
     String? bio,
     int? glory,
     int? questsCompleted,
-  }) =>
-      Hero(
-        id: id,
-        name: name ?? this.name,
-        email: email ?? this.email,
-        heroClass: heroClass ?? this.heroClass,
-        bio: bio ?? this.bio,
-        glory: glory ?? this.glory,
-        questsCompleted: questsCompleted ?? this.questsCompleted,
-      );
+  }) => Hero(
+    id: id,
+    name: name ?? this.name,
+    email: email ?? this.email,
+    heroClass: heroClass ?? this.heroClass,
+    bio: bio ?? this.bio,
+    glory: glory ?? this.glory,
+    questsCompleted: questsCompleted ?? this.questsCompleted,
+  );
 }
 
 /// Hero class archetypes.

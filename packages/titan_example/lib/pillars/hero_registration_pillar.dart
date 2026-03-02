@@ -31,10 +31,7 @@ class HeroRegistrationPillar extends Pillar {
     name: 'email',
   );
 
-  late final heroClass = scroll<HeroClass>(
-    HeroClass.scout,
-    name: 'heroClass',
-  );
+  late final heroClass = scroll<HeroClass>(HeroClass.scout, name: 'heroClass');
 
   late final bio = scroll<String>(
     '',

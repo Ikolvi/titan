@@ -31,8 +31,9 @@ class QuestApi {
     final start = page * pageSize;
     if (start >= _quests.length) return [];
 
-    final end =
-        (start + pageSize) > _quests.length ? _quests.length : start + pageSize;
+    final end = (start + pageSize) > _quests.length
+        ? _quests.length
+        : start + pageSize;
     return _quests.sublist(start, end);
   }
 

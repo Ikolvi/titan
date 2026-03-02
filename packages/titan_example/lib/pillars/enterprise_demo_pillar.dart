@@ -57,13 +57,15 @@ class EnterpriseDemoPillar extends Pillar {
 
       // Record in Annals
       if (Annals.isEnabled) {
-        Annals.record(AnnalEntry(
-          coreName: 'questStatus',
-          pillarType: 'EnterpriseDemoPillar',
-          oldValue: from.name,
-          newValue: to.name,
-          action: event.name,
-        ));
+        Annals.record(
+          AnnalEntry(
+            coreName: 'questStatus',
+            pillarType: 'EnterpriseDemoPillar',
+            oldValue: from.name,
+            newValue: to.name,
+            action: event.name,
+          ),
+        );
       }
     },
     name: 'questStatus',
@@ -138,10 +140,7 @@ class EnterpriseDemoPillar extends Pillar {
   // --------------- Volley (Batch Async) ---------------
 
   /// Batch operation runner.
-  late final batchRunner = volley<String>(
-    concurrency: 2,
-    name: 'batch-runner',
-  );
+  late final batchRunner = volley<String>(concurrency: 2, name: 'batch-runner');
 
   // --------------- Core Extensions Demo ---------------
 
@@ -152,10 +151,11 @@ class EnterpriseDemoPillar extends Pillar {
   late final isSpecialMode = core(false, name: 'isSpecialMode');
 
   /// Demo list for Core list extensions.
-  late final tags = core<List<String>>(
-    ['combat', 'stealth', 'magic'],
-    name: 'tags',
-  );
+  late final tags = core<List<String>>([
+    'combat',
+    'stealth',
+    'magic',
+  ], name: 'tags');
 
   // --------------- Sigil (Feature Flags) ---------------
 
@@ -179,14 +179,10 @@ class EnterpriseDemoPillar extends Pillar {
     Annals.enable(maxEntries: 100);
 
     // Register a Tether handler
-    Tether.register<String, String>(
-      'getQuestTitle',
-      (id) async {
-        final quest = await _api.fetchQuest(id);
-        return quest.title;
-      },
-      timeout: const Duration(seconds: 5),
-    );
+    Tether.register<String, String>('getQuestTitle', (id) async {
+      final quest = await _api.fetchQuest(id);
+      return quest.title;
+    }, timeout: const Duration(seconds: 5));
   }
 
   @override
@@ -211,9 +207,7 @@ class EnterpriseDemoPillar extends Pillar {
       final quest = await apiBreaker.call(() => _api.fetchQuest(questId));
       protectedQuest.value = quest;
     } on BulwarkOpenException catch (e) {
-      log.warning(
-        'API unavailable (${e.failureCount} consecutive failures)',
-      );
+      log.warning('API unavailable (${e.failureCount} consecutive failures)');
       captureError(e, action: 'fetchProtected');
     } catch (e, s) {
       captureError(e, stackTrace: s, action: 'fetchProtected');
@@ -237,9 +231,7 @@ class EnterpriseDemoPillar extends Pillar {
       (i) => VolleyTask<String>(
         name: 'task-$i',
         execute: () async {
-          await Future<void>.delayed(
-            Duration(milliseconds: 300 + (i * 200)),
-          );
+          await Future<void>.delayed(Duration(milliseconds: 300 + (i * 200)));
           if (i == 3) throw Exception('Task $i failed intentionally');
           return 'Result $i';
         },

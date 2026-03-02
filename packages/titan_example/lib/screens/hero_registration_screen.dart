@@ -46,15 +46,15 @@ class _RegistrationForm extends StatelessWidget {
               Text(
                 'Join the Questboard',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Register as a hero to claim quests and earn glory.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
+                  color: Theme.of(context).colorScheme.outline,
+                ),
               ),
               const SizedBox(height: 24),
 
@@ -88,17 +88,11 @@ class _RegistrationForm extends StatelessWidget {
               const SizedBox(height: 16),
 
               // Hero class selector
-              Text(
-                'Hero Class',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
+              Text('Hero Class', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 8),
               SegmentedButton<HeroClass>(
                 segments: HeroClass.values
-                    .map((c) => ButtonSegment(
-                          value: c,
-                          label: Text(c.label),
-                        ))
+                    .map((c) => ButtonSegment(value: c, label: Text(c.label)))
                     .toList(),
                 selected: {reg.heroClass.value},
                 onSelectionChanged: (s) => reg.heroClass.value = s.first,
@@ -137,9 +131,7 @@ class _RegistrationForm extends StatelessWidget {
                             ? Icons.check_circle
                             : Icons.warning_amber,
                         size: 16,
-                        color: reg.form.isValid
-                            ? Colors.green
-                            : Colors.orange,
+                        color: reg.form.isValid ? Colors.green : Colors.orange,
                       ),
                       const SizedBox(width: 8),
                       Text(

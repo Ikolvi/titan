@@ -22,10 +22,7 @@ class QuestListPillar extends Pillar {
         page: request.page,
         pageSize: request.pageSize,
       );
-      return CodexPage(
-        items: items,
-        hasMore: items.length == request.pageSize,
-      );
+      return CodexPage(items: items, hasMore: items.length == request.pageSize);
     },
     pageSize: 10,
     name: 'quests',

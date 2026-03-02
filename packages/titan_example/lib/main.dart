@@ -73,9 +73,7 @@ void main() {
       // Standalone pages outside the shell
       Passage(
         '/quest/:id',
-        (waypoint) => QuestDetailScreen(
-          questId: waypoint.runes['id'] ?? '',
-        ),
+        (waypoint) => QuestDetailScreen(questId: waypoint.runes['id'] ?? ''),
         shift: Shift.slideUp(),
         name: 'quest-detail',
       ),
@@ -139,8 +137,8 @@ class _QuestboardShell extends StatelessWidget {
     final index = path == '/hero'
         ? 1
         : path == '/enterprise'
-            ? 2
-            : 0;
+        ? 2
+        : 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -167,8 +165,8 @@ class _QuestboardShell extends StatelessWidget {
             i == 0
                 ? '/'
                 : i == 1
-                    ? '/hero'
-                    : '/enterprise',
+                ? '/hero'
+                : '/enterprise',
           );
         },
         destinations: const [

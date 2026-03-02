@@ -25,16 +25,15 @@ class Quest {
     int? gloryReward,
     bool? isCompleted,
     String? claimedBy,
-  }) =>
-      Quest(
-        id: id,
-        title: title ?? this.title,
-        description: description ?? this.description,
-        difficulty: difficulty ?? this.difficulty,
-        gloryReward: gloryReward ?? this.gloryReward,
-        isCompleted: isCompleted ?? this.isCompleted,
-        claimedBy: claimedBy ?? this.claimedBy,
-      );
+  }) => Quest(
+    id: id,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    difficulty: difficulty ?? this.difficulty,
+    gloryReward: gloryReward ?? this.gloryReward,
+    isCompleted: isCompleted ?? this.isCompleted,
+    claimedBy: claimedBy ?? this.claimedBy,
+  );
 
   @override
   bool operator ==(Object other) =>

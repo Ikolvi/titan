@@ -60,16 +60,13 @@ class QuestListScreen extends StatelessWidget {
                             list.loadMore();
                             return const Padding(
                               padding: EdgeInsets.all(16),
-                              child: Center(
-                                child: CircularProgressIndicator(),
-                              ),
+                              child: Center(child: CircularProgressIndicator()),
                             );
                           }
                           return _QuestTile(
                             quest: items[index],
-                            onTap: () => context.atlas.to(
-                              '/quest/${items[index].id}',
-                            ),
+                            onTap: () =>
+                                context.atlas.to('/quest/${items[index].id}'),
                             onComplete: items[index].isCompleted
                                 ? null
                                 : () => list.completeQuest(items[index]),
@@ -149,11 +146,7 @@ class _QuestTile extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onComplete;
 
-  const _QuestTile({
-    required this.quest,
-    this.onTap,
-    this.onComplete,
-  });
+  const _QuestTile({required this.quest, this.onTap, this.onComplete});
 
   @override
   Widget build(BuildContext context) {
@@ -180,9 +173,7 @@ class _QuestTile extends StatelessWidget {
               )
             : null,
       ),
-      subtitle: Text(
-        '${quest.difficulty.label} • ${quest.gloryReward} glory',
-      ),
+      subtitle: Text('${quest.difficulty.label} • ${quest.gloryReward} glory'),
       trailing: onComplete != null
           ? IconButton(
               icon: const Icon(Icons.check_circle_outline),
@@ -194,9 +185,9 @@ class _QuestTile extends StatelessWidget {
   }
 
   Color _difficultyColor(QuestDifficulty d) => switch (d) {
-        QuestDifficulty.novice => Colors.green.shade100,
-        QuestDifficulty.warrior => Colors.orange.shade100,
-        QuestDifficulty.champion => Colors.purple.shade100,
-        QuestDifficulty.titan => Colors.red.shade100,
-      };
+    QuestDifficulty.novice => Colors.green.shade100,
+    QuestDifficulty.warrior => Colors.orange.shade100,
+    QuestDifficulty.champion => Colors.purple.shade100,
+    QuestDifficulty.titan => Colors.red.shade100,
+  };
 }
