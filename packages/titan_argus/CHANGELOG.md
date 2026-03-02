@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- No API changes. Version bump to align with workspace release.
+
 ## 1.0.0
 
 - Initial release
