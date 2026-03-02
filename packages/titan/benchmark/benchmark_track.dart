@@ -22,10 +22,13 @@ import 'package:titan/titan.dart';
 //   --compare      Compare against a specific saved file
 //   --history      Show all saved benchmark runs
 //   --threshold    Regression threshold percentage (default: 10)
+//   --samples      Number of samples per benchmark for median (default: 3)
 //
 // =============================================================================
 
 final _results = <String, _BenchResult>{};
+var _isWarmup = false;
+var _samples = 3;
 
 void main(List<String> args) async {
   final save = !args.contains('--no-save');
@@ -34,6 +37,7 @@ void main(List<String> args) async {
   final compareFile = _getArg(args, '--compare');
   final threshold =
       double.tryParse(_getArg(args, '--threshold') ?? '') ?? 10.0;
+  _samples = int.tryParse(_getArg(args, '--samples') ?? '') ?? 3;
 
   final resultsDir = Directory('benchmark/results');
   final historyDir = Directory('benchmark/results/history');
@@ -49,10 +53,56 @@ void main(List<String> args) async {
   print('═══════════════════════════════════════════════════════');
   print('');
 
-  // Run all benchmark suites
+  // JIT Warmup: run all benchmarks once without recording to
+  // ensure Dart's JIT compiler has optimized all hot paths.
+  // This dramatically reduces variance between runs.
+  print('── Warmup ─────────────────────────────────────────────');
+  final warmupSw = Stopwatch()..start();
+  _isWarmup = true;
   await _runCoreBenchmarks();
   await _runExtendedBenchmarks();
   await _runEnterpriseBenchmarks();
+  _isWarmup = false;
+  _results.clear();
+  warmupSw.stop();
+  print('   ✓ Warmup complete (${warmupSw.elapsedMilliseconds}ms)');
+  print('');
+
+  // Multi-sample: run all benchmarks N times, collect values, take medians.
+  // This reduces noise from OS scheduling, GC, and other transient effects.
+  final allSamples = <String, List<_BenchResult>>{};
+
+  print('── Benchmarks ─────────────────────────────────────────');
+  for (var sample = 0; sample < _samples; sample++) {
+    _results.clear();
+    await _runCoreBenchmarks();
+    await _runExtendedBenchmarks();
+    await _runEnterpriseBenchmarks();
+    for (final entry in _results.entries) {
+      allSamples.putIfAbsent(entry.key, () => []).add(entry.value);
+    }
+    print('   ✓ Sample ${sample + 1}/$_samples collected');
+  }
+
+  // Take medians
+  _results.clear();
+  for (final entry in allSamples.entries) {
+    final values = entry.value.map((r) => r.value).toList()..sort();
+    final mid = values.length ~/ 2;
+    final median = values.length.isOdd
+        ? values[mid]
+        : (values[mid - 1] + values[mid]) / 2;
+    _results[entry.key] = _BenchResult(
+      value: median,
+      unit: entry.value.first.unit,
+      suite: entry.value.first.suite,
+    );
+  }
+
+  if (_samples > 1) {
+    print('   ✓ Medians computed from $_samples samples');
+    print('');
+  }
 
   // Load version from pubspec
   final version = _readVersion();
@@ -129,7 +179,6 @@ void main(List<String> args) async {
 // =============================================================================
 
 Future<void> _runCoreBenchmarks() async {
-  print('── Core Benchmarks ────────────────────────────────────');
 
   // 1. Node creation
   {
@@ -334,7 +383,6 @@ Future<void> _runCoreBenchmarks() async {
     }
   }
 
-  print('   ✓ 8 core benchmarks collected');
 }
 
 // =============================================================================
@@ -342,7 +390,6 @@ Future<void> _runCoreBenchmarks() async {
 // =============================================================================
 
 Future<void> _runExtendedBenchmarks() async {
-  print('── Extended Benchmarks ─────────────────────────────────');
 
   // 9. Epoch overhead
   {
@@ -493,7 +540,6 @@ Future<void> _runExtendedBenchmarks() async {
         'µs/cycle', 'extended');
   }
 
-  print('   ✓ 8 extended benchmarks collected');
 }
 
 // =============================================================================
@@ -501,7 +547,6 @@ Future<void> _runExtendedBenchmarks() async {
 // =============================================================================
 
 Future<void> _runEnterpriseBenchmarks() async {
-  print('── Enterprise Benchmarks ──────────────────────────────');
 
   // 17. Loom transition
   {
@@ -684,7 +729,6 @@ Future<void> _runEnterpriseBenchmarks() async {
     Herald.reset();
   }
 
-  print('   ✓ 11 enterprise benchmarks collected');
 }
 
 // =============================================================================
@@ -862,6 +906,7 @@ void _showHistory(Directory historyDir) {
 // =============================================================================
 
 void _record(String name, double value, String unit, String suite) {
+  if (_isWarmup) return;
   _results[name] = _BenchResult(value: value, unit: unit, suite: suite);
 }
 
