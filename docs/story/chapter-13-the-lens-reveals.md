@@ -20,6 +20,7 @@ The setup was one widget:
 
 ```dart
 import 'package:flutter/foundation.dart';
+import 'package:titan_colossus/titan_colossus.dart';
 
 void main() {
   runApp(
