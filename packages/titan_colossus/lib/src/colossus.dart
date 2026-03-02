@@ -14,6 +14,7 @@ import 'recording/imprint.dart';
 import 'recording/phantom.dart';
 import 'recording/shade.dart';
 import 'recording/shade_vault.dart';
+import 'widgets/shade_text_controller.dart';
 
 // ---------------------------------------------------------------------------
 // Colossus — Enterprise Performance Monitoring
@@ -253,6 +254,15 @@ class Colossus extends Pillar {
       _shadeLensTab = ShadeLensTab(this);
       Lens.registerPlugin(_shadeLensTab!);
     }
+
+    // Register Spark text controller factory so useTextController()
+    // automatically creates ShadeTextControllers for text recording.
+    // Performance: factory runs once per hook init (first build only);
+    // ShadeTextController adds a single O(1) isRecording check per
+    // text change — zero overhead when not recording.
+    Spark.textControllerFactory = ({String? text}) {
+      return ShadeTextController(shade: shade, text: text);
+    };
   }
 
   @override
@@ -275,6 +285,7 @@ class Colossus extends Pillar {
     }
 
     _chronicle?.info('Colossus shut down');
+    Spark.textControllerFactory = null;
     _instance = null;
   }
 

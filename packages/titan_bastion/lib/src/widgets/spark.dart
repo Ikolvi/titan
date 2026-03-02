@@ -131,6 +131,30 @@ abstract class Spark extends StatefulWidget {
   /// inside this method. Hooks auto-manage their lifecycle.
   Widget ignite(BuildContext context);
 
+  // -------------------------------------------------------------------------
+  // Extension hooks — allow external packages to enhance Spark behavior
+  // -------------------------------------------------------------------------
+
+  /// Factory for creating [TextEditingController] instances.
+  ///
+  /// When set, [useTextController] delegates to this factory instead of
+  /// creating a plain [TextEditingController]. This allows packages like
+  /// `titan_colossus` to provide recording-aware controllers (e.g.
+  /// [ShadeTextController]) without coupling `titan_bastion` to
+  /// `titan_colossus`.
+  ///
+  /// **Performance**: When `null` (the default), zero overhead.
+  /// When set, the factory runs once per [useTextController] call
+  /// during the first build — subsequent rebuilds reuse the controller.
+  ///
+  /// ```dart
+  /// // Registered by Colossus.init()
+  /// Spark.textControllerFactory = ({String? text}) {
+  ///   return ShadeTextController(shade: shade, text: text);
+  /// };
+  /// ```
+  static TextEditingController Function({String? text})? textControllerFactory;
+
   @override
   State<Spark> createState() => SparkState();
 }
@@ -625,7 +649,10 @@ class _TextControllerHookState extends _HookState<void> {
 
   @override
   void init() {
-    controller = TextEditingController(text: text);
+    final factory = Spark.textControllerFactory;
+    controller = factory != null
+        ? factory(text: text)
+        : TextEditingController(text: text);
   }
 
   @override
