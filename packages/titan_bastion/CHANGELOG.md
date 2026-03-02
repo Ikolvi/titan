@@ -5,6 +5,18 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-03-02
+
+### Added
+- **Spark** — Hooks-style reactive widget eliminating StatefulWidget boilerplate
+  - `Spark` base class with `ignite()` builder method
+  - Reactive hooks: `useCore<T>`, `useDerived<T>` — auto-tracking with rebuild
+  - Lifecycle hooks: `useEffect`, `useMemo`, `useRef`
+  - Controller hooks: `useTextController`, `useAnimationController`, `useFocusNode`, `useScrollController`, `useTabController`, `usePageController`
+  - Titan integration: `usePillar<P>` for Beacon/Titan lookup
+  - 39 tests
+  - Story chapter XXI: "The Spark Ignites"
+
 ## [0.2.0] - 2026-03-02
 
 ### Changed

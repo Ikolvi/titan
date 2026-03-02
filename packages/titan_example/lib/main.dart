@@ -11,6 +11,7 @@ import 'screens/hero_profile_screen.dart';
 import 'screens/hero_registration_screen.dart';
 import 'screens/quest_detail_screen.dart';
 import 'screens/quest_list_screen.dart';
+import 'screens/spark_demo_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Questboard -- The Titan Example App
@@ -67,6 +68,7 @@ void main() {
             (_) => const EnterpriseDemoScreen(),
             name: 'enterprise',
           ),
+          Passage('/spark', (_) => const SparkDemoScreen(), name: 'spark'),
         ],
       ),
 
@@ -138,6 +140,8 @@ class _QuestboardShell extends StatelessWidget {
         ? 1
         : path == '/enterprise'
         ? 2
+        : path == '/spark'
+        ? 3
         : 0;
 
     return Scaffold(
@@ -166,7 +170,9 @@ class _QuestboardShell extends StatelessWidget {
                 ? '/'
                 : i == 1
                 ? '/hero'
-                : '/enterprise',
+                : i == 2
+                ? '/enterprise'
+                : '/spark',
           );
         },
         destinations: const [
@@ -184,6 +190,11 @@ class _QuestboardShell extends StatelessWidget {
             icon: Icon(Icons.business_center_outlined),
             selectedIcon: Icon(Icons.business_center),
             label: 'Enterprise',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bolt_outlined),
+            selectedIcon: Icon(Icons.bolt),
+            label: 'Spark',
           ),
         ],
       ),

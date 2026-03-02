@@ -34,6 +34,7 @@
 | [XVIII](chapter-18-the-conduit-flows.md) | **The Conduit Flows** | `Conduit`, Core-level middleware, `ClampConduit`, `ValidateConduit`, `FreezeConduit` |
 | [XIX](chapter-19-the-prism-reveals.md) | **The Prism Reveals** | `Prism`, fine-grained projections, `PrismEquals`, multi-source combining |
 | [XX](chapter-20-the-nexus-connects.md) | **The Nexus Connects** | `NexusList`, `NexusMap`, `NexusSet`, `NexusChange`, in-place reactive collections |
+| [XXI](chapter-21-the-spark-ignites.md) | **The Spark Ignites** | `Spark`, `useCore`, `useDerived`, `useEffect`, `useMemo`, `useRef`, hooks-style widgets |
 
 ---
 

@@ -1416,6 +1416,39 @@ PillarScope({
 })
 ```
 
+#### Spark
+
+Hooks-style widget that eliminates `StatefulWidget` boilerplate. Override `ignite()` and use hooks for state, lifecycle, and controllers.
+
+```dart
+class MySpark extends Spark {
+  @override
+  Widget ignite(BuildContext context) {
+    final count = useCore(0);
+    final ctrl = useTextController();
+    useEffect(() { /* side effect */ return cleanup; }, []);
+    return Text('${count.value}');
+  }
+}
+```
+
+**Available Hooks:**
+
+| Hook | Returns | Purpose |
+|------|---------|---------|
+| `useCore<T>(initial)` | `Core<T>` | Reactive state, auto-rebuilds |
+| `useDerived<T>(compute)` | `Derived<T>` | Auto-tracked computed value |
+| `useEffect(fn, [keys])` | `void` | Side effect with cleanup |
+| `useMemo<T>(fn, [keys])` | `T` | Memoized computation |
+| `useRef<T>(initial)` | `SparkRef<T>` | Mutable ref, no rebuild |
+| `useTextController()` | `TextEditingController` | Auto-disposed |
+| `useAnimationController()` | `AnimationController` | Auto-disposed, built-in vsync |
+| `useFocusNode()` | `FocusNode` | Auto-disposed |
+| `useScrollController()` | `ScrollController` | Auto-disposed |
+| `useTabController(length:)` | `TabController` | Auto-disposed, built-in vsync |
+| `usePageController()` | `PageController` | Auto-disposed |
+| `usePillar<P>(context)` | `P` | Find Pillar from Beacon/Titan |
+
 ---
 
 [← Advanced Patterns](08-advanced-patterns.md) · [Migration Guide →](10-migration-guide.md)

@@ -47,12 +47,16 @@ void main() {
     final board = QuestboardPillar();
     board.initialize();
 
-    Herald.emit(const QuestCompletedEvent(Quest(
-      id: 'q1',
-      title: 'Test Quest',
-      description: 'A test quest',
-      gloryReward: 25,
-    )));
+    Herald.emit(
+      const QuestCompletedEvent(
+        Quest(
+          id: 'q1',
+          title: 'Test Quest',
+          description: 'A test quest',
+          gloryReward: 25,
+        ),
+      ),
+    );
 
     expect(board.glory.value, 25);
     expect(board.questsCompleted.value, 1);

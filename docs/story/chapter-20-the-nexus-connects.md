@@ -306,3 +306,4 @@ She nodded, toggling filter tags on the quest board. Each tap added or removed a
 | [XVIII](chapter-18-the-conduit-flows.md) | The Conduit Flows |
 | [XIX](chapter-19-the-prism-reveals.md) | The Prism Reveals |
 | **XX** | **The Nexus Connects** ← You are here |
+| [XXI](chapter-21-the-spark-ignites.md) | The Spark Ignites |

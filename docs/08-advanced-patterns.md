@@ -1957,4 +1957,86 @@ All Nexus types are compatible with `titanBatch()`, `strike()`, `Derived`, and `
 
 ---
 
+## Spark — Hooks-Style Widgets
+
+Spark eliminates `StatefulWidget` boilerplate with position-based hooks that auto-manage lifecycle, disposal, and reactive rebuilds.
+
+### Basic Spark
+
+```dart
+class CounterWidget extends Spark {
+  @override
+  Widget ignite(BuildContext context) {
+    final count = useCore(0);
+    final controller = useTextController();
+
+    return Column(children: [
+      TextField(controller: controller),
+      Text('Count: ${count.value}'),
+      ElevatedButton(
+        onPressed: () => count.value++,
+        child: Text('Increment'),
+      ),
+    ]);
+  }
+}
+```
+
+### Reactive Hooks
+
+```dart
+// useCore — reactive mutable state, auto-rebuilds
+final name = useCore('Kael');
+
+// useDerived — auto-tracked computed value
+final greeting = useDerived(() => 'Hello, ${name.value}!');
+```
+
+### Lifecycle Hooks
+
+```dart
+// useEffect with [] — runs once (like initState)
+useEffect(() {
+  final sub = stream.listen((data) => items.value = data);
+  return sub.cancel; // Cleanup
+}, []);
+
+// useMemo — memoized expensive computation
+final sorted = useMemo(() => List.from(items.value)..sort(), [items.value.length]);
+
+// useRef — mutable reference that doesn't trigger rebuild
+final clickCount = useRef(0);
+```
+
+### Controller Hooks (Auto-Disposed)
+
+```dart
+final textCtrl = useTextController(text: 'initial');
+final anim = useAnimationController(duration: Duration(milliseconds: 300));
+final focus = useFocusNode();
+final scroll = useScrollController();
+final tabs = useTabController(length: 3);
+final page = usePageController(initialPage: 0);
+```
+
+### Pillar Integration
+
+```dart
+class HeroCard extends Spark {
+  @override
+  Widget ignite(BuildContext context) {
+    final hero = usePillar<HeroPillar>(context);
+    return Text('${hero.name.value} — Level ${hero.level.value}');
+  }
+}
+```
+
+### Hook Rules
+
+1. Always call hooks in the **same order** — no hooks inside conditionals or loops
+2. Only call hooks inside `ignite()` — not in callbacks or async code
+3. Hooks are identified by call position, just like React hooks
+
+---
+
 [← Testing](07-testing.md) · [API Reference →](09-api-reference.md)

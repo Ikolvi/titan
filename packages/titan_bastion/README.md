@@ -70,6 +70,7 @@ Vestige<CounterPillar>(
 | **Beacon** | Scoped Pillar provider — creates, initializes, and auto-disposes |
 | **Confluence2/3/4** | Multi-Pillar consumer widget |
 | **Lens** | In-app debug panel |
+| **Spark** | Hooks-style widget — `useCore`, `useEffect`, auto-managed lifecycle |
 
 ### Vestige — Auto-Tracking Consumer
 

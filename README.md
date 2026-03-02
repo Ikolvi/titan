@@ -52,6 +52,7 @@ A uniquely powerful reactive state management architecture for Flutter — struc
 | Middleware | **Conduit** | Core-level pipeline — transform, validate, reject value changes |
 | State Selector | **Prism** | Fine-grained, memoized state projections with structural equality |
 | Reactive Collection | **Nexus** | In-place reactive List, Map, Set with granular change records |
+| Hooks Widget | **Spark** | Hooks-style widget — `useCore`, `useEffect`, `useMemo`, auto-disposal |
 
 ---
 
@@ -129,6 +130,7 @@ Vestige<CounterPillar>(
 | Debug overlay | ❌ | ❌ DevTools only | ❌ DevTools only | ❌ | ✅ Lens |
 | State middleware | ❌ | ❌ | ❌ | ❌ | ✅ Conduit |
 | Reactive collections | ❌ | ❌ | ❌ | ❌ | ✅ Nexus |
+| Hooks-style widgets | ❌ | ❌ | ❌ | ❌ | ✅ Spark |
 
 ### Vs Bloc
 
