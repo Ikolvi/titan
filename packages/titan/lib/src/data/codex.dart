@@ -183,6 +183,38 @@ class Codex<T> {
     await loadFirst();
   }
 
+  /// Refresh from page 0 without clearing existing items.
+  ///
+  /// Keeps current items visible while reloading. On success, replaces
+  /// items atomically. On error, existing items remain untouched.
+  /// Ideal for pull-to-refresh UX.
+  ///
+  /// ```dart
+  /// // In a RefreshIndicator callback:
+  /// onRefresh: () => codex.softRefresh(),
+  /// ```
+  Future<void> softRefresh() async {
+    if (isLoading.value) return;
+    isLoading.value = true;
+    error.value = null;
+    try {
+      final request = CodexRequest(page: 0, pageSize: pageSize);
+      final result = await _fetcher(request);
+      titanBatch(() {
+        items.value = result.items;
+        currentPage.value = 0;
+        hasMore.value = result.hasMore;
+        _nextCursor = result.nextCursor;
+        isLoading.value = false;
+      });
+    } catch (e) {
+      titanBatch(() {
+        error.value = e;
+        isLoading.value = false;
+      });
+    }
+  }
+
   /// Returns a filtered view of the current items.
   ///
   /// Does NOT modify the stored items — returns a new list with

@@ -264,6 +264,77 @@ void main() {
       state.dispose();
     });
   });
+
+  group('previousValue', () {
+    test('is null before first recomputation', () {
+      final state = TitanState(0);
+      final computed = TitanComputed(() => state.value * 2);
+
+      // Force initial computation
+      expect(computed.value, 0);
+      expect(computed.previousValue, isNull);
+
+      computed.dispose();
+      state.dispose();
+    });
+
+    test('stores old value after dependency change', () {
+      final state = TitanState(1);
+      final computed = TitanComputed(() => state.value * 10);
+
+      // Initial computation
+      expect(computed.value, 10);
+      expect(computed.previousValue, isNull);
+
+      // Change dependency
+      state.value = 2;
+      expect(computed.value, 20);
+      expect(computed.previousValue, 10);
+
+      computed.dispose();
+      state.dispose();
+    });
+
+    test('updates on subsequent changes', () {
+      final state = TitanState(1);
+      final computed = TitanComputed(() => state.value);
+
+      computed.value; // force initial
+      state.value = 2;
+      expect(computed.previousValue, 1);
+
+      state.value = 3;
+      expect(computed.previousValue, 2);
+
+      state.value = 4;
+      expect(computed.previousValue, 3);
+
+      computed.dispose();
+      state.dispose();
+    });
+
+    test('does not update when value stays equal', () {
+      final state = TitanState(0);
+      final computed = TitanComputed(() => state.value ~/ 10);
+
+      computed.value; // force initial (0)
+
+      state.value = 5; // 5 ~/ 10 = 0, same
+      expect(computed.value, 0);
+      expect(computed.previousValue, isNull); // still null
+
+      state.value = 10; // 10 ~/ 10 = 1, different
+      expect(computed.value, 1);
+      expect(computed.previousValue, 0);
+
+      state.value = 15; // still 1
+      expect(computed.value, 1);
+      expect(computed.previousValue, 0); // unchanged
+
+      computed.dispose();
+      state.dispose();
+    });
+  });
 }
 
 class _TestErrorHandler extends ErrorHandler {

@@ -89,12 +89,23 @@ abstract class Pillar {
   final List<StrikeMiddleware> _middleware = [];
   bool _isInitialized = false;
   bool _isDisposed = false;
+  bool _autoDispose = false;
+  int _refCount = 0;
 
   /// Whether this Pillar has been initialized.
   bool get isInitialized => _isInitialized;
 
   /// Whether this Pillar has been disposed.
   bool get isDisposed => _isDisposed;
+
+  /// Whether auto-dispose is enabled for this Pillar.
+  ///
+  /// When enabled, the Pillar will automatically dispose itself when
+  /// the last consumer (Vestige) disconnects.
+  bool get autoDispose => _autoDispose;
+
+  /// The current number of active consumer references.
+  int get refCount => _refCount;
 
   // ---------------------------------------------------------------------------
   // Core creation — reactive state managed by this Pillar
@@ -621,6 +632,50 @@ abstract class Pillar {
   /// ```
   @protected
   void onError(Object error, StackTrace? stackTrace) {}
+
+  /// Enable auto-dispose for this Pillar.
+  ///
+  /// When enabled, the Pillar will automatically remove itself from
+  /// [Titan] and dispose when all consumer references are released.
+  /// Call this in [onInit] or before registration.
+  ///
+  /// ```dart
+  /// @override
+  /// void onInit() {
+  ///   enableAutoDispose();
+  ///   loadData();
+  /// }
+  /// ```
+  void enableAutoDispose() {
+    _autoDispose = true;
+  }
+
+  /// Increment the reference count.
+  ///
+  /// Called automatically by Vestige when a consumer mounts.
+  /// Can also be called manually to keep a Pillar alive.
+  void ref() => _refCount++;
+
+  /// Decrement the reference count.
+  ///
+  /// When auto-dispose is enabled and the reference count drops to
+  /// zero, the Pillar's [onAutoDispose] callback is invoked.
+  /// By default, [onAutoDispose] removes this Pillar from the
+  /// global [Titan] registry (set up automatically by `Titan.put`).
+  ///
+  /// Called automatically by Vestige when a consumer unmounts.
+  void unref() {
+    _refCount--;
+    if (_autoDispose && _refCount <= 0 && !_isDisposed) {
+      onAutoDispose?.call();
+    }
+  }
+
+  /// Callback invoked when auto-dispose triggers.
+  ///
+  /// Set automatically by `Titan.put()` to remove the Pillar from
+  /// the global registry. Can be overridden for custom disposal logic.
+  void Function()? onAutoDispose;
 
   /// Initializes the Pillar. Called automatically by [Beacon] or [Titan].
   void initialize() {

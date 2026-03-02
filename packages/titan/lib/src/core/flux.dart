@@ -23,6 +23,7 @@ library;
 
 import 'dart:async';
 
+import 'computed.dart';
 import 'reactive.dart';
 import 'state.dart';
 
@@ -194,6 +195,52 @@ extension FluxStateExtensions<T> on TitanState<T> {
 
     return controller.stream;
   }
+
+  /// Convenience getter for [asStream()].
+  ///
+  /// ```dart
+  /// final count = TitanState(0);
+  /// count.stream.listen((v) => print(v));
+  /// ```
+  Stream<T> get stream => asStream();
+}
+
+// ---------------------------------------------------------------------------
+// Extensions on TitanComputed
+// ---------------------------------------------------------------------------
+
+/// Stream-like operators for [TitanComputed] (Derived).
+extension FluxComputedExtensions<T> on TitanComputed<T> {
+  /// Converts this Derived to a [Stream] that emits the computed value
+  /// on every recomputation that produces a new value.
+  ///
+  /// ```dart
+  /// final total = TitanComputed(() => a.value + b.value);
+  /// total.asStream().listen((v) => print('Total: $v'));
+  /// ```
+  Stream<T> asStream() {
+    final controller = StreamController<T>.broadcast(sync: true);
+    void listener() {
+      if (!controller.isClosed) controller.add(value);
+    }
+
+    addListener(listener);
+
+    controller.onCancel = () {
+      removeListener(listener);
+      controller.close();
+    };
+
+    return controller.stream;
+  }
+
+  /// Convenience getter for [asStream()].
+  ///
+  /// ```dart
+  /// final total = TitanComputed(() => a.value + b.value);
+  /// total.stream.listen((v) => print('Total: $v'));
+  /// ```
+  Stream<T> get stream => asStream();
 }
 
 // ---------------------------------------------------------------------------

@@ -114,26 +114,32 @@ class _VestigeState<P extends Pillar> extends State<Vestige<P>> {
   }
 
   void _resolvePillar() {
+    final previousPillar = _pillar;
+
     // 1. Try Beacon (widget tree)
     final beaconPillar = BeaconScope.findPillar<P>(context);
     if (beaconPillar != null) {
       _pillar = beaconPillar;
-      return;
+    } else {
+      // 2. Fall back to Titan (global registry)
+      final globalPillar = Titan.find<P>();
+      if (globalPillar != null) {
+        _pillar = globalPillar;
+      } else {
+        throw FlutterError(
+          'Vestige<$P>: No $P found.\n\n'
+          'Either:\n'
+          '  • Wrap with Beacon: Beacon(pillars: [$P.new], child: ...)\n'
+          '  • Register globally: Titan.put($P())\n',
+        );
+      }
     }
 
-    // 2. Fall back to Titan (global registry)
-    final globalPillar = Titan.find<P>();
-    if (globalPillar != null) {
-      _pillar = globalPillar;
-      return;
+    // Update auto-dispose reference count
+    if (_pillar != previousPillar) {
+      previousPillar?.unref();
+      _pillar?.ref();
     }
-
-    throw FlutterError(
-      'Vestige<$P>: No $P found.\n\n'
-      'Either:\n'
-      '  • Wrap with Beacon: Beacon(pillars: [$P.new], child: ...)\n'
-      '  • Register globally: Titan.put($P())\n',
-    );
   }
 
   void _onDependencyChanged() {
@@ -159,6 +165,7 @@ class _VestigeState<P extends Pillar> extends State<Vestige<P>> {
 
   @override
   void dispose() {
+    _pillar?.unref();
     _effect.dispose();
     super.dispose();
   }
@@ -332,22 +339,30 @@ class _VestigeListenerState<P extends Pillar>
   }
 
   void _resolvePillar() {
+    final previousPillar = _pillar;
+
     final beaconPillar = BeaconScope.findPillar<P>(context);
     if (beaconPillar != null) {
       _pillar = beaconPillar;
-      return;
+    } else {
+      final globalPillar = Titan.find<P>();
+      if (globalPillar != null) {
+        _pillar = globalPillar;
+      } else {
+        throw FlutterError(
+          'VestigeListener<$P>: No $P found.\n\n'
+          'Either:\n'
+          '  • Wrap with Beacon: Beacon(pillars: [$P.new], child: ...)\n'
+          '  • Register globally: Titan.put($P())\n',
+        );
+      }
     }
-    final globalPillar = Titan.find<P>();
-    if (globalPillar != null) {
-      _pillar = globalPillar;
-      return;
+
+    // Update auto-dispose reference count
+    if (_pillar != previousPillar) {
+      previousPillar?.unref();
+      _pillar?.ref();
     }
-    throw FlutterError(
-      'VestigeListener<$P>: No $P found.\n\n'
-      'Either:\n'
-      '  • Wrap with Beacon: Beacon(pillars: [$P.new], child: ...)\n'
-      '  • Register globally: Titan.put($P())\n',
-    );
   }
 
   void _onDependencyChanged() {
@@ -365,6 +380,7 @@ class _VestigeListenerState<P extends Pillar>
 
   @override
   void dispose() {
+    _pillar?.unref();
     _effect.dispose();
     super.dispose();
   }
@@ -445,22 +461,30 @@ class _VestigeConsumerState<P extends Pillar>
   }
 
   void _resolvePillar() {
+    final previousPillar = _pillar;
+
     final beaconPillar = BeaconScope.findPillar<P>(context);
     if (beaconPillar != null) {
       _pillar = beaconPillar;
-      return;
+    } else {
+      final globalPillar = Titan.find<P>();
+      if (globalPillar != null) {
+        _pillar = globalPillar;
+      } else {
+        throw FlutterError(
+          'VestigeConsumer<$P>: No $P found.\n\n'
+          'Either:\n'
+          '  • Wrap with Beacon: Beacon(pillars: [$P.new], child: ...)\n'
+          '  • Register globally: Titan.put($P())\n',
+        );
+      }
     }
-    final globalPillar = Titan.find<P>();
-    if (globalPillar != null) {
-      _pillar = globalPillar;
-      return;
+
+    // Update auto-dispose reference count
+    if (_pillar != previousPillar) {
+      previousPillar?.unref();
+      _pillar?.ref();
     }
-    throw FlutterError(
-      'VestigeConsumer<$P>: No $P found.\n\n'
-      'Either:\n'
-      '  • Wrap with Beacon: Beacon(pillars: [$P.new], child: ...)\n'
-      '  • Register globally: Titan.put($P())\n',
-    );
   }
 
   void _onDependencyChanged() {
@@ -495,6 +519,7 @@ class _VestigeConsumerState<P extends Pillar>
 
   @override
   void dispose() {
+    _pillar?.unref();
     _effect.dispose();
     super.dispose();
   }
@@ -503,6 +528,159 @@ class _VestigeConsumerState<P extends Pillar>
   Widget build(BuildContext context) {
     if (_needsRebuild) {
       _needsRebuild = false;
+      _effect.run();
+    }
+    return _cachedWidget ?? const SizedBox.shrink();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// VestigeSelector — sub-value selection from a Pillar
+// ---------------------------------------------------------------------------
+
+/// **VestigeSelector** — Select a sub-value from a [Pillar] for fine-grained rebuilds.
+///
+/// Combines Pillar resolution (like [Vestige]) with explicit sub-value
+/// selection and custom equality. Only rebuilds when the selected value
+/// changes — not when other Pillar state changes.
+///
+/// This is Titan's equivalent of BLoC's `BlocSelector`.
+///
+/// ## Usage
+///
+/// ```dart
+/// VestigeSelector<CartPillar, int>(
+///   selector: (cart) => cart.items.value.length,
+///   builder: (context, count) => Text('Items: $count'),
+/// )
+/// ```
+///
+/// ## Custom Equality
+///
+/// ```dart
+/// VestigeSelector<SearchPillar, List<String>>(
+///   selector: (search) => search.results.value,
+///   equals: (a, b) => listEquals(a, b),
+///   builder: (context, results) => ResultList(results: results),
+/// )
+/// ```
+class VestigeSelector<P extends Pillar, T> extends StatefulWidget {
+  /// Extracts the sub-value from the Pillar.
+  final T Function(P pillar) selector;
+
+  /// Builds the widget with the selected value.
+  final Widget Function(BuildContext context, T value) builder;
+
+  /// Optional custom equality for change detection.
+  ///
+  /// By default, uses `==`. Use for collections or custom objects
+  /// where identity-based equality is insufficient.
+  final bool Function(T previous, T next)? equals;
+
+  /// Creates a VestigeSelector.
+  const VestigeSelector({
+    super.key,
+    required this.selector,
+    required this.builder,
+    this.equals,
+  });
+
+  @override
+  State<VestigeSelector<P, T>> createState() => _VestigeSelectorState<P, T>();
+}
+
+class _VestigeSelectorState<P extends Pillar, T>
+    extends State<VestigeSelector<P, T>> {
+  late TitanEffect _effect;
+  P? _pillar;
+  late T _selectedValue;
+  Widget? _cachedWidget;
+  bool _isFirst = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _effect = TitanEffect(
+      () {
+        final newValue = widget.selector(_pillar as P);
+        if (_isFirst || !_isEqual(_selectedValue, newValue)) {
+          _selectedValue = newValue;
+          _isFirst = false;
+          _cachedWidget = widget.builder(context, _selectedValue);
+        }
+      },
+      onNotify: _onDependencyChanged,
+      fireImmediately: false,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolvePillar();
+  }
+
+  void _resolvePillar() {
+    final previousPillar = _pillar;
+
+    final beaconPillar = BeaconScope.findPillar<P>(context);
+    if (beaconPillar != null) {
+      _pillar = beaconPillar;
+    } else {
+      final globalPillar = Titan.find<P>();
+      if (globalPillar != null) {
+        _pillar = globalPillar;
+      } else {
+        throw FlutterError(
+          'VestigeSelector<$P, $T>: No $P found.\n\n'
+          'Either:\n'
+          '  • Wrap with Beacon: Beacon(pillars: [$P.new], child: ...)\n'
+          '  • Register globally: Titan.put($P())\n',
+        );
+      }
+    }
+
+    // Update auto-dispose reference count
+    if (_pillar != previousPillar) {
+      previousPillar?.unref();
+      _pillar?.ref();
+    }
+  }
+
+  void _onDependencyChanged() {
+    if (!mounted || _pillar == null) return;
+
+    // Re-run selector to check if selected value actually changed
+    final newValue = widget.selector(_pillar as P);
+    if (!_isEqual(_selectedValue, newValue)) {
+      if (SchedulerBinding.instance.schedulerPhase ==
+          SchedulerPhase.persistentCallbacks) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() => _cachedWidget = null);
+          }
+        });
+      } else {
+        setState(() => _cachedWidget = null);
+      }
+    }
+  }
+
+  bool _isEqual(T a, T b) {
+    if (widget.equals != null) return widget.equals!(a, b);
+    return a == b;
+  }
+
+  @override
+  void dispose() {
+    _pillar?.unref();
+    _effect.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_cachedWidget == null) {
       _effect.run();
     }
     return _cachedWidget ?? const SizedBox.shrink();

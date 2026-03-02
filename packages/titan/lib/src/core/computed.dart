@@ -36,6 +36,7 @@ class TitanComputed<T> extends ReactiveNode {
   final String? _name;
 
   late T _value;
+  T? _previousValue;
   bool _isDirty = true;
   Set<ReactiveNode> _dependencies = {};
   bool _hasEverComputed = false;
@@ -75,6 +76,19 @@ class TitanComputed<T> extends ReactiveNode {
     }
     return _value;
   }
+
+  /// The previous computed value before the most recent recomputation
+  /// that produced a different result.
+  ///
+  /// Returns `null` if the value has never changed. Useful for
+  /// animations, transition effects, and "changed from X to Y" patterns.
+  ///
+  /// ```dart
+  /// final total = derived(() => items.value.fold(0, (a, b) => a + b));
+  /// // After items change triggers recomputation:
+  /// print(total.previousValue); // previous total
+  /// ```
+  T? get previousValue => _previousValue;
 
   void _recompute() {
     if (_hasEverComputed) {
@@ -180,6 +194,7 @@ class TitanComputed<T> extends ReactiveNode {
     _recompute();
 
     if (!_isEqual(oldValue, _value)) {
+      _previousValue = oldValue;
       // Value changed — propagate to our dependents
       notifyDependents();
     }

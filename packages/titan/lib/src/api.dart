@@ -130,6 +130,7 @@ abstract final class Titan {
   static void put<T>(T instance) {
     _instances[T] = instance;
     if (instance is Pillar) {
+      instance.onAutoDispose = () => remove<T>();
       instance.initialize();
     }
   }
@@ -147,6 +148,7 @@ abstract final class Titan {
   /// ```
   static void forge(Pillar pillar) {
     _instances[pillar.runtimeType] = pillar;
+    pillar.onAutoDispose = () => removeByType(pillar.runtimeType);
     pillar.initialize();
   }
 
@@ -211,6 +213,7 @@ abstract final class Titan {
       _instances[T] = instance;
       _factories.remove(T);
       if (instance is Pillar) {
+        instance.onAutoDispose = () => remove<T>();
         instance.initialize();
       }
       return instance;

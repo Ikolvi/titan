@@ -240,5 +240,125 @@ void main() {
         state.dispose();
       });
     });
+
+    // -----------------------------------------------------------------------
+    // TitanState.stream getter
+    // -----------------------------------------------------------------------
+
+    group('TitanState.stream', () {
+      test('is equivalent to asStream()', () async {
+        final state = TitanState<int>(0);
+        final values = <int>[];
+
+        final sub = state.stream.listen((v) => values.add(v));
+
+        state.value = 1;
+        state.value = 2;
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        expect(values, [1, 2]);
+
+        await sub.cancel();
+        state.dispose();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // TitanComputed.asStream / stream
+    // -----------------------------------------------------------------------
+
+    group('TitanComputed.asStream', () {
+      test('emits on recomputation', () async {
+        final a = TitanState(1);
+        final b = TitanState(2);
+        final sum = TitanComputed(() => a.value + b.value);
+        sum.value; // force initial
+
+        final values = <int>[];
+        final sub = sum.asStream().listen((v) => values.add(v));
+
+        a.value = 10;
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        b.value = 20;
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        expect(values, [12, 30]);
+
+        await sub.cancel();
+        sum.dispose();
+        a.dispose();
+        b.dispose();
+      });
+
+      test('does not emit when computed value stays equal', () async {
+        final state = TitanState(0);
+        final clamped = TitanComputed(() => state.value.clamp(0, 10));
+        clamped.value; // force initial
+
+        final values = <int>[];
+        final sub = clamped.asStream().listen((v) => values.add(v));
+
+        state.value = 5;
+        await Future.delayed(const Duration(milliseconds: 10));
+        expect(values, [5]);
+
+        // Still clamped to 10
+        state.value = 100;
+        await Future.delayed(const Duration(milliseconds: 10));
+        expect(values, [5, 10]);
+
+        // 200 clamps to 10 — same as before, no emission
+        state.value = 200;
+        await Future.delayed(const Duration(milliseconds: 10));
+        expect(values, [5, 10]);
+
+        await sub.cancel();
+        clamped.dispose();
+        state.dispose();
+      });
+
+      test('stops after cancel', () async {
+        final state = TitanState(0);
+        final computed = TitanComputed(() => state.value * 2);
+        computed.value; // force initial
+
+        final values = <int>[];
+        final sub = computed.asStream().listen((v) => values.add(v));
+
+        state.value = 1;
+        await Future.delayed(const Duration(milliseconds: 10));
+        expect(values, [2]);
+
+        await sub.cancel();
+
+        state.value = 5;
+        await Future.delayed(const Duration(milliseconds: 10));
+        expect(values, [2]); // no new emissions
+
+        computed.dispose();
+        state.dispose();
+      });
+    });
+
+    group('TitanComputed.stream', () {
+      test('is equivalent to asStream()', () async {
+        final state = TitanState(0);
+        final computed = TitanComputed(() => state.value + 1);
+        computed.value; // force initial
+
+        final values = <int>[];
+        final sub = computed.stream.listen((v) => values.add(v));
+
+        state.value = 10;
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        expect(values, [11]);
+
+        await sub.cancel();
+        computed.dispose();
+        state.dispose();
+      });
+    });
   });
 }

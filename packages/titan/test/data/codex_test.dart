@@ -377,6 +377,101 @@ void main() {
       expect(codex.isEmpty, true);
     });
   });
+
+  group('Codex — softRefresh', () {
+    test('keeps existing items visible during reload', () async {
+      int fetchCount = 0;
+      final codex = Codex<String>(
+        fetcher: (req) async {
+          fetchCount++;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          return CodexPage(
+            items: ['batch_$fetchCount'],
+            hasMore: false,
+          );
+        },
+      );
+
+      await codex.loadFirst();
+      expect(codex.items.value, ['batch_1']);
+
+      // Start softRefresh — items should remain during loading
+      final future = codex.softRefresh();
+      expect(codex.items.value, ['batch_1']); // still visible
+      expect(codex.isLoading.value, true);
+
+      await future;
+      expect(codex.items.value, ['batch_2']); // swapped atomically
+      expect(codex.isLoading.value, false);
+
+      codex.dispose();
+    });
+
+    test('atomically replaces items on success', () async {
+      final codex = Codex<String>(
+        fetcher: (req) async => const CodexPage(
+          items: ['new_a', 'new_b'],
+          hasMore: true,
+          nextCursor: 'cursor_1',
+        ),
+      );
+
+      codex.items.value = ['old_a', 'old_b', 'old_c'];
+
+      await codex.softRefresh();
+      expect(codex.items.value, ['new_a', 'new_b']);
+      expect(codex.currentPage.value, 0);
+      expect(codex.hasMore.value, true);
+
+      codex.dispose();
+    });
+
+    test('keeps items intact on error', () async {
+      bool shouldFail = false;
+      final codex = Codex<String>(
+        fetcher: (req) async {
+          if (shouldFail) throw Exception('network error');
+          return const CodexPage(items: ['a', 'b'], hasMore: false);
+        },
+      );
+
+      await codex.loadFirst();
+      expect(codex.items.value, ['a', 'b']);
+
+      shouldFail = true;
+      await codex.softRefresh();
+
+      // Items remain untouched
+      expect(codex.items.value, ['a', 'b']);
+      expect(codex.error.value, isA<Exception>());
+      expect(codex.isLoading.value, false);
+
+      codex.dispose();
+    });
+
+    test('skips when already loading', () async {
+      int fetchCount = 0;
+      final codex = Codex<String>(
+        fetcher: (req) async {
+          fetchCount++;
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          return CodexPage(items: ['item_$fetchCount'], hasMore: false);
+        },
+      );
+
+      await codex.loadFirst();
+      expect(fetchCount, 1);
+
+      // Start softRefresh — then immediately try another
+      final first = codex.softRefresh();
+      codex.softRefresh(); // should be skipped
+
+      await first;
+      expect(fetchCount, 2); // only one additional fetch
+
+      codex.dispose();
+    });
+  });
 }
 
 class _PaginatedPillar extends Pillar {

@@ -382,6 +382,104 @@ void main() {
       pillar.dispose();
     });
   });
+
+  group('Pillar — autoDispose', () {
+    tearDown(() => Titan.reset());
+
+    test('autoDispose is disabled by default', () {
+      final pillar = _TestCounterPillar();
+      expect(pillar.autoDispose, false);
+      expect(pillar.refCount, 0);
+      pillar.dispose();
+    });
+
+    test('enableAutoDispose() enables auto-dispose', () {
+      final pillar = _TestAutoDisposePillar();
+      pillar.initialize();
+      expect(pillar.autoDispose, true);
+      pillar.dispose();
+    });
+
+    test('ref() increments reference count', () {
+      final pillar = _TestCounterPillar();
+      expect(pillar.refCount, 0);
+      pillar.ref();
+      expect(pillar.refCount, 1);
+      pillar.ref();
+      expect(pillar.refCount, 2);
+      pillar.dispose();
+    });
+
+    test('unref() decrements reference count', () {
+      final pillar = _TestCounterPillar();
+      pillar.ref();
+      pillar.ref();
+      expect(pillar.refCount, 2);
+      pillar.unref();
+      expect(pillar.refCount, 1);
+      pillar.dispose();
+    });
+
+    test('unref() does not trigger when autoDispose is disabled', () {
+      bool disposed = false;
+      final pillar = _TestCounterPillar();
+      pillar.onAutoDispose = () => disposed = true;
+      pillar.ref();
+      pillar.unref();
+      expect(disposed, false);
+      pillar.dispose();
+    });
+
+    test('unref() triggers onAutoDispose when refCount reaches 0', () {
+      bool disposed = false;
+      final pillar = _TestAutoDisposePillar();
+      pillar.initialize();
+      pillar.onAutoDispose = () => disposed = true;
+      pillar.ref();
+      pillar.ref();
+      pillar.unref();
+      expect(disposed, false);
+      pillar.unref();
+      expect(disposed, true);
+      pillar.dispose();
+    });
+
+    test('Titan.put sets onAutoDispose to remove from registry', () {
+      final pillar = _TestAutoDisposePillar();
+      Titan.put(pillar);
+
+      expect(Titan.has<_TestAutoDisposePillar>(), true);
+
+      pillar.ref();
+      pillar.unref(); // refCount goes to 0 → auto-removes
+
+      expect(Titan.has<_TestAutoDisposePillar>(), false);
+    });
+
+    test('Titan.forge sets onAutoDispose to remove from registry', () {
+      final pillar = _TestAutoDisposePillar();
+      Titan.forge(pillar);
+
+      expect(Titan.has<_TestAutoDisposePillar>(), true);
+
+      pillar.ref();
+      pillar.unref();
+
+      expect(Titan.has<_TestAutoDisposePillar>(), false);
+    });
+
+    test('Titan.lazy sets onAutoDispose on first access', () {
+      Titan.lazy<_TestAutoDisposePillar>(() => _TestAutoDisposePillar());
+
+      final pillar = Titan.get<_TestAutoDisposePillar>();
+      expect(pillar.autoDispose, true);
+
+      pillar.ref();
+      pillar.unref();
+
+      expect(Titan.has<_TestAutoDisposePillar>(), false);
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -451,4 +549,13 @@ class _TestAsyncPillar extends Pillar {
   Future<void> asyncFail() => strikeAsync(() async {
     throw StateError('async failure');
   });
+}
+
+class _TestAutoDisposePillar extends Pillar {
+  late final value = core(0);
+
+  @override
+  void onInit() {
+    enableAutoDispose();
+  }
 }

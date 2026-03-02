@@ -344,4 +344,184 @@ void main() {
       count.dispose();
     });
   });
+
+  group('VestigeSelector', () {
+    testWidgets('selects sub-value from Pillar via Beacon', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Beacon(
+            pillars: [_CounterPillar.new],
+            child: VestigeSelector<_CounterPillar, int>(
+              selector: (counter) => counter.count.value,
+              builder: (context, count) => Text('Count: $count'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Count: 0'), findsOneWidget);
+    });
+
+    testWidgets('rebuilds when selected value changes', (tester) async {
+      late _CounterPillar pillar;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Beacon(
+            pillars: [
+              () {
+                pillar = _CounterPillar();
+                return pillar;
+              },
+            ],
+            child: VestigeSelector<_CounterPillar, int>(
+              selector: (counter) => counter.count.value,
+              builder: (context, count) => Text('Count: $count'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Count: 0'), findsOneWidget);
+
+      pillar.increment();
+      await tester.pump();
+
+      expect(find.text('Count: 1'), findsOneWidget);
+    });
+
+    testWidgets('does NOT rebuild when unselected state changes',
+        (tester) async {
+      late _CounterPillar pillar;
+      int buildCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Beacon(
+            pillars: [
+              () {
+                pillar = _CounterPillar();
+                return pillar;
+              },
+            ],
+            child: VestigeSelector<_CounterPillar, int>(
+              selector: (counter) => counter.count.value,
+              builder: (context, count) {
+                buildCount++;
+                return Text('Count: $count');
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(buildCount, 1);
+
+      // Change label (not selected) — should NOT rebuild
+      pillar.label.value = 'New Label';
+      await tester.pump();
+      expect(buildCount, 1);
+
+      // Change count (selected) — SHOULD rebuild
+      pillar.increment();
+      await tester.pump();
+      expect(buildCount, 2);
+    });
+
+    testWidgets('works with Derived selector', (tester) async {
+      late _CounterPillar pillar;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Beacon(
+            pillars: [
+              () {
+                pillar = _CounterPillar();
+                return pillar;
+              },
+            ],
+            child: VestigeSelector<_CounterPillar, int>(
+              selector: (counter) => counter.doubled.value,
+              builder: (context, doubled) => Text('Doubled: $doubled'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Doubled: 0'), findsOneWidget);
+
+      pillar.increment();
+      await tester.pump();
+
+      expect(find.text('Doubled: 2'), findsOneWidget);
+    });
+
+    testWidgets('custom equality prevents unnecessary rebuilds',
+        (tester) async {
+      late _CounterPillar pillar;
+      int buildCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Beacon(
+            pillars: [
+              () {
+                pillar = _CounterPillar();
+                return pillar;
+              },
+            ],
+            child: VestigeSelector<_CounterPillar, String>(
+              selector: (counter) =>
+                  counter.count.value > 5 ? 'high' : 'low',
+              equals: (a, b) => a == b,
+              builder: (context, level) {
+                buildCount++;
+                return Text('Level: $level');
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Level: low'), findsOneWidget);
+      expect(buildCount, 1);
+
+      // 0 → 1: still 'low' — no rebuild
+      pillar.increment();
+      await tester.pump();
+      expect(buildCount, 1);
+
+      // Set count to 6 → 'high' — rebuild
+      pillar.count.value = 6;
+      await tester.pump();
+      expect(find.text('Level: high'), findsOneWidget);
+      expect(buildCount, 2);
+
+      // 6 → 7: still 'high' — no rebuild
+      pillar.increment();
+      await tester.pump();
+      expect(buildCount, 2);
+    });
+
+    testWidgets('finds Pillar from Titan global registry', (tester) async {
+      final pillar = _CounterPillar();
+      Titan.put(pillar);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VestigeSelector<_CounterPillar, int>(
+            selector: (counter) => counter.count.value,
+            builder: (context, count) => Text('Count: $count'),
+          ),
+        ),
+      );
+
+      expect(find.text('Count: 0'), findsOneWidget);
+
+      pillar.increment();
+      await tester.pump();
+
+      expect(find.text('Count: 1'), findsOneWidget);
+    });
+  });
 }
