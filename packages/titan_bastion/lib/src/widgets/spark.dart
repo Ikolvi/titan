@@ -156,6 +156,12 @@ class SparkState extends State<Spark> with TickerProviderStateMixin {
   int _hookIndex = 0;
   bool _isFirstBuild = true;
 
+  /// Guard flag: only re-run [ignite] when a reactive dependency changed,
+  /// the widget received new props, or this is the first build.
+  /// Parent-triggered rebuilds that don't change anything skip [ignite]
+  /// entirely and return the cached widget — matching [Vestige] behavior.
+  bool _needsRebuild = true;
+
   /// The auto-tracking effect that wraps [ignite] calls.
   ///
   /// Any [Core] or [Derived] `.value` read during [ignite] is automatically
@@ -203,7 +209,21 @@ class SparkState extends State<Spark> with TickerProviderStateMixin {
   }
 
   @override
+  void didUpdateWidget(covariant Spark oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Parent rebuilt us with (possibly) new props — must re-run ignite
+    // so hooks see updated widget fields.
+    _needsRebuild = true;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (!_needsRebuild && !_isFirstBuild) {
+      // No reactive dep changed and no widget prop change — return cached.
+      return _cachedWidget ?? const SizedBox.shrink();
+    }
+    _needsRebuild = false;
+
     // Push/pop for nested Spark builds (stack-safe)
     _currentStack.add(current);
     current = this;
@@ -237,6 +257,7 @@ class SparkState extends State<Spark> with TickerProviderStateMixin {
   /// Also called by hooks (e.g., [useCore]) when their managed state mutates.
   void rebuild() {
     if (mounted) {
+      _needsRebuild = true;
       // Defer setState if we're in persistent callbacks phase
       if (SchedulerBinding.instance.schedulerPhase ==
           SchedulerPhase.persistentCallbacks) {
