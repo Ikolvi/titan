@@ -306,4 +306,5 @@ Kael nodded. "Total Integrated Transfer Architecture Network. Titan."
 | [XV](chapter-15-the-loom-weaves.md) | The Loom Weaves |
 | [XVI](chapter-16-the-forge-and-crucible.md) | The Forge & Crucible |
 | [XVII](chapter-17-the-annals-record.md) | The Annals Record |
-| **XVIII** | **The Conduit Flows** ← You are here |
+| **XVIII** | **The Conduit Flows** |
+| [XIX](chapter-19-the-prism-reveals.md) | The Prism Reveals |

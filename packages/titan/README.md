@@ -46,6 +46,7 @@ A signal-based reactive state management engine for Dart & Flutter — fine-grai
 | Pagination | **Codex** | Paginated data with reactive state |
 | Data Query | **Quarry** | Cached data fetching (SWR) |
 | Middleware | **Conduit** | Core-level pipeline — transform, validate, reject |
+| State Selector | **Prism** | Fine-grained, memoized state projections |
 
 ---
 

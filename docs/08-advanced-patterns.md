@@ -1739,6 +1739,82 @@ class AuditConduit<T> extends Conduit<T> {
 
 ---
 
+## Prism — Fine-Grained State Projections
+
+A Prism creates a read-only, memoized projection from one or more source Cores. Unlike `Derived` (which auto-tracks any reactive read), Prism provides explicit source declarations, multi-source combining with full type safety, and built-in structural equality helpers.
+
+### Single-Source Projection
+
+```dart
+class HeroPillar extends Pillar {
+  late final hero = core(Hero(name: 'Kael', level: 10, health: 100));
+
+  // Only notifies when name changes — not level or health
+  late final heroName = prism(hero, (h) => h.name);
+  late final heroLevel = prism(hero, (h) => h.level);
+}
+```
+
+### Multi-Source Combining
+
+```dart
+final heroTitle = Prism.combine2(
+  heroName, heroLevel,
+  (name, level) => '$name (Lv$level)',
+);
+
+// Up to 4 sources
+final summary = Prism.combine4(
+  name, level, health, mana,
+  (n, l, h, m) => '$n Lv$l HP:$h MP:$m',
+);
+```
+
+### Structural Equality
+
+When projecting collections, use `PrismEquals` for content-based comparison:
+
+```dart
+late final achievements = prism(
+  hero,
+  (h) => h.achievements.toList(),
+  equals: PrismEquals.list,
+);
+
+// Also available: PrismEquals.set, PrismEquals.map
+```
+
+### Composing from Derived
+
+```dart
+late final weapons = derived(
+  () => items.value.where((i) => i.type == ItemType.weapon).toList(),
+);
+
+late final bestWeapon = Prism.fromDerived(
+  weapons,
+  (list) => list.isEmpty ? 'None' : list.first.name,
+);
+```
+
+### Extension Method
+
+```dart
+final user = Core(User(name: 'Alice', age: 30));
+final userName = user.prism((u) => u.name);
+```
+
+### Prism vs. Derived
+
+| Aspect | Derived | Prism |
+|--------|---------|-------|
+| Dependency tracking | Auto (reads inside compute) | Explicit (declared sources) |
+| Multi-source | Implicit via reads | Type-safe combine factories |
+| Collection equality | Manual `equals` param | `PrismEquals.list/set/map` |
+| Use case | Compute new values | Focus on sub-values |
+
+---
+
 ## Additional Widgets
 
 ### VestigeWhen

@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Core<T>` now accepts `conduits:` parameter in constructor and `Pillar.core()`
   - Dynamic management: `addConduit()`, `removeConduit()`, `clearConduits()`
   - 25 new tests, benchmark #28 added
+- **Prism** — Fine-grained, memoized state projections
+  - `Prism<T>` extends `TitanComputed<T>` for read-only reactive sub-value views
+  - Type-safe static factories: `Prism.of<S,R>`, `Prism.combine2/3/4`, `Prism.fromDerived`
+  - `PrismEquals` abstract final class with `list<T>()`, `set<T>()`, `map<K,V>()` comparators
+  - `PrismCoreExtension<T>` — `.prism()` extension method on `TitanState<T>`
+  - Pillar factory: `prism<S,R>(source, selector)` with managed lifecycle
+  - 25 new tests, benchmark #29 added
 
 ## [0.1.1] - 2026-03-02
 

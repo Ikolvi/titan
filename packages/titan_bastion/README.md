@@ -231,6 +231,7 @@ void main() => runApp(
 | [Chapter XII: The Confluence Converges](../../docs/story/chapter-12-the-confluence-converges.md) | Multi-Pillar consumer |
 | [Chapter XIII: The Lens Reveals](../../docs/story/chapter-13-the-lens-reveals.md) | Debug overlay |
 | [Chapter XVIII: The Conduit Flows](../../docs/story/chapter-18-the-conduit-flows.md) | Core-level middleware |
+| [Chapter XIX: The Prism Reveals](../../docs/story/chapter-19-the-prism-reveals.md) | Fine-grained state projections |
 
 ## License
 

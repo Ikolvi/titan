@@ -31,6 +31,7 @@ void main() {
   _benchAnnalsRecord();
   _benchTetherCall();
   _benchConduitPipeline();
+  _benchPrismProjection();
 
   // Output JSON
   print(
@@ -436,6 +437,25 @@ void _benchConduitPipeline() {
   sw.stop();
   final usPerSet = sw.elapsedMicroseconds / n;
   _record('Conduit Pipeline (10K)', 'µs/set', usPerSet);
+}
+
+// ---------------------------------------------------------------------------
+// 16. Prism Projection (10K source changes)
+// ---------------------------------------------------------------------------
+void _benchPrismProjection() {
+  const n = 10000;
+  final source = TitanState<Map<String, int>>({'a': 0, 'b': 0});
+  final prism = Prism.of(source, (m) => m['a'] ?? 0);
+  prism.value;
+  final sw = Stopwatch()..start();
+  for (var i = 0; i < n; i++) {
+    source.value = {'a': i, 'b': i * 2};
+    prism.value;
+  }
+  sw.stop();
+  final usPerProjection = sw.elapsedMicroseconds / n;
+  _record('Prism Projection (10K)', 'µs/projection', usPerProjection);
+  source.dispose();
 }
 
 // =============================================================================

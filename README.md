@@ -50,6 +50,7 @@ A uniquely powerful reactive state management architecture for Flutter — struc
 | Multi-Consumer | **Confluence** | Multi-Pillar consumer widget |
 | Debug Overlay | **Lens** | In-app debug panel for Pillars, Herald, Vigil, Chronicle |
 | Middleware | **Conduit** | Core-level pipeline — transform, validate, reject value changes |
+| State Selector | **Prism** | Fine-grained, memoized state projections with structural equality |
 
 ---
 

@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 5 built-in Conduits: `ClampConduit`, `TransformConduit`, `ValidateConduit`, `FreezeConduit`, `ThrottleConduit`
   - Pillar integration via `core(value, conduits: [...])`
   - Story chapter XVIII: "The Conduit Flows"
+- **Prism** — Fine-grained, memoized state projections
+  - `Prism<T>` class extending `TitanComputed<T>` for focused sub-value selection
+  - Type-safe factories: `Prism.of`, `Prism.combine2/3/4`, `Prism.fromDerived`
+  - `PrismEquals` structural comparators for `List`, `Set`, `Map`
+  - `.prism()` extension on `Core<T>` for ergonomic API
+  - Pillar integration via `prism(source, selector)`
+  - 25 tests, benchmark #29
+  - Story chapter XIX: "The Prism Reveals"
 
 ## [0.0.3] - 2025-07-12
 

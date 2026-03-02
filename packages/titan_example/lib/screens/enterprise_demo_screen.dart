@@ -44,7 +44,7 @@ class _EnterpriseTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 6,
+      length: 7,
       child: Column(
         children: [
           const TabBar(
@@ -55,6 +55,7 @@ class _EnterpriseTabs extends StatelessWidget {
               Tab(text: 'Saga'),
               Tab(text: 'Volley'),
               Tab(text: 'Conduit'),
+              Tab(text: 'Prism'),
               Tab(text: 'Toolkit'),
             ],
           ),
@@ -66,6 +67,7 @@ class _EnterpriseTabs extends StatelessWidget {
                 _SagaTab(),
                 _VolleyTab(),
                 _ConduitTab(),
+                _PrismTab(),
                 _ToolkitTab(),
               ],
             ),
@@ -609,6 +611,212 @@ class _ConduitTab extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Prism Tab — Fine-Grained State Projections
+// ---------------------------------------------------------------------------
+
+class _PrismTab extends StatelessWidget {
+  const _PrismTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Vestige<EnterpriseDemoPillar>(
+      builder: (context, p) {
+        final counts = p.prismNotifyCount.value;
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Hero Profile (source Core)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Source: Hero Profile (single Core)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'One Core holds the entire hero. Each Prism watches '
+                      'a single field. Only the changed field triggers a '
+                      'notification.',
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      p.heroProfile.value.entries
+                          .map((e) => '${e.key}: ${e.value}')
+                          .join(' · '),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Prism Projections
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Prism Projections',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _PrismRow(
+                      label: 'Name',
+                      value: p.prismName.value,
+                      notifyCount: counts['name'] ?? 0,
+                    ),
+                    _PrismRow(
+                      label: 'Level',
+                      value: '${p.prismLevel.value}',
+                      notifyCount: counts['level'] ?? 0,
+                    ),
+                    _PrismRow(
+                      label: 'Health',
+                      value: '${p.prismHealth.value}',
+                      notifyCount: counts['health'] ?? 0,
+                    ),
+                    const Divider(),
+                    _PrismRow(
+                      label: 'Title (combine2)',
+                      value: p.prismTitle.value,
+                      notifyCount: counts['title'] ?? 0,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Action Buttons
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Update Fields',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Watch the notify counts above — only the '
+                      'relevant Prism fires.',
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton(
+                          onPressed: () =>
+                              p.updateHeroField('name', 'Aria'),
+                          child: const Text('Name → Aria'),
+                        ),
+                        FilledButton(
+                          onPressed: () =>
+                              p.updateHeroField('name', 'Kael'),
+                          child: const Text('Name → Kael'),
+                        ),
+                        FilledButton.tonal(
+                          onPressed: () => p.updateHeroField(
+                            'level',
+                            (p.prismLevel.value) + 1,
+                          ),
+                          child: const Text('Level +1'),
+                        ),
+                        FilledButton.tonal(
+                          onPressed: () => p.updateHeroField(
+                            'health',
+                            (p.prismHealth.value) - 10,
+                          ),
+                          child: const Text('Health -10'),
+                        ),
+                        OutlinedButton(
+                          onPressed: () => p.updateHeroField(
+                            'mana',
+                            (p.heroProfile.value['mana'] as int) + 5,
+                          ),
+                          child: const Text('Mana +5 (no Prism)'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PrismRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final int notifyCount;
+
+  const _PrismRow({
+    required this.label,
+    required this.value,
+    required this.notifyCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          Expanded(child: Text(value)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: notifyCount > 0
+                  ? Colors.orange.shade100
+                  : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '$notifyCount',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: notifyCount > 0 ? Colors.orange.shade800 : Colors.grey,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

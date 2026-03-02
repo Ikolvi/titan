@@ -48,6 +48,7 @@ abstract class Pillar
 |--------|--------|-------------|
 | `core<T>(T value, {String? name, bool Function(T,T)? equals, List<Conduit<T>>? conduits})` | `TitanState<T>` | Create a managed reactive Core |
 | `derived<T>(T Function() compute, {String? name})` | `TitanComputed<T>` | Create a managed Derived value |
+| `prism<S, R>(TitanState<S> source, R Function(S) selector, {String? name, bool Function(R, R)? equals})` | `Prism<R>` | Create a managed state projection |
 | `epoch<T>(T value, {int maxHistory, String? name})` | `Epoch<T>` | Create a managed Core with undo/redo |
 | `watch(dynamic Function() fn, {bool fireImmediately})` | `TitanEffect` | Create a managed reactive side effect |
 
@@ -905,6 +906,55 @@ abstract class Conduit<T> {
 |----------|------|-------------|
 | `message` | `String?` | Why the change was rejected |
 | `rejectedValue` | `Object?` | The value that was rejected |
+
+---
+
+### Prism
+
+Fine-grained, memoized state projection from one or more source Cores.
+
+#### Constructors & Static Factories
+
+```dart
+Prism<T>(TitanState<dynamic> source, T Function(dynamic) selector, {String? name, bool Function(T, T)? equals})
+Prism.of<S, R>(TitanState<S> source, R Function(S) selector, {String? name, bool Function(R, R)? equals})
+Prism.combine2<A, B, R>(TitanState<A> s1, TitanState<B> s2, R Function(A, B) combiner, {String? name, bool Function(R, R)? equals})
+Prism.combine3<A, B, C, R>(TitanState<A> s1, TitanState<B> s2, TitanState<C> s3, R Function(A, B, C) combiner, {String? name, bool Function(R, R)? equals})
+Prism.combine4<A, B, C, D, R>(TitanState<A> s1, TitanState<B> s2, TitanState<C> s3, TitanState<D> s4, R Function(A, B, C, D) combiner, {String? name, bool Function(R, R)? equals})
+Prism.fromDerived<S, R>(TitanComputed<S> source, R Function(S) selector, {String? name, bool Function(R, R)? equals})
+```
+
+#### Pillar Factory
+
+```dart
+prism<S, R>(TitanState<S> source, R Function(S) selector, {String? name, bool Function(R, R)? equals})
+```
+
+#### Extension Method
+
+```dart
+// On TitanState<T> (Core<T>)
+Prism<R> prism<R>(R Function(T) selector, {String? name, bool Function(R, R)? equals})
+```
+
+#### PrismEquals
+
+| Method | Type | Description |
+|--------|------|-------------|
+| `PrismEquals.list<T>` | `bool Function(List<T>, List<T>)` | Element-by-element list comparison |
+| `PrismEquals.set<T>` | `bool Function(Set<T>, Set<T>)` | Set contents comparison |
+| `PrismEquals.map<K,V>` | `bool Function(Map<K,V>, Map<K,V>)` | Key-value map comparison |
+
+#### Inherited from TitanComputed
+
+| Property/Method | Type | Description |
+|-----------------|------|-------------|
+| `value` | `T` | Current projected value (read-only) |
+| `previousValue` | `T?` | Previous projected value |
+| `name` | `String?` | Optional debug name |
+| `addListener(callback)` | `void` | Listen for value changes |
+| `removeListener(callback)` | `void` | Remove a listener |
+| `dispose()` | `void` | Dispose the Prism |
 
 ---
 

@@ -848,6 +848,27 @@ Future<void> _runEnterpriseBenchmarks() async {
       'enterprise',
     );
   }
+
+  // 29. Prism projection
+  {
+    const n = 10000;
+    final source = TitanState<Map<String, int>>({'a': 0, 'b': 0});
+    final prism = Prism.of(source, (m) => m['a'] ?? 0);
+    prism.value;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      source.value = {'a': i, 'b': i * 2};
+      prism.value;
+    }
+    sw.stop();
+    _record(
+      'Prism Projection',
+      sw.elapsedMicroseconds / n,
+      'µs/projection',
+      'enterprise',
+    );
+    source.dispose();
+  }
 }
 
 // =============================================================================

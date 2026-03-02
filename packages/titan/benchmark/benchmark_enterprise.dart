@@ -43,6 +43,7 @@ void main() async {
   await _benchSnapshot();
   await _benchCrucible();
   await _benchConduit();
+  await _benchPrism();
 
   print('');
   print('═══════════════════════════════════════════════════════');
@@ -1200,6 +1201,117 @@ Future<void> _benchConduit() async {
   print('');
 }
 
+// =============================================================================
+// 29. Prism — Fine-grained state projections
+// =============================================================================
+
+Future<void> _benchPrism() async {
+  print('── 29. Prism ───────────────────────────────────────');
+
+  // 29a. Single-source Prism — 10K reads after source changes
+  {
+    final source = TitanState<Map<String, int>>({'a': 0, 'b': 0});
+    final prism = Prism.of(source, (m) => m['a'] ?? 0);
+    prism.value; // prime
+
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      source.value = {'a': i, 'b': i * 2};
+      prism.value;
+    }
+    sw.stop();
+    print('  Single Prism 10K:    ${_ms(sw)}  (${_pad(n)} iterations)');
+    source.dispose();
+  }
+
+  // 29b. combine2 Prism — 10K mutations
+  {
+    final a = TitanState(0);
+    final b = TitanState(0);
+    final combined = Prism.combine2(a, b, (x, y) => x + y);
+    combined.value;
+
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      a.value = i;
+      combined.value;
+    }
+    sw.stop();
+    print('  Combine2 10K:        ${_ms(sw)}  (${_pad(n)} iterations)');
+    a.dispose();
+    b.dispose();
+  }
+
+  // 29c. Multiple Prisms on same source — 10K mutations
+  {
+    final source = TitanState<Map<String, int>>(
+      {'hp': 100, 'mp': 50, 'xp': 0},
+    );
+    final hp = Prism.of(source, (m) => m['hp'] ?? 0);
+    final mp = Prism.of(source, (m) => m['mp'] ?? 0);
+    final xp = Prism.of(source, (m) => m['xp'] ?? 0);
+    hp.value;
+    mp.value;
+    xp.value;
+
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      source.value = {'hp': 100 - i % 10, 'mp': 50, 'xp': i};
+      hp.value;
+      mp.value;
+      xp.value;
+    }
+    sw.stop();
+    print('  3 Prisms 10K:        ${_ms(sw)}  (${_pad(n)} iterations)');
+    source.dispose();
+  }
+
+  // 29d. Prism vs Derived baseline — 10K (same operation for comparison)
+  {
+    final source = TitanState(0);
+    final derived = TitanComputed(() => source.value * 2);
+    derived.value;
+
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      source.value = i;
+      derived.value;
+    }
+    sw.stop();
+    print('  Derived baseline:    ${_ms(sw)}  (${_pad(n)} iterations)');
+    source.dispose();
+  }
+
+  // 29e. Prism with PrismEquals.list — 10K with structural equality
+  {
+    final source = TitanState<List<int>>([1, 2, 3]);
+    final prism = Prism.of<List<int>, List<int>>(
+      source,
+      (list) => list.where((x) => x.isEven).toList(),
+      equals: PrismEquals.list,
+    );
+    prism.value;
+
+    const n = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      source.value = [i, i + 1, i + 2, i + 3];
+      prism.value;
+    }
+    sw.stop();
+    print('  List equality 10K:   ${_ms(sw)}  (${_pad(n)} iterations)');
+    source.dispose();
+  }
+
+  print('');
+}
+
+// =============================================================================
+// Helpers
 // =============================================================================
 
 class _BenchPillar extends Pillar {

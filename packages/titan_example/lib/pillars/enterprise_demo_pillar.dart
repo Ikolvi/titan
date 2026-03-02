@@ -189,6 +189,93 @@ class EnterpriseDemoPillar extends Pillar {
 
   // --------------- Sigil (Feature Flags) ---------------
 
+  // --------------- Prism (Fine-Grained State Projections) ---------------
+
+  /// Hero profile — a complex object stored in a single Core.
+  late final heroProfile = core<Map<String, dynamic>>(
+    {
+      'name': 'Kael',
+      'level': 10,
+      'health': 100,
+      'mana': 50,
+      'guild': 'Ironclad',
+    },
+    name: 'heroProfile',
+  );
+
+  /// Prism: Only the hero's name.
+  late final prismName = prism<Map<String, dynamic>, String>(
+    heroProfile,
+    (h) => h['name'] as String,
+    name: 'prismName',
+  );
+
+  /// Prism: Only the hero's level.
+  late final prismLevel = prism<Map<String, dynamic>, int>(
+    heroProfile,
+    (h) => h['level'] as int,
+    name: 'prismLevel',
+  );
+
+  /// Prism: Only the hero's health.
+  late final prismHealth = prism<Map<String, dynamic>, int>(
+    heroProfile,
+    (h) => h['health'] as int,
+    name: 'prismHealth',
+  );
+
+  /// Prism: Combined title from name + level (derived from source Core).
+  late final prismTitle = prism<Map<String, dynamic>, String>(
+    heroProfile,
+    (h) {
+      final name = h['name'] as String;
+      final level = h['level'] as int;
+      return '$name the ${level >= 20 ? "Legendary" : level >= 10 ? "Veteran" : "Novice"}';
+    },
+    name: 'prismTitle',
+  );
+
+  /// Counter tracking how many times each Prism notified.
+  late final prismNotifyCount = core<Map<String, int>>(
+    {'name': 0, 'level': 0, 'health': 0, 'title': 0},
+    name: 'prismNotifyCount',
+  );
+
+  /// Update hero profile with a specific field change.
+  void updateHeroField(String field, dynamic value) {
+    strike(() {
+      final updated = Map<String, dynamic>.from(heroProfile.value);
+      updated[field] = value;
+      heroProfile.value = updated;
+    });
+  }
+
+  /// Wire up Prism listeners to track notifications.
+  void _initPrismListeners() {
+    prismName.addListener(() {
+      final counts = Map<String, int>.from(prismNotifyCount.value);
+      counts['name'] = (counts['name'] ?? 0) + 1;
+      prismNotifyCount.value = counts;
+    });
+    prismLevel.addListener(() {
+      final counts = Map<String, int>.from(prismNotifyCount.value);
+      counts['level'] = (counts['level'] ?? 0) + 1;
+      prismNotifyCount.value = counts;
+    });
+    prismHealth.addListener(() {
+      final counts = Map<String, int>.from(prismNotifyCount.value);
+      counts['health'] = (counts['health'] ?? 0) + 1;
+      prismNotifyCount.value = counts;
+    });
+    prismTitle.addListener(() {
+      final counts = Map<String, int>.from(prismNotifyCount.value);
+      counts['title'] = (counts['title'] ?? 0) + 1;
+      prismNotifyCount.value = counts;
+    });
+  }
+
+  // --------------- Sigil (Feature Flags) ---------------
+
   /// Whether the experimental publish feature is enabled.
   late final experimentalPublish = derived(
     () => Sigil.isEnabled('experimental_publish'),
@@ -213,6 +300,9 @@ class EnterpriseDemoPillar extends Pillar {
       final quest = await _api.fetchQuest(id);
       return quest.title;
     }, timeout: const Duration(seconds: 5));
+
+    // Set up Prism notification tracking
+    _initPrismListeners();
   }
 
   @override

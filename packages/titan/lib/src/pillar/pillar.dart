@@ -9,6 +9,7 @@ import '../core/effect.dart';
 import '../core/epoch.dart';
 import '../core/loom.dart';
 import '../core/observer.dart';
+import '../core/prism.dart';
 import '../core/reactive.dart';
 import '../core/state.dart';
 import '../data/codex.dart';
@@ -184,6 +185,49 @@ abstract class Pillar {
     final c = TitanComputed<T>(compute, name: name, equals: equals);
     _managedNodes.add(c);
     return c;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Prism creation — fine-grained state projections
+  // ---------------------------------------------------------------------------
+
+  /// Creates a [Prism] (fine-grained state projection) managed by this Pillar.
+  ///
+  /// A Prism selects a sub-value from a [Core] and only notifies dependents
+  /// when that specific projection changes — enabling surgical widget rebuilds.
+  ///
+  /// ```dart
+  /// late final user = core(User(name: 'Kael', level: 10));
+  /// late final userName = prism(user, (u) => u.name);
+  /// late final userLevel = prism(user, (u) => u.level);
+  ///
+  /// // userName only rebuilds when name changes, not level
+  /// ```
+  ///
+  /// For collection projections, use [PrismEquals] for structural equality:
+  ///
+  /// ```dart
+  /// late final tags = prism(
+  ///   post, (p) => p.tags.toList(),
+  ///   equals: PrismEquals.list,
+  /// );
+  /// ```
+  @protected
+  Prism<R> prism<S, R>(
+    TitanState<S> source,
+    R Function(S value) selector, {
+    String? name,
+    bool Function(R previous, R next)? equals,
+  }) {
+    _assertNotDisposed();
+    final p = Prism<R>(
+      source,
+      (v) => selector(v as S),
+      name: name,
+      equals: equals,
+    );
+    _managedNodes.add(p);
+    return p;
   }
 
   // ---------------------------------------------------------------------------

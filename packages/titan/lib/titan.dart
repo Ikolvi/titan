@@ -81,6 +81,7 @@ export 'src/core/flux.dart';
 export 'src/core/extensions.dart';
 export 'src/core/loom.dart';
 export 'src/core/observer.dart';
+export 'src/core/prism.dart';
 
 // Store pattern (advanced / legacy)
 export 'src/store/store.dart';
