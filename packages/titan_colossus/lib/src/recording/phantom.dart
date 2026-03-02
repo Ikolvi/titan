@@ -138,14 +138,18 @@ class Phantom {
   /// Whether to validate the current route during replay.
   ///
   /// When `true` and [shade] has a `getCurrentRoute` callback,
-  /// Phantom checks the route after each pointer-up event. If the
-  /// route has changed from the session's [ShadeSession.startRoute],
-  /// the replay is stopped with [PhantomResult.routeChanged] set
-  /// to `true`.
+  /// Phantom tracks the "expected route" throughout replay:
+  ///
+  /// - After each `pointerUp`, the expected route is **updated**
+  ///   to the current route (tap-caused navigation is intentional).
+  /// - Before each event, if the route differs from the expected
+  ///   route, the replay is stopped with [PhantomResult.routeChanged]
+  ///   set to `true`.
   ///
   /// This catches scenarios where an API response redirects the
-  /// user (e.g., expired token → login page), making subsequent
-  /// replay events invalid.
+  /// user (e.g., expired token → login page) between interactions,
+  /// while allowing normal navigation caused by taps (e.g.,
+  /// login → home after successful auth).
   final bool validateRoute;
 
   bool _isReplaying = false;
@@ -226,6 +230,12 @@ class Phantom {
     var dispatched = 0;
     var skipped = 0;
 
+    // Route tracking: the "expected" route starts at the session's
+    // startRoute and is updated after each pointerUp (because
+    // taps can intentionally navigate). Only flag unexpected changes
+    // that happen BETWEEN interactions (async/API redirects).
+    String? expectedRoute = session.startRoute;
+
     // Calculate normalization scale factors
     double scaleX = 1;
     double scaleY = 1;
@@ -275,6 +285,24 @@ class Phantom {
 
       if (_cancelRequested) continue;
 
+      // Route guard: check for unexpected async route changes
+      // (e.g., API 401 → redirect to login) before dispatching
+      // the next event. If the route changed without a pointer
+      // event causing it, the session is no longer valid.
+      if (validateRoute && expectedRoute != null) {
+        final routeResult = _checkRouteValidity(
+          expectedRoute: expectedRoute,
+          dispatched: dispatched,
+          skipped: skipped,
+          replayStart: replayStart,
+          scaleX: scaleX,
+          scaleY: scaleY,
+          sessionName: session.name,
+          sessionDuration: session.duration,
+        );
+        if (routeResult != null) return routeResult;
+      }
+
       // Dispatch based on imprint type
       if (_isPointerImprint(imprint)) {
         // Check if keyboard suppression should preemptively dismiss focus
@@ -310,18 +338,14 @@ class Phantom {
             await _waitForSettled();
           }
 
-          // Route guard: after pointer-up events, check that the
-          // route hasn't changed unexpectedly (e.g., API redirect).
+          // After pointer-up, update the expected route. Tap-caused
+          // navigation is intentional (e.g., login → home), so we
+          // accept whatever route the app is now on.
           if (validateRoute && imprint.type == ImprintType.pointerUp) {
-            final routeResult = _checkRouteValidity(
-              session,
-              dispatched: dispatched,
-              skipped: skipped,
-              replayStart: replayStart,
-              scaleX: scaleX,
-              scaleY: scaleY,
-            );
-            if (routeResult != null) return routeResult;
+            final currentRoute = shade?.getCurrentRoute?.call();
+            if (currentRoute != null) {
+              expectedRoute = currentRoute;
+            }
           }
         } else {
           skipped++;
@@ -408,32 +432,33 @@ class Phantom {
   ///
   /// Returns a [PhantomResult] with [PhantomResult.routeChanged] if the
   /// route has changed, or `null` if the route is still valid.
-  PhantomResult? _checkRouteValidity(
-    ShadeSession session, {
+  PhantomResult? _checkRouteValidity({
+    required String expectedRoute,
     required int dispatched,
     required int skipped,
     required DateTime replayStart,
     required double scaleX,
     required double scaleY,
+    required String sessionName,
+    required Duration sessionDuration,
   }) {
-    if (session.startRoute == null) return null;
     final getCurrentRoute = shade?.getCurrentRoute;
     if (getCurrentRoute == null) return null;
 
     final currentRoute = getCurrentRoute();
     if (currentRoute == null) return null;
-    if (currentRoute == session.startRoute) return null;
+    if (currentRoute == expectedRoute) return null;
 
-    // Route changed — stop replay
+    // Route changed unexpectedly (async/API redirect) — stop replay
     _isReplaying = false;
     _cancelRequested = false;
     shade?.isReplaying = false;
 
     final result = PhantomResult(
-      sessionName: session.name,
+      sessionName: sessionName,
       eventsDispatched: dispatched,
       eventsSkipped: skipped,
-      expectedDuration: session.duration,
+      expectedDuration: sessionDuration,
       actualDuration: DateTime.now().difference(replayStart),
       wasNormalized: normalizePositions && (scaleX != 1 || scaleY != 1),
       wasCancelled: true,
