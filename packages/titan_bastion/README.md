@@ -173,6 +173,8 @@ class CounterWidget extends Spark {
 
 All controllers auto-dispose. All reactive state auto-tracks and rebuilds. Reads `.value` during `ignite()` → auto-tracked via `TitanEffect`, just like `Vestige`.
 
+> **Shade Integration:** When `titan_colossus` is active, `useTextController(fieldId: 'my_field')` automatically creates recording-aware controllers (`ShadeTextController`) that capture text changes during Shade recording sessions. The `fieldId` enables accurate text replay via Phantom. See the [titan_colossus README](../titan_colossus/README.md#text-input-recording) for details.
+
 ### Context Extension
 
 ```dart

@@ -286,6 +286,35 @@ ShadeListener(
 )
 ```
 
+#### Text Input Recording
+
+For text input recording and replay, use Spark's `useTextController` hook.
+When `Colossus.init()` is called, it automatically registers a factory
+that creates `ShadeTextController` instances — recording-aware controllers
+that capture every text change during a Shade recording session.
+
+```dart
+// In a Spark widget — text input is automatically recorded
+class MyForm extends Spark {
+  @override
+  Widget build(BuildContext context) {
+    final nameController = useTextController(fieldId: 'user_name');
+    final emailController = useTextController(fieldId: 'user_email');
+
+    return Column(
+      children: [
+        TextField(controller: nameController),
+        TextField(controller: emailController),
+      ],
+    );
+  }
+}
+```
+
+The `fieldId` parameter enables accurate text replay — Phantom matches
+recorded text events to the correct field by ID. Without `fieldId`,
+Phantom falls back to injecting text into the currently focused field.
+
 ## Ecosystem Integration
 
 | System | Integration |
