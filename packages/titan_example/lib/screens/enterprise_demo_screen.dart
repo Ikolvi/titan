@@ -730,13 +730,11 @@ class _PrismTab extends StatelessWidget {
                       runSpacing: 8,
                       children: [
                         FilledButton(
-                          onPressed: () =>
-                              p.updateHeroField('name', 'Aria'),
+                          onPressed: () => p.updateHeroField('name', 'Aria'),
                           child: const Text('Name → Aria'),
                         ),
                         FilledButton(
-                          onPressed: () =>
-                              p.updateHeroField('name', 'Kael'),
+                          onPressed: () => p.updateHeroField('name', 'Kael'),
                           child: const Text('Name → Kael'),
                         ),
                         FilledButton.tonal(

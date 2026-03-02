@@ -192,16 +192,13 @@ class EnterpriseDemoPillar extends Pillar {
   // --------------- Prism (Fine-Grained State Projections) ---------------
 
   /// Hero profile — a complex object stored in a single Core.
-  late final heroProfile = core<Map<String, dynamic>>(
-    {
-      'name': 'Kael',
-      'level': 10,
-      'health': 100,
-      'mana': 50,
-      'guild': 'Ironclad',
-    },
-    name: 'heroProfile',
-  );
+  late final heroProfile = core<Map<String, dynamic>>({
+    'name': 'Kael',
+    'level': 10,
+    'health': 100,
+    'mana': 50,
+    'guild': 'Ironclad',
+  }, name: 'heroProfile');
 
   /// Prism: Only the hero's name.
   late final prismName = prism<Map<String, dynamic>, String>(
@@ -225,21 +222,23 @@ class EnterpriseDemoPillar extends Pillar {
   );
 
   /// Prism: Combined title from name + level (derived from source Core).
-  late final prismTitle = prism<Map<String, dynamic>, String>(
-    heroProfile,
-    (h) {
-      final name = h['name'] as String;
-      final level = h['level'] as int;
-      return '$name the ${level >= 20 ? "Legendary" : level >= 10 ? "Veteran" : "Novice"}';
-    },
-    name: 'prismTitle',
-  );
+  late final prismTitle = prism<Map<String, dynamic>, String>(heroProfile, (h) {
+    final name = h['name'] as String;
+    final level = h['level'] as int;
+    return '$name the ${level >= 20
+        ? "Legendary"
+        : level >= 10
+        ? "Veteran"
+        : "Novice"}';
+  }, name: 'prismTitle');
 
   /// Counter tracking how many times each Prism notified.
-  late final prismNotifyCount = core<Map<String, int>>(
-    {'name': 0, 'level': 0, 'health': 0, 'title': 0},
-    name: 'prismNotifyCount',
-  );
+  late final prismNotifyCount = core<Map<String, int>>({
+    'name': 0,
+    'level': 0,
+    'health': 0,
+    'title': 0,
+  }, name: 'prismNotifyCount');
 
   /// Update hero profile with a specific field change.
   void updateHeroField(String field, dynamic value) {

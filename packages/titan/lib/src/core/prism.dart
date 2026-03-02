@@ -171,12 +171,8 @@ class Prism<T> extends TitanComputed<T> {
     bool Function(R previous, R next)? equals,
   }) {
     return Prism._compute(
-      () => combiner(
-        source1.value,
-        source2.value,
-        source3.value,
-        source4.value,
-      ),
+      () =>
+          combiner(source1.value, source2.value, source3.value, source4.value),
       name: name,
       equals: equals,
     );
@@ -207,11 +203,7 @@ class Prism<T> extends TitanComputed<T> {
   }
 
   /// Internal constructor that takes a raw compute function.
-  Prism._compute(
-    super.compute, {
-    super.name,
-    super.equals,
-  });
+  Prism._compute(super.compute, {super.name, super.equals});
 
   @override
   String toString() {

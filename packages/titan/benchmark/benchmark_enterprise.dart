@@ -1246,9 +1246,7 @@ Future<void> _benchPrism() async {
 
   // 29c. Multiple Prisms on same source — 10K mutations
   {
-    final source = TitanState<Map<String, int>>(
-      {'hp': 100, 'mp': 50, 'xp': 0},
-    );
+    final source = TitanState<Map<String, int>>({'hp': 100, 'mp': 50, 'xp': 0});
     final hp = Prism.of(source, (m) => m['hp'] ?? 0);
     final mp = Prism.of(source, (m) => m['mp'] ?? 0);
     final xp = Prism.of(source, (m) => m['xp'] ?? 0);

@@ -131,11 +131,7 @@ void main() {
       final first = TitanState('Kael');
       final last = TitanState('the Brave');
 
-      final full = Prism.combine2(
-        first,
-        last,
-        (a, b) => '$a $b',
-      );
+      final full = Prism.combine2(first, last, (a, b) => '$a $b');
 
       expect(full.value, 'Kael the Brave');
 
@@ -266,22 +262,10 @@ void main() {
     });
 
     test('PrismEquals.map compares keys and values', () {
-      expect(
-        PrismEquals.map({'a': 1, 'b': 2}, {'b': 2, 'a': 1}),
-        isTrue,
-      );
-      expect(
-        PrismEquals.map({'a': 1}, {'a': 2}),
-        isFalse,
-      );
-      expect(
-        PrismEquals.map({'a': 1}, {'b': 1}),
-        isFalse,
-      );
-      expect(
-        PrismEquals.map(<String, int>{}, <String, int>{}),
-        isTrue,
-      );
+      expect(PrismEquals.map({'a': 1, 'b': 2}, {'b': 2, 'a': 1}), isTrue);
+      expect(PrismEquals.map({'a': 1}, {'a': 2}), isFalse);
+      expect(PrismEquals.map({'a': 1}, {'b': 1}), isFalse);
+      expect(PrismEquals.map(<String, int>{}, <String, int>{}), isTrue);
     });
 
     // -----------------------------------------------------------------------
@@ -492,9 +476,7 @@ void main() {
 // =============================================================================
 
 class _TestPillar extends Pillar {
-  late final user = core<Map<String, dynamic>>(
-    {'name': 'Kael', 'level': 10},
-  );
+  late final user = core<Map<String, dynamic>>({'name': 'Kael', 'level': 10});
   late final userName = prism<Map<String, dynamic>, String>(
     user,
     (u) => u['name'] as String,

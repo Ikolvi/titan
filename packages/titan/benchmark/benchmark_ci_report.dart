@@ -33,7 +33,8 @@ void main(List<String> args) {
 
   final data = jsonDecode(jsonFile.readAsStringSync()) as Map<String, dynamic>;
   final benchmarks = data['benchmarks'] as List<dynamic>;
-  final timestamp = data['timestamp'] as String? ?? DateTime.now().toIso8601String();
+  final timestamp =
+      data['timestamp'] as String? ?? DateTime.now().toIso8601String();
 
   // Extract date (YYYY-MM-DD HH:MM)
   final date = timestamp.length >= 16
@@ -41,8 +42,7 @@ void main(List<String> args) {
       : timestamp;
 
   // Short commit SHA
-  final shortSha =
-      commitSha.length > 7 ? commitSha.substring(0, 7) : commitSha;
+  final shortSha = commitSha.length > 7 ? commitSha.substring(0, 7) : commitSha;
 
   // Get Dart version
   final dartVersion = Platform.version.split(' ').first;
@@ -128,7 +128,9 @@ void main(List<String> args) {
     '${DateTime.now().toUtc().toIso8601String().substring(0, 19)}Z',
   );
   md.writeln('>');
-  md.writeln('> Tracks the last $maxRuns runs. Oldest entries are pruned automatically.');
+  md.writeln(
+    '> Tracks the last $maxRuns runs. Oldest entries are pruned automatically.',
+  );
   md.writeln();
 
   // Legend
@@ -159,9 +161,7 @@ void main(List<String> args) {
   // Header row
   final headerCols = ['Date', 'Commit', 'Dart', ...parsed.metricNames];
   md.writeln('| ${headerCols.join(' | ')} |');
-  md.writeln(
-    '| ${headerCols.map((_) => '---').join(' | ')} |',
-  );
+  md.writeln('| ${headerCols.map((_) => '---').join(' | ')} |');
 
   // Data rows (newest first for readability)
   for (final row in parsed.rows.reversed) {
@@ -211,8 +211,11 @@ String _formatValue(double value, String unit) {
 /// For latency metrics (lower = better): ▲ means regression (went up).
 String _trendArrow(double pctChange, String unit) {
   const threshold = 5.0;
-  final isThroughput = unit.contains('/sec') || unit.contains('lookups') ||
-      unit == 'x' || unit.startsWith('x ');
+  final isThroughput =
+      unit.contains('/sec') ||
+      unit.contains('lookups') ||
+      unit == 'x' ||
+      unit.startsWith('x ');
 
   if (pctChange.abs() < threshold) return '≈';
 
@@ -228,14 +231,14 @@ String _trendArrow(double pctChange, String unit) {
 /// Parses a numeric value from a formatted string like "1.23 µs/node" or "4.56M mutations/sec".
 double? _parseValue(String formatted) {
   // Strip trend arrows
-  var s = formatted.replaceAll('▲', '').replaceAll('▼', '').replaceAll('≈', '').trim();
+  var s = formatted
+      .replaceAll('▲', '')
+      .replaceAll('▼', '')
+      .replaceAll('≈', '')
+      .trim();
 
   // Handle compact formats
-  final multipliers = {
-    'B': 1e9,
-    'M': 1e6,
-    'K': 1e3,
-  };
+  final multipliers = {'B': 1e9, 'M': 1e6, 'K': 1e3};
 
   // Try to extract leading number with optional multiplier
   final match = RegExp(r'^([\d.]+)(B|M|K)?').firstMatch(s);
@@ -259,7 +262,10 @@ double? _parseValue(String formatted) {
 }
 
 /// Parses existing BENCHMARKS.md to extract metric names and historical rows.
-_ParsedMarkdown _parseMarkdown(String content, List<dynamic> currentBenchmarks) {
+_ParsedMarkdown _parseMarkdown(
+  String content,
+  List<dynamic> currentBenchmarks,
+) {
   final lines = content.split('\n');
   final metricNames = <String>[];
   final rows = <Map<String, String>>[];
@@ -325,8 +331,9 @@ _ParsedMarkdown _parseMarkdown(String content, List<dynamic> currentBenchmarks) 
   // If no metrics found from file, use current benchmark names
   if (metricNames.isEmpty) {
     metricNames.addAll(
-      currentBenchmarks
-          .map((b) => (b as Map<String, dynamic>)['name'] as String),
+      currentBenchmarks.map(
+        (b) => (b as Map<String, dynamic>)['name'] as String,
+      ),
     );
   }
 
