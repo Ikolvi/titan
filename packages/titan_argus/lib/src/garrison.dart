@@ -42,10 +42,9 @@
 library;
 
 import 'package:flutter/foundation.dart';
-import 'package:titan/titan.dart';
+import 'package:titan_atlas/titan_atlas.dart';
 
 import 'core_refresh.dart';
-import 'sentinel.dart';
 
 /// Pre-built authentication Sentinel factories.
 ///

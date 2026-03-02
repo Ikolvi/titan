@@ -4,31 +4,25 @@ import 'package:titan_bastion/titan_bastion.dart';
 
 import '../pillars/quest_detail_pillar.dart';
 
-/// Quest Detail Screen — single quest view.
+/// Quest Detail Screen — single quest view using Spark hooks.
 ///
 /// Demonstrates: Quarry (data fetching with SWR), Vestige (auto-tracking),
-/// Atlas (waypoint runes for URL params).
-class QuestDetailScreen extends StatefulWidget {
+/// Spark (useEffect for loading trigger), Atlas (waypoint runes for URL params).
+class QuestDetailScreen extends Spark {
   final String questId;
 
   const QuestDetailScreen({super.key, required this.questId});
 
   @override
-  State<QuestDetailScreen> createState() => _QuestDetailScreenState();
-}
+  Widget ignite(BuildContext context) {
+    // Trigger quest loading on mount — replaces StatefulWidget.initState
+    useEffect(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.pillar<QuestDetailPillar>().loadQuest(questId);
+      });
+      return null;
+    }, [questId]);
 
-class _QuestDetailScreenState extends State<QuestDetailScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Load the quest when the screen appears
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.pillar<QuestDetailPillar>().loadQuest(widget.questId);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Quest Detail'),

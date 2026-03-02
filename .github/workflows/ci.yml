@@ -37,6 +37,10 @@ jobs:
         working-directory: packages/titan_atlas
         run: dart analyze --fatal-infos
 
+      - name: Analyze titan_argus
+        working-directory: packages/titan_argus
+        run: dart analyze --fatal-infos
+
       - name: Analyze titan_colossus
         working-directory: packages/titan_colossus
         run: dart analyze --fatal-infos
@@ -53,12 +57,16 @@ jobs:
         working-directory: packages/titan_atlas
         run: flutter test
 
+      - name: Test titan_argus
+        working-directory: packages/titan_argus
+        run: flutter test
+
       - name: Test titan_colossus
         working-directory: packages/titan_colossus
         run: flutter test
 
       - name: Check formatting
-        run: dart format --set-exit-if-changed packages/titan/lib packages/titan_bastion/lib packages/titan_atlas/lib packages/titan_colossus/lib
+        run: dart format --set-exit-if-changed packages/titan/lib packages/titan_bastion/lib packages/titan_atlas/lib packages/titan_argus/lib packages/titan_colossus/lib
 
   benchmark:
     runs-on: ubuntu-latest

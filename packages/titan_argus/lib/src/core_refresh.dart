@@ -16,9 +16,18 @@
 /// ## Usage
 ///
 /// ```dart
-/// class AuthPillar extends Pillar {
-///   late final isLoggedIn = core(false);
+/// class AuthPillar extends Argus {
 ///   late final role = core<String?>(null);
+///
+///   @override
+///   List<ReactiveNode> get authCores => [isLoggedIn, role];
+///
+///   @override
+///   void signIn([Map<String, dynamic>? credentials]) {
+///     strike(() {
+///       isLoggedIn.value = true;
+///     });
+///   }
 /// }
 ///
 /// final authPillar = Titan.get<AuthPillar>();
@@ -41,7 +50,7 @@
 ///     ),
 ///   ],
 ///   // Re-evaluate Sentinels when auth state changes
-///   refreshListenable: CoreRefresh([authPillar.isLoggedIn]),
+///   refreshListenable: CoreRefresh(authPillar.authCores),
 /// );
 /// ```
 ///

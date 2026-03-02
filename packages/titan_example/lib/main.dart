@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:titan_atlas/titan_atlas.dart';
+import 'package:titan_argus/titan_argus.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 import 'package:titan_colossus/titan_colossus.dart';
 
@@ -92,11 +92,9 @@ void main() {
   Titan.put(AuthPillar());
   final authPillar = Titan.get<AuthPillar>();
 
-  // Garrison.refreshAuth — combines authGuard + guestOnly + CoreRefresh
+  // Argus.guard() — combines authGuard + guestOnly + CoreRefresh
   // in a single call for fully reactive auth routing
-  final garrisonAuth = Garrison.refreshAuth(
-    isAuthenticated: () => authPillar.isLoggedIn.value,
-    cores: [authPillar.isLoggedIn],
+  final garrisonAuth = authPillar.guard(
     loginPath: '/login',
     homePath: '/',
     publicPaths: {'/about'},

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:titan_atlas/titan_atlas.dart';
+import 'package:titan_argus/titan_argus.dart';
 
 void main() {
   group('Garrison', () {
@@ -257,7 +257,6 @@ void main() {
           (path, _) => loginStatus['verified']! ? null : '/verify',
         ]);
 
-        // Logged in but not verified
         final result = sentinel.evaluate(
           '/dashboard',
           waypointFor('/dashboard'),

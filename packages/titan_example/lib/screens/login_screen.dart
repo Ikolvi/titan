@@ -1,42 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:titan_atlas/titan_atlas.dart';
+import 'package:titan_argus/titan_argus.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 
 import '../pillars/auth_pillar.dart';
 
 // ---------------------------------------------------------------------------
-// Login Screen — demonstrates CoreRefresh reactive routing
+// Login Screen — demonstrates CoreRefresh reactive routing + Spark hooks
 // ---------------------------------------------------------------------------
 
-/// A simple login screen for the Questboard app.
+/// A login screen for the Questboard app using Spark hooks.
 ///
+/// Uses [useTextController] to auto-manage the hero name input controller.
 /// When the user signs in via [AuthPillar.signIn], the `CoreRefresh`
 /// bridge notifies Atlas, which re-evaluates the guestOnly Sentinel
 /// and automatically redirects — either to the `redirect` query param
 /// (preserveRedirect) or to `/` as the default home.
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends Spark {
   /// The current waypoint, used to read the `redirect` query param.
   final Waypoint waypoint;
 
   const LoginScreen({super.key, required this.waypoint});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<LoginScreen> {
-  final _controller = TextEditingController(text: 'Kael');
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget ignite(BuildContext context) {
+    final controller = useTextController(text: 'Kael');
     final theme = Theme.of(context);
-    final redirectTarget = widget.waypoint.query['redirect'];
+    final redirectTarget = waypoint.query['redirect'];
+
+    void signIn() {
+      final name = controller.text.trim();
+      if (name.isEmpty) return;
+      final auth = Titan.get<AuthPillar>();
+      auth.signInAs(name);
+    }
 
     return Scaffold(
       body: Center(
@@ -74,20 +70,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Hero name field
                 TextField(
-                  controller: _controller,
+                  controller: controller,
                   decoration: const InputDecoration(
                     labelText: 'Hero Name',
                     prefixIcon: Icon(Icons.person_outline),
                     border: OutlineInputBorder(),
                   ),
                   textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _signIn(),
+                  onSubmitted: (_) => signIn(),
                 ),
                 const SizedBox(height: 24),
 
                 // Sign in button
                 FilledButton.icon(
-                  onPressed: _signIn,
+                  onPressed: signIn,
                   icon: const Icon(Icons.login),
                   label: const Text('Enter the Questboard'),
                   style: FilledButton.styleFrom(
@@ -112,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'CoreRefresh Demo',
+                              'Argus + CoreRefresh Demo',
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -124,8 +120,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           'After sign-in, Atlas automatically redirects '
                           '${redirectTarget != null ? 'to $redirectTarget (preserveRedirect)' : 'to the quest board'}'
                           ' — no manual navigation needed. '
-                          'CoreRefresh bridges the AuthPillar\'s isLoggedIn '
-                          'Core to Atlas\'s refreshListenable.',
+                          'AuthPillar extends Argus, whose guard() wires '
+                          'Garrison sentinels + CoreRefresh together.',
                           style: theme.textTheme.bodySmall,
                         ),
                       ],
@@ -138,14 +134,5 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-  }
-
-  void _signIn() {
-    final name = _controller.text.trim();
-    if (name.isEmpty) return;
-
-    // Just update the auth state — CoreRefresh handles the navigation
-    final auth = Titan.get<AuthPillar>();
-    auth.signIn(name);
   }
 }

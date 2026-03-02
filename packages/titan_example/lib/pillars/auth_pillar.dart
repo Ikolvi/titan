@@ -1,4 +1,4 @@
-import 'package:titan_bastion/titan_bastion.dart';
+import 'package:titan_argus/titan_argus.dart';
 
 // ---------------------------------------------------------------------------
 // Auth Pillar — authentication state management
@@ -6,16 +6,16 @@ import 'package:titan_bastion/titan_bastion.dart';
 
 /// Manages user authentication state for the Questboard app.
 ///
-/// Demonstrates: Core, Derived, CoreRefresh integration with Atlas.
+/// Extends [Argus] — the Titan auth base class — which provides:
+/// - [isLoggedIn] Core signal (inherited)
+/// - [authCores] for CoreRefresh (inherited)
+/// - [guard] convenience factory for reactive Atlas routing
 ///
 /// When [isLoggedIn] changes, the `CoreRefresh` bridge in main.dart
 /// notifies Atlas, which re-evaluates Sentinels and redirects
 /// accordingly — no manual `Atlas.reset()` calls needed.
-class AuthPillar extends Pillar {
+class AuthPillar extends Argus {
   // --------------- Core State ---------------
-
-  /// Whether the user is currently authenticated.
-  late final isLoggedIn = core(false, name: 'isLoggedIn');
 
   /// The authenticated user's display name.
   late final username = core<String?>(null, name: 'username');
@@ -42,27 +42,34 @@ class AuthPillar extends Pillar {
     }, immediate: false);
   }
 
-  // --------------- Strikes ---------------
+  // --------------- Strikes (Argus overrides) ---------------
 
-  /// Signs in the user with the given [name].
+  /// Signs in the user with the given credentials.
   ///
-  /// After this completes, `CoreRefresh` will notify Atlas, which
-  /// re-evaluates the guestOnly Sentinel and redirects from /login.
-  void signIn(String name) {
+  /// Implements [Argus.signIn]. After this completes, `CoreRefresh`
+  /// will notify Atlas, which re-evaluates the guestOnly Sentinel
+  /// and redirects from /login.
+  @override
+  void signIn([Map<String, dynamic>? credentials]) {
     strike(() {
-      username.value = name;
+      username.value = credentials?['name'] as String?;
       isLoggedIn.value = true;
     });
   }
 
   /// Signs out the user.
   ///
-  /// After this completes, `CoreRefresh` will notify Atlas, which
-  /// re-evaluates the authGuard Sentinel and redirects to /login.
+  /// Overrides [Argus.signOut]. After this completes, `CoreRefresh`
+  /// will notify Atlas, which re-evaluates the authGuard Sentinel
+  /// and redirects to /login.
+  @override
   void signOut() {
     strike(() {
       isLoggedIn.value = false;
       username.value = null;
     });
   }
+
+  /// Convenience method for sign in with a hero name.
+  void signInAs(String name) => signIn({'name': name});
 }

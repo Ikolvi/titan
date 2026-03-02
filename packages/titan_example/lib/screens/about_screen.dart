@@ -134,6 +134,18 @@ class AboutScreen extends StatelessWidget {
                 icon: Icons.refresh,
                 text: 'CoreRefresh — Reactive auth routing',
               ),
+              const _FeatureRow(
+                icon: Icons.visibility,
+                text: 'Argus — Auth base class & guard()',
+              ),
+              const _FeatureRow(
+                icon: Icons.security,
+                text: 'Garrison — Pre-built auth sentinels',
+              ),
+              const _FeatureRow(
+                icon: Icons.electric_bolt,
+                text: 'Spark — Hooks-style widgets',
+              ),
               const SizedBox(height: 32),
               Text(
                 'Built by Ikolvi',

@@ -1,0 +1,34 @@
+name: titan_argus
+description: "Argus — Titan's authentication & authorization framework. Reactive auth state management, route guards, and seamless Atlas integration."
+version: 1.0.0
+homepage: https://ikolvi.com
+repository: https://github.com/Ikolvi/titan
+issue_tracker: https://github.com/Ikolvi/titan/issues
+
+topics:
+  - authentication
+  - authorization
+  - flutter
+  - state-management
+  - routing
+
+screenshots:
+  - description: 'Titan Argus — authentication & authorization for Flutter'
+    path: assets/titan_logo.png
+
+resolution: workspace
+
+environment:
+  sdk: ^3.10.3
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  titan: ^1.0.0
+  titan_atlas: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

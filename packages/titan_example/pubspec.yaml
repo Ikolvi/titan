@@ -36,6 +36,8 @@ dependencies:
     path: ../titan_bastion
   titan_atlas:
     path: ../titan_atlas
+  titan_argus:
+    path: ../titan_argus
   titan_colossus:
     path: ../titan_colossus
   cupertino_icons: ^1.0.8

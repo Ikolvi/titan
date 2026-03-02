@@ -41,6 +41,7 @@
 | [XXV](chapter-25-the-vault-remembers.md) | **The Vault Remembers** | `ShadeTextController`, `ShadeVault`, `ShadeAutoReplayConfig`, text input capture, session persistence, auto-replay, controller registry, keyboard suppression, route safety |
 | [XXVI](chapter-26-the-colossus-turns-inward.md) | **The Colossus Turns Inward** | Pillar/Core/Beacon/Vestige in Colossus widgets, reactive `ShadeListener` with `Core.addListener`, `Lens.isVisible`, `waitForSettled`, Vestige scope rules, architecture dog-fooding |
 | [XXVII](chapter-27-the-sentinel-awakens.md) | **The Sentinel Awakens** | `CoreRefresh`, `refreshListenable`, reactive Sentinel/Drift re-evaluation, auth state changes, multiple signals, Listenable bridge |
+| [XXVIII](chapter-28-the-argus-guards.md) | **The Argus Guards** | `Argus`, `guard()`, auth base class, `signIn`/`signOut` contract, `authCores`, titan_argus package |
 
 ---
 
@@ -60,6 +61,7 @@ Each chapter follows Kael as the app grows from a single counter to a full-featu
 - Familiarity with Flutter widgets
 - `flutter pub add titan_bastion` (for Flutter integration)
 - `flutter pub add titan_atlas` (for routing, from Chapter VII)
+- `flutter pub add titan_argus` (for auth, from Chapter XXVIII)
 
 ---
 

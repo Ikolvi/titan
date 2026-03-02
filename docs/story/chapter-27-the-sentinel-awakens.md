@@ -341,4 +341,4 @@ The test captured the entire flow: authenticated user → state change → autom
 | | |
 |---|---|
 | **Previous** | [Chapter XXVI: The Colossus Turns Inward](chapter-26-the-colossus-turns-inward.md) |
-| **Next** | *The next chapter awaits...* |
+| **Next** | [Chapter XXVIII: The Argus Guards](chapter-28-the-argus-guards.md) |
