@@ -13,6 +13,23 @@ import 'package:titan_bastion/src/widgets/beacon.dart';
 /// reactive rebuilds in a single class. No `createState`, no manual `dispose`,
 /// no `initState` ceremony.
 ///
+/// ## Auto-Tracking
+///
+/// Spark uses the same auto-tracking engine as [Vestige]. Any [Core] or
+/// [Derived] `.value` read inside [ignite] is automatically tracked. When
+/// those values change, the Spark rebuilds — no manual listeners required.
+///
+/// ```dart
+/// class HeroCard extends Spark {
+///   @override
+///   Widget ignite(BuildContext context) {
+///     final hero = usePillar<HeroPillar>(context);
+///     // Reading hero.name.value auto-tracks — changes rebuild this widget
+///     return Text(hero.name.value);
+///   }
+/// }
+/// ```
+///
 /// ## Why Spark?
 ///
 /// **Before (StatefulWidget — 40+ lines):**
@@ -130,6 +147,27 @@ class SparkState extends State<Spark> with TickerProviderStateMixin {
   int _hookIndex = 0;
   bool _isFirstBuild = true;
 
+  /// The auto-tracking effect that wraps [ignite] calls.
+  ///
+  /// Any [Core] or [Derived] `.value` read during [ignite] is automatically
+  /// tracked. When those values change, the Spark rebuilds — just like
+  /// [Vestige].
+  late final TitanEffect _effect = TitanEffect(
+    () {
+      try {
+        _cachedWidget = widget.ignite(context);
+        _buildError = null;
+      } catch (e, s) {
+        _buildError = (error: e, stackTrace: s);
+      }
+    },
+    onNotify: rebuild,
+    fireImmediately: false,
+  );
+
+  Widget? _cachedWidget;
+  ({Object error, StackTrace stackTrace})? _buildError;
+
   /// Register or retrieve a hook at the current position.
   ///
   /// On first build, [create] is called to make a new hook state.
@@ -159,15 +197,22 @@ class SparkState extends State<Spark> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     current = this;
     _hookIndex = 0;
-    final result = widget.ignite(context);
+    _effect.run();
     _isFirstBuild = false;
     current = null;
-    return result;
+
+    // TitanEffect catches errors internally — rethrow so Flutter sees them.
+    if (_buildError case final err?) {
+      Error.throwWithStackTrace(err.error, err.stackTrace);
+    }
+
+    return _cachedWidget ?? const SizedBox.shrink();
   }
 
   @override
   void dispose() {
-    // Dispose in reverse order (most recently created first)
+    _effect.dispose();
+    // Dispose hooks in reverse order (most recently created first)
     for (var i = _hooks.length - 1; i >= 0; i--) {
       _hooks[i].dispose();
     }
@@ -176,6 +221,9 @@ class SparkState extends State<Spark> with TickerProviderStateMixin {
   }
 
   /// Trigger a rebuild of this Spark widget.
+  ///
+  /// Called automatically when any tracked [Core] or [Derived] value changes.
+  /// Also called by hooks (e.g., [useCore]) when their managed state mutates.
   void rebuild() {
     if (mounted) {
       // Defer setState if we're in persistent callbacks phase

@@ -691,6 +691,112 @@ void main() {
     });
   });
 
+  group('Auto-tracking', () {
+    testWidgets('rebuilds when Pillar Core changes', (tester) async {
+      // usePillar returns Pillar, reading .value in ignite auto-tracks
+      await tester.pumpWidget(
+        _app(Beacon(pillars: [_TestPillar.new], child: const _PillarSpark())),
+      );
+      expect(find.text('Hero: Kael'), findsOneWidget);
+
+      // Find the Pillar instance and mutate
+      final pillar = BeaconScope.of<_TestPillar>(
+        tester.element(find.text('Hero: Kael')),
+      );
+      pillar.name.value = 'Lyra';
+      await tester.pump();
+
+      expect(find.text('Hero: Lyra'), findsOneWidget);
+    });
+
+    testWidgets('rebuilds when standalone Core changes', (tester) async {
+      // A Core read directly (not via usePillar) is also auto-tracked
+      final counter = Core(0);
+      await tester.pumpWidget(
+        _app(_StandaloneCoreSpark(counter: counter)),
+      );
+      expect(find.text('Count: 0'), findsOneWidget);
+
+      counter.value = 42;
+      await tester.pump();
+
+      expect(find.text('Count: 42'), findsOneWidget);
+    });
+
+    testWidgets('rebuilds when Derived changes', (tester) async {
+      final name = Core('Kael');
+      final greeting = Derived(() => 'Hello, ${name.value}!');
+      await tester.pumpWidget(
+        _app(_StandaloneDerivedSpark(greeting: greeting)),
+      );
+      expect(find.text('Hello, Kael!'), findsOneWidget);
+
+      name.value = 'Lyra';
+      await tester.pump();
+
+      expect(find.text('Hello, Lyra!'), findsOneWidget);
+    });
+
+    testWidgets('tracks multiple Cores independently', (tester) async {
+      final a = Core(1);
+      final b = Core(2);
+      final buildCount = <int>[];
+      await tester.pumpWidget(
+        _app(_MultiTrackSpark(a: a, b: b, buildCount: buildCount)),
+      );
+      expect(find.text('1 + 2 = 3'), findsOneWidget);
+      expect(buildCount.length, 1);
+
+      a.value = 10;
+      await tester.pump();
+      expect(find.text('10 + 2 = 12'), findsOneWidget);
+      expect(buildCount.length, 2);
+
+      b.value = 20;
+      await tester.pump();
+      expect(find.text('10 + 20 = 30'), findsOneWidget);
+      expect(buildCount.length, 3);
+    });
+
+    testWidgets('stops tracking after dispose', (tester) async {
+      final counter = Core(0);
+      await tester.pumpWidget(
+        _app(_StandaloneCoreSpark(counter: counter)),
+      );
+      expect(find.text('Count: 0'), findsOneWidget);
+
+      // Remove the Spark widget
+      await tester.pumpWidget(_app(const SizedBox()));
+
+      // Mutating should not cause issues (no rebuild since disposed)
+      counter.value = 99;
+      await tester.pump();
+
+      // SizedBox is shown, not the Spark
+      expect(find.text('Count: 99'), findsNothing);
+    });
+
+    testWidgets('useCore local state and auto-tracked external Core coexist',
+        (tester) async {
+      final external = Core('external');
+      final localValues = <int>[];
+      await tester.pumpWidget(
+        _app(
+          _MixedTrackingSpark(
+            external: external,
+            onLocal: (v) => localValues.add(v),
+          ),
+        ),
+      );
+      expect(find.text('external: 0'), findsOneWidget);
+
+      // Mutate external Core — should rebuild
+      external.value = 'updated';
+      await tester.pump();
+      expect(find.text('updated: 0'), findsOneWidget);
+    });
+  });
+
   group('Multiple hooks', () {
     testWidgets('multiple hooks coexist correctly', (tester) async {
       Core<int>? intCore;
@@ -794,5 +900,62 @@ class _DisposeTrackSpark extends Spark {
     onText(text);
     onAnim(anim);
     return Text(text.text, textDirection: TextDirection.ltr);
+  }
+}
+
+/// Spark that reads a standalone Core (no Pillar, no usePillar).
+class _StandaloneCoreSpark extends Spark {
+  const _StandaloneCoreSpark({required this.counter});
+  final Core<int> counter;
+
+  @override
+  Widget ignite(BuildContext context) {
+    return Text('Count: ${counter.value}', textDirection: TextDirection.ltr);
+  }
+}
+
+/// Spark that reads a standalone Derived.
+class _StandaloneDerivedSpark extends Spark {
+  const _StandaloneDerivedSpark({required this.greeting});
+  final Derived<String> greeting;
+
+  @override
+  Widget ignite(BuildContext context) {
+    return Text(greeting.value, textDirection: TextDirection.ltr);
+  }
+}
+
+/// Spark that reads two Cores and tracks build count.
+class _MultiTrackSpark extends Spark {
+  const _MultiTrackSpark({
+    required this.a,
+    required this.b,
+    required this.buildCount,
+  });
+  final Core<int> a;
+  final Core<int> b;
+  final List<int> buildCount;
+
+  @override
+  Widget ignite(BuildContext context) {
+    final sum = a.value + b.value;
+    buildCount.add(sum);
+    return Text('${a.value} + ${b.value} = $sum',
+        textDirection: TextDirection.ltr);
+  }
+}
+
+/// Spark that mixes useCore (local) with an external Core (auto-tracked).
+class _MixedTrackingSpark extends Spark {
+  const _MixedTrackingSpark({required this.external, required this.onLocal});
+  final Core<String> external;
+  final void Function(int) onLocal;
+
+  @override
+  Widget ignite(BuildContext context) {
+    final local = useCore(0);
+    onLocal(local.value);
+    return Text('${external.value}: ${local.value}',
+        textDirection: TextDirection.ltr);
   }
 }

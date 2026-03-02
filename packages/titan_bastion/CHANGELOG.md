@@ -10,11 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Spark** — Hooks-style reactive widget eliminating StatefulWidget boilerplate
   - `Spark` base class with `ignite()` builder method
+  - **Auto-tracking**: Any `Core` or `Derived` `.value` read during `ignite()` is automatically tracked via `TitanEffect` — changes trigger rebuilds (same engine as Vestige)
   - Reactive hooks: `useCore<T>`, `useDerived<T>` — auto-tracking with rebuild
   - Lifecycle hooks: `useEffect`, `useMemo`, `useRef`
   - Controller hooks: `useTextController`, `useAnimationController`, `useFocusNode`, `useScrollController`, `useTabController`, `usePageController`
   - Titan integration: `usePillar<P>` for Beacon/Titan lookup
-  - 39 tests
+  - 45 tests (including 6 auto-tracking tests)
   - Story chapter XXI: "The Spark Ignites"
 
 ## [0.2.0] - 2026-03-02
