@@ -938,6 +938,104 @@ Future<void> _runEnterpriseBenchmarks() async {
     );
     set.dispose();
   }
+
+  // 31. Refresh Pipeline — simulates CoreRefresh hot path
+  {
+    const n = 50000;
+
+    // A) Listener chain throughput
+    final state = TitanState(false);
+    var callbackCount = 0;
+    void onNotify() => callbackCount++;
+    state.addListener(onNotify);
+
+    final sw1 = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      state.value = i.isEven;
+    }
+    sw1.stop();
+    _record(
+      'Refresh Listener Chain',
+      sw1.elapsedMicroseconds / n,
+      'µs/notify',
+      'enterprise',
+    );
+    state.removeListener(onNotify);
+    state.dispose();
+
+    // B) Guard pipeline
+    var isAuthenticated = false;
+    final publicPaths = {'/login', '/register', '/about'};
+    final guestPaths = {'/login', '/register'};
+    final paths = ['/dashboard', '/login', '/quest/42', '/about', '/profile'];
+
+    final sw2 = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      isAuthenticated = i.isEven;
+      final path = paths[i % paths.length];
+      // authGuard
+      String? result;
+      if (!publicPaths.contains(path) && !isAuthenticated) {
+        result = '/login?redirect=${Uri.encodeComponent(path)}';
+      }
+      // guestOnly
+      if (result == null && guestPaths.contains(path) && isAuthenticated) {
+        result = '/';
+      }
+    }
+    sw2.stop();
+    _record(
+      'Refresh Guard Pipeline',
+      sw2.elapsedMicroseconds / n,
+      'µs/eval',
+      'enterprise',
+    );
+
+    // C) Full simulated cycle
+    final state2 = TitanState(false);
+    var isRefreshing = false;
+
+    void simulateRefresh() {
+      if (isRefreshing) return;
+      isRefreshing = true;
+      final auth = state2.peek();
+      final uri = Uri.parse('/login?redirect=%2Fquest%2F42');
+      final currentPath = uri.path;
+      final query = uri.queryParameters;
+
+      String? guardResult;
+      if (!publicPaths.contains(currentPath) && !auth) {
+        guardResult = '/login';
+      }
+      if (guardResult == null && guestPaths.contains(currentPath) && auth) {
+        final redirect = query['redirect'];
+        guardResult = (redirect != null && redirect.isNotEmpty)
+            ? redirect
+            : '/';
+      }
+      final resolved = guardResult ?? currentPath;
+      if (resolved != currentPath) {
+        // Would navigate
+      }
+      isRefreshing = false;
+    }
+
+    state2.addListener(simulateRefresh);
+
+    final sw3 = Stopwatch()..start();
+    for (var i = 0; i < n; i++) {
+      state2.value = i.isEven;
+    }
+    sw3.stop();
+    _record(
+      'Refresh Full Cycle',
+      sw3.elapsedMicroseconds / n,
+      'µs/refresh',
+      'enterprise',
+    );
+    state2.removeListener(simulateRefresh);
+    state2.dispose();
+  }
 }
 
 // =============================================================================

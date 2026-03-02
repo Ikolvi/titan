@@ -47,6 +47,7 @@ void main() async {
   await _benchConduit();
   await _benchPrism();
   await _benchNexus();
+  await _benchRefreshPipeline();
 
   print('');
   print('═══════════════════════════════════════════════════════');
@@ -1428,6 +1429,180 @@ Future<void> _benchNexus() async {
     list.dispose();
   }
 
+  print('');
+}
+
+// ---------------------------------------------------------------------------
+// 31. Refresh Pipeline — simulates CoreRefresh hot path
+// ---------------------------------------------------------------------------
+// Benchmarks the pure-Dart components that power Atlas's refreshListenable:
+//   A) Reactive listener → callback chain (Core change → notification)
+//   B) Guard pipeline evaluation (Sentinel-like closures)
+//   C) URI parsing overhead (path + query extraction)
+//   D) Full simulated refresh cycle
+
+Future<void> _benchRefreshPipeline() async {
+  print('┌─ 31. Refresh Pipeline ────────────────────────────────');
+
+  // A) Reactive listener → callback chain
+  // Simulates: Core.value = x → listener fires → callback invoked
+  {
+    final state = TitanState(false);
+    var callbackCount = 0;
+    void onNotify() => callbackCount++;
+    state.addListener(onNotify);
+
+    const iterations = 100000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      state.value = i.isEven; // toggle to ensure notification
+    }
+    sw.stop();
+
+    final perOp = sw.elapsedMicroseconds / iterations;
+    print(
+      '│  Listener chain (${_pad(iterations)}):  ${_ms(sw)}'
+      '  (${perOp.toStringAsFixed(3)} µs/notify)',
+    );
+
+    state.removeListener(onNotify);
+    state.dispose();
+  }
+
+  // B) Guard pipeline evaluation
+  // Simulates: authGuard + guestOnly Sentinel evaluation (closure calls)
+  {
+    var isAuthenticated = false;
+    final publicPaths = {'/login', '/register', '/about'};
+    final guestPaths = {'/login', '/register'};
+
+    // Simulated authGuard closure
+    String? authGuard(String path) {
+      if (publicPaths.contains(path)) return null;
+      if (isAuthenticated) return null;
+      return '/login?redirect=${Uri.encodeComponent(path)}';
+    }
+
+    // Simulated guestOnly closure
+    String? guestOnly(String path, Map<String, String> query) {
+      if (!guestPaths.contains(path)) return null;
+      if (!isAuthenticated) return null;
+      final redirect = query['redirect'];
+      if (redirect != null && redirect.isNotEmpty) return redirect;
+      return '/';
+    }
+
+    const iterations = 100000;
+    final paths = ['/dashboard', '/login', '/quest/42', '/about', '/profile'];
+
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      isAuthenticated = i.isEven;
+      final path = paths[i % paths.length];
+      final result = authGuard(path);
+      if (result == null) {
+        guestOnly(path, const {});
+      }
+    }
+    sw.stop();
+
+    final perOp = sw.elapsedMicroseconds / iterations;
+    print(
+      '│  Guard pipeline (${_pad(iterations)}):  ${_ms(sw)}'
+      '  (${perOp.toStringAsFixed(3)} µs/eval)',
+    );
+  }
+
+  // C) URI parsing overhead
+  // Simulates: _resolve parses path with query params
+  {
+    const iterations = 50000;
+    final uris = [
+      '/login?redirect=%2Fquest%2F42',
+      '/dashboard',
+      '/quest/42?tab=details&page=1',
+      '/login',
+      '/quest/42/comments?sort=newest',
+    ];
+
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      final raw = uris[i % uris.length];
+      final uri = Uri.parse(raw);
+      // Force evaluation of path and queryParameters
+      uri.path;
+      uri.queryParameters;
+    }
+    sw.stop();
+
+    final perOp = sw.elapsedMicroseconds / iterations;
+    print(
+      '│  URI parsing   (${_pad(iterations)}):  ${_ms(sw)}'
+      '  (${perOp.toStringAsFixed(3)} µs/parse)',
+    );
+  }
+
+  // D) Full simulated refresh cycle
+  // Core change → listener → guard pipeline → URI parse → comparison
+  {
+    final state = TitanState(false);
+    var isAuthenticated = false;
+    final publicPaths = <String>{'/login', '/register'};
+    final guestPaths = <String>{'/login', '/register'};
+    var isRefreshing = false;
+
+    void simulateRefresh() {
+      if (isRefreshing) return;
+      isRefreshing = true;
+      isAuthenticated = state.peek();
+
+      // Simulate _onRefresh: parse current URI
+      final currentUri = Uri.parse('/login?redirect=%2Fquest%2F42');
+      final currentPath = currentUri.path;
+      final query = currentUri.queryParameters;
+
+      // authGuard evaluation
+      String? result;
+      if (!publicPaths.contains(currentPath) && !isAuthenticated) {
+        result = '/login';
+      }
+
+      // guestOnly evaluation
+      if (result == null &&
+          guestPaths.contains(currentPath) &&
+          isAuthenticated) {
+        final redirect = query['redirect'];
+        result = (redirect != null && redirect.isNotEmpty) ? redirect : '/';
+      }
+
+      // Path comparison
+      final resolvedPath = result ?? currentPath;
+      if (resolvedPath != currentPath) {
+        // Would navigate (no-op in benchmark)
+      }
+      isRefreshing = false;
+    }
+
+    state.addListener(simulateRefresh);
+
+    const iterations = 50000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      state.value = i.isEven;
+    }
+    sw.stop();
+
+    final perOp = sw.elapsedMicroseconds / iterations;
+    print(
+      '│  Full cycle    (${_pad(iterations)}):  ${_ms(sw)}'
+      '  (${perOp.toStringAsFixed(3)} µs/refresh)',
+    );
+
+    state.removeListener(simulateRefresh);
+    state.dispose();
+  }
+
+  print('└───────────────────────────────────────────────────────');
   print('');
 }
 

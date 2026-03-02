@@ -33,6 +33,7 @@ void main() {
   _benchConduitPipeline();
   _benchPrismProjection();
   _benchNexusListAdd();
+  _benchRefreshCycle();
 
   // Output JSON
   print(
@@ -473,6 +474,49 @@ void _benchNexusListAdd() {
   final usPerAdd = sw.elapsedMicroseconds / n;
   _record('Nexus List Add (10K)', 'µs/add', usPerAdd);
   list.dispose();
+}
+
+// ---------------------------------------------------------------------------
+// 18. Refresh Full Cycle (simulated CoreRefresh pipeline)
+// ---------------------------------------------------------------------------
+void _benchRefreshCycle() {
+  const n = 50000;
+  final state = TitanState(false);
+  final publicPaths = <String>{'/login', '/register'};
+  final guestPaths = <String>{'/login', '/register'};
+  var isRefreshing = false;
+
+  void simulateRefresh() {
+    if (isRefreshing) return;
+    isRefreshing = true;
+    final auth = state.peek();
+    final uri = Uri.parse('/login?redirect=%2Fquest%2F42');
+    final currentPath = uri.path;
+    final query = uri.queryParameters;
+    String? result;
+    if (!publicPaths.contains(currentPath) && !auth) result = '/login';
+    if (result == null && guestPaths.contains(currentPath) && auth) {
+      final redirect = query['redirect'];
+      result = (redirect != null && redirect.isNotEmpty) ? redirect : '/';
+    }
+    final resolved = result ?? currentPath;
+    if (resolved != currentPath) {
+      // Would navigate
+    }
+    isRefreshing = false;
+  }
+
+  state.addListener(simulateRefresh);
+
+  final sw = Stopwatch()..start();
+  for (var i = 0; i < n; i++) {
+    state.value = i.isEven;
+  }
+  sw.stop();
+  final usPerRefresh = sw.elapsedMicroseconds / n;
+  _record('Refresh Full Cycle (50K)', 'µs/refresh', usPerRefresh);
+  state.removeListener(simulateRefresh);
+  state.dispose();
 }
 
 // =============================================================================
