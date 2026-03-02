@@ -41,6 +41,10 @@
 /// ```
 library;
 
+import 'package:flutter/foundation.dart';
+import 'package:titan/titan.dart';
+
+import 'core_refresh.dart';
 import 'sentinel.dart';
 
 /// Pre-built authentication Sentinel factories.
@@ -263,4 +267,98 @@ class Garrison {
       return null;
     });
   }
+
+  // ---------------------------------------------------------------------------
+  // Refresh Auth — combined auth + guest + CoreRefresh
+  // ---------------------------------------------------------------------------
+
+  /// Create a complete reactive authentication flow in one call.
+  ///
+  /// Returns a [GarrisonAuth] containing both the Sentinels and the
+  /// [CoreRefresh] listenable needed for fully reactive auth routing.
+  ///
+  /// This combines [authGuard], [guestOnly], and [CoreRefresh] into a
+  /// single convenience factory — no manual wiring required.
+  ///
+  /// ```dart
+  /// final auth = Garrison.refreshAuth(
+  ///   isAuthenticated: () => authPillar.isLoggedIn.value,
+  ///   cores: [authPillar.isLoggedIn],
+  ///   loginPath: '/login',
+  ///   guestPaths: {'/login', '/register'},
+  ///   homePath: '/',
+  /// );
+  ///
+  /// Atlas(
+  ///   passages: [...],
+  ///   sentinels: auth.sentinels,
+  ///   refreshListenable: auth.refresh,
+  /// );
+  /// ```
+  ///
+  /// When the [cores] values change, Atlas automatically re-evaluates
+  /// the Sentinels and redirects accordingly — sign-in redirects away
+  /// from guest pages, sign-out redirects to login.
+  static GarrisonAuth refreshAuth({
+    required bool Function() isAuthenticated,
+    required List<ReactiveNode> cores,
+    required String loginPath,
+    required String homePath,
+    Set<String> publicPaths = const {},
+    Set<String> publicPrefixes = const {},
+    Set<String>? guestPaths,
+    bool preserveRedirect = true,
+  }) {
+    // Build the auth guard sentinel
+    final authSentinel = authGuard(
+      isAuthenticated: isAuthenticated,
+      loginPath: loginPath,
+      publicPaths: {...publicPaths, loginPath, ...?guestPaths},
+      publicPrefixes: publicPrefixes,
+      preserveRedirect: preserveRedirect,
+    );
+
+    // Build sentinel list
+    final sentinels = [authSentinel];
+
+    // Add guest-only sentinel if guest paths are specified
+    if (guestPaths != null && guestPaths.isNotEmpty) {
+      sentinels.add(
+        guestOnly(
+          isAuthenticated: isAuthenticated,
+          guestPaths: guestPaths,
+          redirectPath: homePath,
+        ),
+      );
+    }
+
+    // Create the CoreRefresh bridge
+    final refresh = CoreRefresh(cores);
+
+    return GarrisonAuth._(sentinels: sentinels, refresh: refresh);
+  }
+}
+
+/// The result of [Garrison.refreshAuth] — contains everything needed
+/// for reactive auth routing.
+///
+/// Pass [sentinels] to `Atlas(sentinels:)` and [refresh] to
+/// `Atlas(refreshListenable:)` for a complete reactive auth flow.
+///
+/// ```dart
+/// final auth = Garrison.refreshAuth(...);
+/// Atlas(
+///   passages: [...],
+///   sentinels: auth.sentinels,
+///   refreshListenable: auth.refresh,
+/// );
+/// ```
+class GarrisonAuth {
+  /// The Sentinels to pass to Atlas.
+  final List<Sentinel> sentinels;
+
+  /// The [CoreRefresh] listenable to pass to Atlas's `refreshListenable`.
+  final Listenable refresh;
+
+  const GarrisonAuth._({required this.sentinels, required this.refresh});
 }

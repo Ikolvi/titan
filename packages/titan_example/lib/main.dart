@@ -92,7 +92,18 @@ void main() {
   Titan.put(AuthPillar());
   final authPillar = Titan.get<AuthPillar>();
 
-  // Create Atlas router with CoreRefresh for reactive auth routing
+  // Garrison.refreshAuth — combines authGuard + guestOnly + CoreRefresh
+  // in a single call for fully reactive auth routing
+  final garrisonAuth = Garrison.refreshAuth(
+    isAuthenticated: () => authPillar.isLoggedIn.value,
+    cores: [authPillar.isLoggedIn],
+    loginPath: '/login',
+    homePath: '/',
+    publicPaths: {'/about'},
+    guestPaths: {'/login'},
+  );
+
+  // Create Atlas router with reactive auth routing
   final atlas = Atlas(
     passages: [
       // Login screen — outside Sanctum shell, accessible when unauthenticated
@@ -135,27 +146,8 @@ void main() {
       ),
     ],
     observers: [HeraldAtlasObserver(), ColossusAtlasObserver()],
-
-    // Sentinels — route guards for authentication
-    sentinels: [
-      // Redirect unauthenticated users to /login
-      Garrison.authGuard(
-        isAuthenticated: () => authPillar.isLoggedIn.value,
-        loginPath: '/login',
-        publicPaths: {'/login', '/about'},
-      ),
-      // Redirect authenticated users away from /login
-      Garrison.guestOnly(
-        isAuthenticated: () => authPillar.isLoggedIn.value,
-        redirectPath: '/',
-        guestPaths: {'/login'},
-      ),
-    ],
-
-    // CoreRefresh — re-evaluate Sentinels when auth state changes
-    // Sign in → auto-redirect from /login to /
-    // Sign out → auto-redirect to /login
-    refreshListenable: CoreRefresh([authPillar.isLoggedIn]),
+    sentinels: garrisonAuth.sentinels,
+    refreshListenable: garrisonAuth.refresh,
   );
 
   runApp(

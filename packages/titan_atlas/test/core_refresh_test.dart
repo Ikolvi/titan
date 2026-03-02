@@ -405,4 +405,206 @@ void main() {
       refresh.dispose();
     });
   });
+
+  // ---------------------------------------------------------
+  // Garrison.refreshAuth — convenience factory
+  // ---------------------------------------------------------
+
+  group('Garrison.refreshAuth', () {
+    test('returns sentinels and refresh listenable', () {
+      final auth = _AuthPillar();
+      Titan.put(auth);
+
+      final result = Garrison.refreshAuth(
+        isAuthenticated: () => auth.isLoggedIn.value,
+        cores: [auth.isLoggedIn],
+        loginPath: '/login',
+        homePath: '/',
+        guestPaths: {'/login'},
+      );
+
+      expect(result.sentinels, hasLength(2)); // authGuard + guestOnly
+      expect(result.refresh, isA<CoreRefresh>());
+    });
+
+    test('returns one sentinel when no guestPaths', () {
+      final auth = _AuthPillar();
+      Titan.put(auth);
+
+      final result = Garrison.refreshAuth(
+        isAuthenticated: () => auth.isLoggedIn.value,
+        cores: [auth.isLoggedIn],
+        loginPath: '/login',
+        homePath: '/',
+      );
+
+      // No guestPaths → only authGuard sentinel
+      expect(result.sentinels, hasLength(1));
+    });
+
+    testWidgets('redirects unauthenticated to login', (tester) async {
+      final auth = _AuthPillar();
+      Titan.put(auth);
+      auth.isLoggedIn.value = false;
+
+      final garrisonAuth = Garrison.refreshAuth(
+        isAuthenticated: () => auth.isLoggedIn.value,
+        cores: [auth.isLoggedIn],
+        loginPath: '/login',
+        homePath: '/',
+        guestPaths: {'/login'},
+      );
+
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/login', (_) => const Text('Login')),
+        ],
+        sentinels: garrisonAuth.sentinels,
+        refreshListenable: garrisonAuth.refresh,
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
+
+      // Unauthenticated → redirected to login
+      expect(find.text('Login'), findsOneWidget);
+    });
+
+    testWidgets('auto-redirects on sign-in', (tester) async {
+      final auth = _AuthPillar();
+      Titan.put(auth);
+      auth.isLoggedIn.value = false;
+
+      final garrisonAuth = Garrison.refreshAuth(
+        isAuthenticated: () => auth.isLoggedIn.value,
+        cores: [auth.isLoggedIn],
+        loginPath: '/login',
+        homePath: '/',
+        guestPaths: {'/login'},
+      );
+
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/login', (_) => const Text('Login')),
+        ],
+        sentinels: garrisonAuth.sentinels,
+        refreshListenable: garrisonAuth.refresh,
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
+
+      expect(find.text('Login'), findsOneWidget);
+
+      // Sign in → CoreRefresh notifies → guestOnly redirects to /
+      auth.isLoggedIn.value = true;
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home'), findsOneWidget);
+    });
+
+    testWidgets('auto-redirects on sign-out', (tester) async {
+      final auth = _AuthPillar();
+      Titan.put(auth);
+      auth.isLoggedIn.value = true;
+
+      final garrisonAuth = Garrison.refreshAuth(
+        isAuthenticated: () => auth.isLoggedIn.value,
+        cores: [auth.isLoggedIn],
+        loginPath: '/login',
+        homePath: '/',
+        guestPaths: {'/login'},
+      );
+
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/login', (_) => const Text('Login')),
+        ],
+        sentinels: garrisonAuth.sentinels,
+        refreshListenable: garrisonAuth.refresh,
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
+
+      expect(find.text('Home'), findsOneWidget);
+
+      // Sign out → CoreRefresh notifies → authGuard redirects to /login
+      auth.isLoggedIn.value = false;
+      await tester.pumpAndSettle();
+
+      expect(find.text('Login'), findsOneWidget);
+    });
+
+    testWidgets('respects publicPaths', (tester) async {
+      final auth = _AuthPillar();
+      Titan.put(auth);
+      auth.isLoggedIn.value = false;
+
+      final garrisonAuth = Garrison.refreshAuth(
+        isAuthenticated: () => auth.isLoggedIn.value,
+        cores: [auth.isLoggedIn],
+        loginPath: '/login',
+        homePath: '/',
+        publicPaths: {'/about'},
+        guestPaths: {'/login'},
+      );
+
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/login', (_) => const Text('Login')),
+          Passage('/about', (_) => const Text('About')),
+        ],
+        sentinels: garrisonAuth.sentinels,
+        refreshListenable: garrisonAuth.refresh,
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
+
+      // Navigate to /about — should be allowed (public)
+      Atlas.to('/about');
+      await tester.pumpAndSettle();
+
+      expect(find.text('About'), findsOneWidget);
+    });
+
+    testWidgets('works with multiple cores', (tester) async {
+      final auth = _AuthPillar();
+      Titan.put(auth);
+      auth.isLoggedIn.value = true;
+      auth.role.value = 'user';
+
+      final garrisonAuth = Garrison.refreshAuth(
+        isAuthenticated: () => auth.isLoggedIn.value,
+        cores: [auth.isLoggedIn, auth.role],
+        loginPath: '/login',
+        homePath: '/',
+        guestPaths: {'/login'},
+      );
+
+      final atlas = Atlas(
+        passages: [
+          Passage('/', (_) => const Text('Home')),
+          Passage('/login', (_) => const Text('Login')),
+        ],
+        sentinels: garrisonAuth.sentinels,
+        refreshListenable: garrisonAuth.refresh,
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
+
+      expect(find.text('Home'), findsOneWidget);
+
+      // Changing role triggers refresh but stays on Home (still authenticated)
+      auth.role.value = 'admin';
+      await tester.pumpAndSettle();
+      expect(find.text('Home'), findsOneWidget);
+
+      // Sign out triggers redirect to login
+      auth.isLoggedIn.value = false;
+      await tester.pumpAndSettle();
+      expect(find.text('Login'), findsOneWidget);
+    });
+  });
 }

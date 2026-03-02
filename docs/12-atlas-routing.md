@@ -296,6 +296,29 @@ class AppState extends ChangeNotifier { ... }
 Atlas(refreshListenable: appState, ...);
 ```
 
+### Garrison.refreshAuth — One-Call Setup
+
+`Garrison.refreshAuth` combines `authGuard`, `guestOnly`, and `CoreRefresh` into a single factory:
+
+```dart
+final garrisonAuth = Garrison.refreshAuth(
+  isAuthenticated: () => auth.isLoggedIn.value,
+  cores: [auth.isLoggedIn],
+  loginPath: '/login',
+  homePath: '/',
+  publicPaths: {'/about'},
+  guestPaths: {'/login', '/register'},
+);
+
+Atlas(
+  passages: [...],
+  sentinels: garrisonAuth.sentinels,
+  refreshListenable: garrisonAuth.refresh,
+);
+```
+
+This replaces the manual wiring of separate `Garrison.authGuard()`, `Garrison.guestOnly()`, and `CoreRefresh()` calls.
+
 ### How It Works
 
 1. When the `Listenable` notifies, Atlas re-resolves the current path through **Drift → Sentinels → per-route redirect**

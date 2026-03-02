@@ -616,6 +616,44 @@ Atlas(
 );
 ```
 
+### Garrison.refreshAuth
+
+Convenience factory that combines `authGuard` + `guestOnly` Sentinels with a `CoreRefresh` listenable in one call.
+
+```dart
+static GarrisonAuth refreshAuth({...})
+```
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `isAuthenticated` | `bool Function()` | required | Auth check callback |
+| `cores` | `List<ReactiveNode>` | required | Reactive nodes to observe |
+| `loginPath` | `String` | required | Path to redirect unauthenticated users |
+| `homePath` | `String` | required | Path to redirect authenticated users from guest pages |
+| `publicPaths` | `Set<String>` | `{}` | Paths exempt from auth guard |
+| `publicPrefixes` | `Set<String>` | `{}` | Path prefixes exempt from auth guard |
+| `guestPaths` | `Set<String>?` | `null` | Guest-only paths (if set, adds guestOnly Sentinel) |
+| `preserveRedirect` | `bool` | `true` | Store original path in redirect query param |
+
+#### Returns
+
+`GarrisonAuth` with:
+- `sentinels` — `List<Sentinel>` to pass to Atlas
+- `refresh` — `Listenable` to pass to Atlas's `refreshListenable`
+
+```dart
+final auth = Garrison.refreshAuth(
+  isAuthenticated: () => pillar.isLoggedIn.value,
+  cores: [pillar.isLoggedIn],
+  loginPath: '/login',
+  homePath: '/',
+  guestPaths: {'/login'},
+);
+Atlas(sentinels: auth.sentinels, refreshListenable: auth.refresh, ...);
+```
+
 ---
 
 ## Performance Monitoring (package:titan_colossus)
