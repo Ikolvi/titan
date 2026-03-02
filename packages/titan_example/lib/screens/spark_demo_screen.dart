@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 
 /// Spark Demo Screen — showcases hooks-style widgets.
 ///
 /// Demonstrates: Spark, useCore, useDerived, useEffect, useMemo, useRef,
-/// useTextController, useAnimationController, useFocusNode.
+/// useTextController, useAnimationController, useFocusNode, useStream.
 class SparkDemoScreen extends Spark {
   const SparkDemoScreen({super.key});
 
@@ -149,6 +151,17 @@ class SparkDemoScreen extends Spark {
               ),
             ),
 
+            const SizedBox(height: 16),
+
+            // --- Section: useStream ---
+            _sectionTitle('useStream (live quest feed)'),
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: _QuestFeedSpark(),
+              ),
+            ),
+
             const SizedBox(height: 24),
 
             // --- Info ---
@@ -170,6 +183,74 @@ class SparkDemoScreen extends Spark {
         title,
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
+    );
+  }
+}
+
+/// Simulated quest activity feed that emits events periodically.
+///
+/// Emits a new quest event every 2 seconds. Used by the Spark demo to
+/// showcase [useStream] with live-updating data.
+Stream<List<String>> _questActivityStream() async* {
+  const events = [
+    'Kael accepted "Dragon Slayer" quest',
+    'Scout completed "Forest Patrol"',
+    'Sentinel reached Level 12',
+    'Oracle discovered a hidden passage',
+    'Builder forged legendary armor',
+    'Kael earned 150 glory points',
+  ];
+
+  final accumulated = <String>[];
+  for (final event in events) {
+    accumulated.add(event);
+    yield List.of(accumulated);
+    await Future<void>.delayed(const Duration(seconds: 2));
+  }
+}
+
+/// Uses [useStream] to subscribe to a live quest event feed.
+///
+/// Demonstrates `AsyncValue.when()` pattern for rendering loading, error,
+/// and data states from a stream subscription. The stream auto-cancels
+/// when the widget is disposed.
+class _QuestFeedSpark extends Spark {
+  const _QuestFeedSpark();
+
+  @override
+  Widget ignite(BuildContext context) {
+    final feed = useStream(_questActivityStream());
+
+    return feed.when(
+      onData: (events) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final event in events)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  const Icon(Icons.bolt, size: 16, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(event)),
+                ],
+              ),
+            ),
+        ],
+      ),
+      onLoading: () => const Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 8),
+          Text('Waiting for quest activity...'),
+        ],
+      ),
+      onError: (e, _) => Text('Feed error: $e'),
     );
   }
 }

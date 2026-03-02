@@ -220,9 +220,9 @@ Future<void> loadUsers() async {
 
 // Pattern match
 users.value.when(
-  data: (list) => print('Got ${list.length} users'),
-  loading: () => print('Loading...'),
-  error: (e) => print('Error: $e'),
+  onData: (list) => print('Got ${list.length} users'),
+  onLoading: () => print('Loading...'),
+  onError: (e, _) => print('Error: $e'),
 );
 ```
 

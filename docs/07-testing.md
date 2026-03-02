@@ -52,9 +52,9 @@ test('loads products successfully', () async {
   await pillar.loadProducts();
 
   pillar.products.value.when(
-    data: (products) => expect(products, hasLength(3)),
-    loading: () => fail('Should not be loading'),
-    error: (e, _) => fail('Should not have error'),
+    onData: (products) => expect(products, hasLength(3)),
+    onLoading: () => fail('Should not be loading'),
+    onError: (e, _) => fail('Should not have error'),
   );
 
   pillar.dispose();

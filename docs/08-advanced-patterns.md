@@ -341,9 +341,9 @@ sealed class AsyncValue<T> {
 
 ```dart
 final result = asyncValue.when(
-  data: (value) => 'Got: $value',
-  loading: () => 'Loading...',
-  error: (e, _) => 'Error: $e',
+  onData: (value) => 'Got: $value',
+  onLoading: () => 'Loading...',
+  onError: (e, _) => 'Error: $e',
 );
 ```
 
@@ -2045,12 +2045,12 @@ class LiveFeed extends Spark {
     final snapshot = useStream(events, initialData: const []);
 
     return snapshot.when(
-      data: (data) => ListView.builder(
+      onData: (data) => ListView.builder(
         itemCount: data.length,
         itemBuilder: (_, i) => Text(data[i].title),
       ),
-      loading: () => const CircularProgressIndicator(),
-      error: (e, _) => Text('Error: $e'),
+      onLoading: () => const CircularProgressIndicator(),
+      onError: (e, _) => Text('Error: $e'),
     );
   }
 }

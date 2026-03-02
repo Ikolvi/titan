@@ -313,7 +313,7 @@ class QuestActivityFeed extends Spark {
     final events = useStream(eventStream, initialData: const []);
 
     return events.when(
-      data: (data) => ListView.builder(
+      onData: (data) => ListView.builder(
         itemCount: data.length,
         itemBuilder: (_, i) => ListTile(
           leading: Icon(data[i].icon),
@@ -321,8 +321,8 @@ class QuestActivityFeed extends Spark {
           subtitle: Text(data[i].timestamp.toString()),
         ),
       ),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Feed error: $e')),
+      onLoading: () => const Center(child: CircularProgressIndicator()),
+      onError: (e, _) => Center(child: Text('Feed error: $e')),
     );
   }
 }

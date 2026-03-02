@@ -395,12 +395,12 @@ class LiveFeed extends Spark {
     final events = useStream(eventStream, initialData: []);
 
     return events.when(
-      data: (data) => ListView.builder(
+      onData: (data) => ListView.builder(
         itemCount: data.length,
         itemBuilder: (_, i) => Text(data[i].title),
       ),
-      loading: () => const CircularProgressIndicator(),
-      error: (e, _) => Text('Error: $e'),
+      onLoading: () => const CircularProgressIndicator(),
+      onError: (e, _) => Text('Error: $e'),
     );
   }
 }
