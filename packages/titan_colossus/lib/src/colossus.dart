@@ -325,12 +325,12 @@ class Colossus extends Pillar {
     // Start page load tracking
     stride.onPageLoad = _onPageLoad;
 
-    // Register Lens plugin tab
+    // Register Lens plugin tabs (Shade first — primary workflow tab)
     if (_enableLensTab) {
-      _lensTab = ColossusLensTab(this);
-      Lens.registerPlugin(_lensTab!);
       _shadeLensTab = ShadeLensTab(this);
       Lens.registerPlugin(_shadeLensTab!);
+      _lensTab = ColossusLensTab(this);
+      Lens.registerPlugin(_lensTab!);
     }
 
     // Register Spark text controller factory so useTextController()
