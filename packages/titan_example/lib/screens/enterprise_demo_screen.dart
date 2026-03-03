@@ -7,7 +7,7 @@ import '../pillars/enterprise_demo_pillar.dart';
 /// Enterprise Demo Screen — showcases enterprise features.
 ///
 /// Demonstrates: Loom, Bulwark, Saga, Volley, Sigil, Aegis, Annals, Banner, Sieve,
-/// Lattice, Embargo, Census, Warden, Tether, Core extensions, onInitAsync, VestigeWhen, VestigeSelector.
+/// Lattice, Embargo, Census, Warden, Arbiter, Tether, Core extensions, onInitAsync, VestigeWhen, VestigeSelector.
 class EnterpriseDemoScreen extends StatelessWidget {
   const EnterpriseDemoScreen({super.key});
 
@@ -1374,6 +1374,55 @@ class _ToolkitTab extends StatelessWidget {
                       FilledButton.tonal(
                         onPressed: () => pillar.checkHealth(),
                         child: const Text('Check All Services'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Arbiter (Conflict Resolution)
+              _SectionHeader('Arbiter (Conflict Resolution)'),
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Conflicts: ${pillar.questSync.conflictCount.value} '
+                        '| Resolved: ${pillar.questSync.totalResolved.value}',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Has conflicts: ${pillar.questSync.hasConflicts.value}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (pillar.questSync.lastResolution.value != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Last: "${pillar.questSync.lastResolution.value!.resolved}"',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          FilledButton.tonal(
+                            onPressed: () => pillar.simulateConflict(),
+                            child: const Text('Simulate Conflict'),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton.tonal(
+                            onPressed: pillar.questSync.hasConflicts.value
+                                ? () => pillar.resolveConflict()
+                                : null,
+                            child: const Text('Resolve'),
+                          ),
+                        ],
                       ),
                     ],
                   ),

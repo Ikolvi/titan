@@ -20,6 +20,7 @@ import 'package:meta/meta.dart';
 import 'package:titan/titan.dart';
 
 import 'anvil.dart';
+import 'arbiter.dart';
 import 'banner.dart';
 import 'bulwark.dart';
 import 'census.dart';
@@ -629,5 +630,42 @@ extension PillarBasaltExtension on Pillar {
     final w = Warden(interval: interval, services: services, name: name);
     registerNodes(w.managedNodes);
     return w;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Arbiter — conflict resolution
+  // ---------------------------------------------------------------------------
+
+  /// Creates a lifecycle-managed [Arbiter] for reactive conflict resolution.
+  ///
+  /// Submit values from multiple sources and resolve conflicts using
+  /// pluggable strategies (lastWriteWins, firstWriteWins, merge, manual).
+  ///
+  /// ```dart
+  /// class SyncPillar extends Pillar {
+  ///   late final sync = arbiter<UserProfile>(
+  ///     strategy: ArbiterStrategy.lastWriteWins,
+  ///   );
+  ///
+  ///   void receiveRemote(UserProfile remote) {
+  ///     sync.submit('server', remote);
+  ///   }
+  /// }
+  /// ```
+  @protected
+  Arbiter<T> arbiter<T>({
+    required ArbiterStrategy strategy,
+    T Function(List<ArbiterConflict<T>> candidates)? merge,
+    bool autoResolve = false,
+    String? name,
+  }) {
+    final a = Arbiter<T>(
+      strategy: strategy,
+      merge: merge,
+      autoResolve: autoResolve,
+      name: name,
+    );
+    registerNodes(a.managedNodes);
+    return a;
   }
 }

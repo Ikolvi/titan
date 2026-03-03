@@ -3038,4 +3038,73 @@ class ApiPillar extends Pillar {
 
 ---
 
+## Arbiter
+
+Reactive conflict resolution with pluggable strategies, per-submission tracking, and resolution history.
+
+### `Arbiter<T>`
+
+```dart
+Arbiter<T>({
+  required ArbiterStrategy strategy,
+  T Function(List<ArbiterConflict<T>> candidates)? merge,
+  bool autoResolve = false,
+  String? name,
+})
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `conflictCount` | `Core<int>` | Number of pending submissions |
+| `lastResolution` | `Core<ArbiterResolution<T>?>` | Most recent resolution |
+| `hasConflicts` | `Derived<bool>` | Whether 2+ submissions pending |
+| `totalResolved` | `Core<int>` | Lifetime resolved count |
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `submit(source, value)` | `ArbiterResolution<T>?` | Submit a value from a source |
+| `resolve()` | `ArbiterResolution<T>?` | Auto-resolve using strategy |
+| `accept(source)` | `ArbiterResolution<T>?` | Manually accept a source |
+| `pending` | `List<ArbiterConflict<T>>` | All pending submissions |
+| `sources` | `List<String>` | Names of pending sources |
+| `history` | `List<ArbiterResolution<T>>` | All past resolutions |
+| `reset()` | `void` | Clear all state |
+| `dispose()` | `void` | Release reactive nodes |
+
+### `ArbiterStrategy`
+
+```dart
+enum ArbiterStrategy { lastWriteWins, firstWriteWins, merge, manual }
+```
+
+### `ArbiterConflict<T>`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `source` | `String` | Source identifier |
+| `value` | `T` | Submitted value |
+| `timestamp` | `DateTime` | When submitted |
+
+### `ArbiterResolution<T>`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `resolved` | `T` | Winning/merged value |
+| `strategy` | `ArbiterStrategy` | Strategy used |
+| `candidates` | `List<ArbiterConflict<T>>` | All candidates |
+| `timestamp` | `DateTime` | When resolved |
+
+### Pillar Extension
+
+```dart
+class SyncPillar extends Pillar {
+  late final sync = arbiter<Quest>(
+    strategy: ArbiterStrategy.lastWriteWins,
+  );
+}
+```
+```
+
+---
+
 [← Advanced Patterns](08-advanced-patterns.md) · [Migration Guide →](10-migration-guide.md)

@@ -58,6 +58,7 @@
 | [XLII](chapter-42-the-embargo-holds.md) | **The Embargo Holds** | `Embargo`, async mutex/semaphore, `guard()`, reactive lock status, FIFO queuing, timeout |
 | [XLIII](chapter-43-the-census-counts.md) | **The Census Counts** | `Census`, sliding-window aggregation, `record()`, reactive stats, `percentile()`, `maxEntries` |
 | [XLIV](chapter-44-the-warden-patrols.md) | **The Warden Patrols** | `Warden`, `WardenService`, `ServiceStatus`, reactive health monitoring, per-service latency/failures, `checkAll()` |
+| [XLV](chapter-45-the-arbiter-judges.md) | **The Arbiter Judges** | `Arbiter`, `ArbiterStrategy`, `ArbiterConflict`, `ArbiterResolution`, conflict resolution, merge, autoResolve |
 
 ---
 

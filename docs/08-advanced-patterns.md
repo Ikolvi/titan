@@ -3180,4 +3180,70 @@ Vestige<ApiPillar>(
 
 ---
 
+## Arbiter — Reactive Conflict Resolution
+
+Detect and resolve conflicting state updates from multiple sources using pluggable resolution strategies.
+
+### Basic Usage
+
+```dart
+class SyncPillar extends Pillar {
+  late final sync = arbiter<Quest>(
+    strategy: ArbiterStrategy.lastWriteWins,
+  );
+
+  void receiveFromServer(Quest remote) {
+    sync.submit('server', remote);
+  }
+
+  void saveLocally(Quest local) {
+    sync.submit('local', local);
+  }
+}
+```
+
+### Strategies
+
+| Strategy | Behavior |
+|----------|----------|
+| `lastWriteWins` | Most recent submission wins |
+| `firstWriteWins` | Earliest submission wins |
+| `merge` | Custom merge callback combines all submissions |
+| `manual` | No auto-resolve; use `accept()` to pick a winner |
+
+### Reactive State
+
+```dart
+sync.conflictCount.value     // int — pending submissions
+sync.hasConflicts.value      // bool — two or more pending
+sync.lastResolution.value    // ArbiterResolution<T>?
+sync.totalResolved.value     // int — lifetime count
+```
+
+### Auto-Resolve
+
+```dart
+late final sync = arbiter<LatLng>(
+  strategy: ArbiterStrategy.lastWriteWins,
+  autoResolve: true,  // Resolve on second submit
+);
+```
+
+### Merge Strategy
+
+```dart
+late final sync = arbiter<Map<String, dynamic>>(
+  strategy: ArbiterStrategy.merge,
+  merge: (candidates) {
+    final merged = <String, dynamic>{};
+    for (final c in candidates) {
+      merged.addAll(c.value);
+    }
+    return merged;
+  },
+);
+```
+
+---
+
 [← Testing](07-testing.md) · [API Reference →](09-api-reference.md)

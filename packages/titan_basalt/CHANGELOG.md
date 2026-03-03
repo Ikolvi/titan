@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.0
+
+### Added
+
+- **Arbiter** — Reactive conflict resolution with pluggable strategies (lastWriteWins, firstWriteWins, merge, manual). Submit values from multiple sources, detect conflicts reactively, auto-resolve or manually accept, with full resolution history and reactive state tracking.
+
 ## 1.6.0
 
 ### Added

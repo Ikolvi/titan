@@ -74,6 +74,7 @@ void main() async {
   await _benchEmbargo();
   await _benchCensus();
   await _benchWarden();
+  await _benchArbiter();
 
   print('');
   print('═══════════════════════════════════════════════════════');
@@ -3116,6 +3117,76 @@ Future<void> _benchWarden() async {
     final us = sw.elapsedMicroseconds / 10000;
     print(
       '44. Warden      | CheckService(10K)        '
+      '| ${_pad(10000)} × ${us.toStringAsFixed(3)} µs/op = ${_ms(sw)}',
+    );
+  }
+
+  print('');
+}
+
+// ---------------------------------------------------------------------------
+// 45. Arbiter — Conflict Resolution
+// ---------------------------------------------------------------------------
+
+Future<void> _benchArbiter() async {
+  print('\n─── 45. Arbiter (Conflict Resolution) ───');
+
+  // Submit + resolve (lastWriteWins)
+  {
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < 10000; i++) {
+      final a = Arbiter<int>(strategy: ArbiterStrategy.lastWriteWins);
+      a.submit('local', i, timestamp: DateTime(2024, 1, 1));
+      a.submit('server', i + 1, timestamp: DateTime(2024, 1, 2));
+      a.resolve();
+      a.dispose();
+    }
+    sw.stop();
+    final us = sw.elapsedMicroseconds / 10000;
+    print(
+      '45. Arbiter     | Submit+Resolve(LWW, 10K)  '
+      '| ${_pad(10000)} × ${us.toStringAsFixed(3)} µs/op = ${_ms(sw)}',
+    );
+  }
+
+  // Submit + resolve (merge, 3 sources)
+  {
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < 10000; i++) {
+      final a = Arbiter<int>(
+        strategy: ArbiterStrategy.merge,
+        merge: (cs) => cs.fold(0, (sum, c) => sum + c.value),
+      );
+      a.submit('a', i);
+      a.submit('b', i + 1);
+      a.submit('c', i + 2);
+      a.resolve();
+      a.dispose();
+    }
+    sw.stop();
+    final us = sw.elapsedMicroseconds / 10000;
+    print(
+      '45. Arbiter     | Submit3+Merge(10K)        '
+      '| ${_pad(10000)} × ${us.toStringAsFixed(3)} µs/op = ${_ms(sw)}',
+    );
+  }
+
+  // Auto-resolve
+  {
+    final a = Arbiter<int>(
+      strategy: ArbiterStrategy.lastWriteWins,
+      autoResolve: true,
+    );
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < 10000; i++) {
+      a.submit('local', i, timestamp: DateTime(2024, 1, 1));
+      a.submit('server', i + 1, timestamp: DateTime(2024, 1, 2));
+    }
+    sw.stop();
+    a.dispose();
+    final us = sw.elapsedMicroseconds / 10000;
+    print(
+      '45. Arbiter     | AutoResolve(LWW, 10K)     '
       '| ${_pad(10000)} × ${us.toStringAsFixed(3)} µs/op = ${_ms(sw)}',
     );
   }

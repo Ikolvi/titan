@@ -41,6 +41,7 @@ void main() async {
   await _benchEmbargoMutex();
   _benchCensusRecord();
   await _benchWardenCheck();
+  _benchArbiterResolve();
 
   // Output JSON
   print(
@@ -663,4 +664,23 @@ Future<void> _benchWardenCheck() async {
   sw.stop();
   final usPerCheck = sw.elapsedMicroseconds / n;
   _record('Warden CheckService (1K)', 'µs/op', usPerCheck);
+}
+
+// ---------------------------------------------------------------------------
+// Arbiter — Conflict Resolution
+// ---------------------------------------------------------------------------
+
+void _benchArbiterResolve() {
+  const n = 10000;
+  final sw = Stopwatch()..start();
+  for (var i = 0; i < n; i++) {
+    final a = Arbiter<int>(strategy: ArbiterStrategy.lastWriteWins);
+    a.submit('local', i, timestamp: DateTime(2024, 1, 1));
+    a.submit('server', i + 1, timestamp: DateTime(2024, 1, 2));
+    a.resolve();
+    a.dispose();
+  }
+  sw.stop();
+  final usPerOp = sw.elapsedMicroseconds / n;
+  _record('Arbiter Submit+Resolve LWW (10K)', 'µs/op', usPerOp);
 }

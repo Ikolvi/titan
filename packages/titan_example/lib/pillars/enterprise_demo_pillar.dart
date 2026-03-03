@@ -29,6 +29,7 @@ enum QuestAction { claim, start, complete, fail, reset }
 ///   Embargo    — Reactive async mutex/semaphore
 ///   Census     — Sliding-window data aggregation
 ///   Warden     — Reactive service health monitoring
+///   Arbiter    — Reactive conflict resolution
 ///   Aegis      — Retry with backoff
 ///   Annals     — Audit trail
 ///   Tether     — Request-response channels
@@ -362,6 +363,33 @@ class EnterpriseDemoPillar extends Pillar {
   /// Force-check all services.
   Future<void> checkHealth() async {
     await serviceHealth.checkAll();
+  }
+
+  // --------------- Arbiter (Conflict Resolution) ---------------
+
+  /// Resolves quest data conflicts between local and server.
+  late final questSync = arbiter<String>(
+    strategy: ArbiterStrategy.lastWriteWins,
+    name: 'quest_sync',
+  );
+
+  /// Simulate receiving conflicting quest data.
+  void simulateConflict() {
+    questSync.submit(
+      'local',
+      'Quest completed locally',
+      timestamp: DateTime.now().subtract(const Duration(seconds: 5)),
+    );
+    questSync.submit(
+      'server',
+      'Quest reassigned by server',
+      timestamp: DateTime.now(),
+    );
+  }
+
+  /// Resolve the current conflict.
+  ArbiterResolution<String>? resolveConflict() {
+    return questSync.resolve();
   }
 
   // --------------- Prism (Fine-Grained State Projections) ---------------

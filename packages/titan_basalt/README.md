@@ -29,6 +29,7 @@ lifecycle. All components auto-dispose when their owning Pillar is disposed.
 | Async Mutex | **Embargo** | Reactive async mutex/semaphore with concurrency control |
 | Data Aggregation | **Census** | Sliding-window statistical aggregation with reactive outputs |
 | Service Health | **Warden** | Reactive service health monitoring with per-service status, latency, and failure tracking |
+| Conflict Resolution | **Arbiter** | Multi-source conflict detection and resolution with pluggable strategies |
 
 ## Installation
 
@@ -191,7 +192,7 @@ print('Completed: ${taskQueue.completed}');
 
 Basalt features integrate with Pillar via **extension methods**. When you
 import `titan_basalt`, factory methods like `trove()`, `moat()`,
-`portcullis()`, `anvil()`, `pyre()`, `banner()`, `sieve()`, `lattice()`, `embargo()`, `census()`, and `warden()` become available on any Pillar
+`portcullis()`, `anvil()`, `pyre()`, `banner()`, `sieve()`, `lattice()`, `embargo()`, `census()`, `warden()`, and `arbiter()` become available on any Pillar
 subclass. These methods use `Pillar.registerNodes()` to ensure all
 reactive nodes are auto-disposed with the Pillar lifecycle.
 
