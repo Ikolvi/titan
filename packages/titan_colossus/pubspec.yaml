@@ -1,6 +1,6 @@
 name: titan_colossus
 description: "Enterprise performance monitoring for Titan. Frame metrics, page load timing, memory leak detection, rebuild tracking, and Lens integration."
-version: 1.0.1
+version: 1.0.2
 homepage: https://ikolvi.com
 repository: https://github.com/Ikolvi/titan
 issue_tracker: https://github.com/Ikolvi/titan/issues
@@ -21,9 +21,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  titan: ^1.0.0
-  titan_bastion: ^1.0.0
-  titan_atlas: ^1.0.0
+  titan: ^1.0.1
+  titan_bastion: ^1.0.1
+  titan_atlas: ^1.0.1
 
 dev_dependencies:
   flutter_test:

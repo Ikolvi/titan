@@ -1,6 +1,6 @@
 name: titan
 description: "Titan - Total Integrated Transfer Architecture Network. A powerful reactive state management engine with Pillars, Cores, and fine-grained auto-tracking."
-version: 1.0.1
+version: 1.0.2
 homepage: https://ikolvi.com
 repository: https://github.com/Ikolvi/titan
 issue_tracker: https://github.com/Ikolvi/titan/issues
@@ -14,7 +14,7 @@ topics:
 
 screenshots:
   - description: 'Titan — reactive state management for Dart & Flutter'
-    path: assets/titan_logo.png
+    path: assets/titan_banner.webp
 
 resolution: workspace
 

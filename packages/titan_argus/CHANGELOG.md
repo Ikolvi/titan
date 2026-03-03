@@ -1,6 +1,15 @@
 # Changelog
 
-## 1.0.1
+## [1.0.2] - 2026-03-03
+
+### Added
+- Example file for pub.dev documentation score
+
+### Changed
+- Updated `titan` dependency to `^1.0.1`
+- Updated `titan_atlas` dependency to `^1.0.1`
+
+## [1.0.1] - 2026-03-02
 
 - No API changes. Version bump to align with workspace release.
 
