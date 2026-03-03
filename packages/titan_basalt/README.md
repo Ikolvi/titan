@@ -18,10 +18,10 @@ lifecycle. All components auto-dispose when their owning Pillar is disposed.
 | Task Queue | **Pyre** | Priority-ordered async task processing with concurrency control |
 | Pagination | **Codex** | Reactive paginated data loading (offset & cursor-based) |
 | Data Fetching | **Quarry** | SWR data queries with dedup, retry, and optimistic updates |
-| Circuit Breaker (legacy) | **Bulwark** | Lightweight circuit breaker with reactive state |
+| Circuit Breaker (legacy) | **Bulwark** | *(Deprecated — use Portcullis)* Lightweight circuit breaker with reactive state |
 | Workflow | **Saga** | Multi-step orchestration with automatic compensation/rollback |
 | Batch Async | **Volley** | Parallel task execution with concurrency limit and progress |
-| Action Chain | **Tether** | Composable middleware-style request/response pipeline |
+| Request-Response | **Tether** | Instance-based typed request-response channels with global convenience API |
 | Audit Trail | **Annals** | Capped, queryable append-only audit log |
 | Feature Flags | **Banner** | Reactive feature flags with rollout, rules, overrides, expiry |
 | Search/Filter | **Sieve** | Reactive search, filter & sort engine for collections |

@@ -106,6 +106,8 @@ await complianceApi.submitAuditLog(report);
 
 ### Streaming Real-Time
 
+The Annals stream is lazy — the underlying `StreamController` is only created on first `.stream` access, preventing resource waste when streaming isn't needed:
+
 ```dart
 // React to mutations as they happen
 Annals.stream.listen((entry) {
@@ -113,6 +115,15 @@ Annals.stream.listen((entry) {
     alertAdmin('${entry.userId} deleted ${entry.coreName}');
   }
 });
+```
+
+### Cleanup
+
+When your app shuts down or you need to release resources, dispose the Annals:
+
+```dart
+// Close the stream controller, clear entries, and disable auditing
+Annals.dispose();
 ```
 
 ---
@@ -177,6 +188,9 @@ class QuestPublishPillar extends Pillar {
     onStepComplete: (name, index, total) {
       log.info('Step $name completed ($index/$total)');
     },
+    onCompensationError: (error, stackTrace, stepName) {
+      log.error('Compensation failed for $stepName: $error');
+    },
     name: 'quest-publish',
   );
 }
@@ -210,6 +224,23 @@ Vestige<QuestPublishPillar>(
 
 If step 3 ("upload-assets") throws, the Saga automatically calls `compensate` on steps 2 and 1 in reverse order — releasing the reserved ID and cleaning up any partial state.
 
+### Compensation Error Tracking
+
+Sometimes compensation steps themselves can fail. Instead of silently swallowing these errors, the Saga tracks them:
+
+```dart
+await saga.run();
+
+if (saga.status == SagaStatus.failed) {
+  // Check if any rollback steps also failed
+  for (final err in saga.compensationErrors) {
+    log.error('Rollback failed for ${err.stepName}: ${err.error}');
+  }
+}
+```
+
+Compensation errors are cleared automatically on each `run()` and `reset()`.
+
 ---
 
 ## The Volley — Batch Async Operations
@@ -222,6 +253,11 @@ Unlike Saga (sequential steps with rollback), Volley runs tasks **in parallel** 
 class BulkOperationPillar extends Pillar {
   late final imageUploader = volley<String>(
     concurrency: 3, // at most 3 uploads at once
+    maxRetries: 2, // retry failed tasks up to 2 times
+    retryDelay: const Duration(seconds: 1),
+    taskTimeout: const Duration(seconds: 30), // global timeout per task
+    onTaskComplete: (name, value) => log.info('Done: $name → $value'),
+    onTaskFailed: (name, error) => log.error('Failed: $name: $error'),
     name: 'image-upload',
   );
 
@@ -229,6 +265,7 @@ class BulkOperationPillar extends Pillar {
     final tasks = files.map((f) => VolleyTask(
       name: f.name,
       execute: () => api.uploadImage(f),
+      timeout: const Duration(seconds: 60), // per-task timeout override
     )).toList();
 
     final results = await imageUploader.execute(tasks);
@@ -257,7 +294,8 @@ Vestige<BulkOperationPillar>(
     return Column(
       children: [
         LinearProgressIndicator(value: v.progress),
-        Text('${v.completedCount} / ${v.totalCount}'),
+        Text('${v.completedCount} / ${v.totalCount}'
+          ' (${v.successCount} ok, ${v.failedCount} failed)'),
         TextButton(
           onPressed: v.cancel,
           child: const Text('Cancel'),
@@ -274,14 +312,20 @@ Vestige<BulkOperationPillar>(
 
 > *A tether is a line that connects two things. Titan's Tether connects Pillars with bidirectional, typed communication.*
 
-Herald events are fire-and-forget. But sometimes Pillar A needs to *ask* Pillar B a question and *wait for the answer*. That's what Tether does:
+Herald events are fire-and-forget. But sometimes Pillar A needs to *ask* Pillar B a question and *wait for the answer*. That's what Tether does.
+
+Tether is **instance-based** — each instance maintains its own registry of handlers with reactive state tracking. A global singleton `Tether.global` provides static convenience methods for app-wide channels.
+
+### Global Convenience API
+
+The simplest way to use Tether is through the global static methods:
 
 ```dart
 // In QuestPillar — register a handler
 class QuestPillar extends Pillar {
   @override
   void onInit() {
-    Tether.register<String, Quest?>(
+    Tether.registerGlobal<String, Quest?>(
       'getQuestById',
       (id) async => await api.fetchQuest(id),
       timeout: const Duration(seconds: 5),
@@ -290,7 +334,7 @@ class QuestPillar extends Pillar {
 
   @override
   void onDispose() {
-    Tether.unregister('getQuestById');
+    Tether.unregisterGlobal('getQuestById');
   }
 }
 
@@ -298,7 +342,7 @@ class QuestPillar extends Pillar {
 class HeroPillar extends Pillar {
   Future<void> loadActiveQuest(String questId) async {
     // Request-response: typed, async, with timeout
-    final quest = await Tether.call<String, Quest?>(
+    final quest = await Tether.callGlobal<String, Quest?>(
       'getQuestById',
       questId,
     );
@@ -310,11 +354,34 @@ class HeroPillar extends Pillar {
 }
 ```
 
+### Instance-Based Usage with Pillar Integration
+
+For scoped channels with lifecycle management and reactive observability, use a Tether instance via the `tether()` factory:
+
+```dart
+class OrderPillar extends Pillar {
+  late final channels = tether(name: 'orders');
+
+  @override
+  void onInit() {
+    channels.register<String, double>(
+      'getPrice',
+      (itemId) async => await pricingApi.getPrice(itemId),
+    );
+  }
+}
+
+// Reactive channel stats
+print(channels.registeredCount); // 1
+print(channels.callCount);      // number of calls made
+print(channels.errorCount);     // number of failed calls
+```
+
 ### Safe Calls
 
 ```dart
 // Returns null if no handler is registered (instead of throwing)
-final quest = await Tether.tryCall<String, Quest?>(
+final quest = await Tether.tryCallGlobal<String, Quest?>(
   'getQuestById',
   questId,
 );
@@ -323,12 +390,12 @@ final quest = await Tether.tryCall<String, Quest?>(
 ### Checking Availability
 
 ```dart
-if (Tether.has('getQuestById')) {
+if (Tether.hasGlobal('getQuestById')) {
   // Safe to call
 }
 
-// All registered tether names
-print(Tether.names); // {getQuestById, getUserProfile, ...}
+// All registered global tether names
+print(Tether.globalNames); // {getQuestById, getUserProfile, ...}
 ```
 
 ---
@@ -342,10 +409,6 @@ The Annals caught a privilege escalation bug on day one — a normal user was ca
 The junior looked at the Questboard codebase — seventeen chapters of patterns, each building on the last. "Where do I start?"
 
 Kael smiled. "At the First Pillar. It always starts with a Pillar."
-
----
-
-*The Chronicles of Titan — Complete*
 
 ---
 
@@ -369,3 +432,6 @@ Kael smiled. "At the First Pillar. It always starts with a Pillar."
 | [XVI](chapter-16-the-forge-and-crucible.md) | The Forge & Crucible |
 | **XVII** | **The Annals Record** ← You are here |
 | [XVIII](chapter-18-the-conduit-flows.md) | The Conduit Flows |
+| [XIX](chapter-19-the-prism-reveals.md) | The Prism Reveals |
+| [XX](chapter-20-the-nexus-connects.md) | The Nexus Connects |
+| [XXI](chapter-21-the-spark-ignites.md) | The Spark Ignites |

@@ -168,6 +168,8 @@ test('saga compensates correctly on failure', () async {
 
 ## The Bulwark — Circuit Breaker
 
+> ⚠️ **Deprecated:** Bulwark has been superseded by **Portcullis** ([Chapter XXXVII](chapter-37-the-portcullis-descends.md)), which provides a superset of Bulwark's functionality including `shouldTrip` predicates, `protect()` for function wrapping, and more granular state control. New code should use `portcullis()` instead.
+
 > *A bulwark is a defensive wall. Titan's Bulwark protects your app from cascading failures.*
 
 When an API endpoint fails repeatedly, you don't want to keep hammering it. The Bulwark implements the circuit breaker pattern:

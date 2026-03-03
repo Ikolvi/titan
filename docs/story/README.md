@@ -29,7 +29,7 @@
 | [XIII](chapter-13-the-lens-reveals.md) | **The Lens Reveals** | `Lens`, debug overlay, runtime introspection |
 | [XIV](chapter-14-the-enterprise-arsenal.md) | **The Enterprise Arsenal** | Core extensions, debounced/throttled Strikes, guarded Watch, `Aegis`, `Sigil`, auto-dispose, `onInitAsync` |
 | [XV](chapter-15-the-loom-weaves.md) | **The Loom Weaves** | `Loom`, finite state machines, transitions, lifecycle hooks |
-| [XVI](chapter-16-the-forge-and-crucible.md) | **The Forge & Crucible** | `Crucible`, `Snapshot`, `Bulwark`, `PillarScope`, testing harness |
+| [XVI](chapter-16-the-forge-and-crucible.md) | **The Forge & Crucible** | `Crucible`, `Snapshot`, `Bulwark` *(deprecated → Portcullis)*, `PillarScope`, testing harness |
 | [XVII](chapter-17-the-annals-record.md) | **The Annals Record** | `Annals`, `Saga`, `Volley`, `Tether`, audit trail, workflows |
 | [XVIII](chapter-18-the-conduit-flows.md) | **The Conduit Flows** | `Conduit`, Core-level middleware, `ClampConduit`, `ValidateConduit`, `FreezeConduit` |
 | [XIX](chapter-19-the-prism-reveals.md) | **The Prism Reveals** | `Prism`, fine-grained projections, `PrismEquals`, multi-source combining |

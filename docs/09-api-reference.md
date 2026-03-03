@@ -1658,9 +1658,11 @@ loom<S, E>({
 
 ---
 
-### Bulwark
+### Bulwark *(Deprecated)*
 
 > **Package:** `titan_basalt` — `import 'package:titan_basalt/titan_basalt.dart';`
+>
+> **Deprecated:** Use **Portcullis** instead (superset). Bulwark will be removed in v2.0.
 
 Reactive circuit breaker for resilient async operations.
 
@@ -1714,6 +1716,7 @@ saga<T>({
   void Function(T? result)? onComplete,
   void Function(Object error, String failedStep)? onError,
   void Function(String stepName, int index, int total)? onStepComplete,
+  void Function(Object error, StackTrace stackTrace, String stepName)? onCompensationError,
   String? name,
 })
 ```
@@ -1726,10 +1729,11 @@ saga<T>({
 | `progress` | `double` | Progress 0.0–1.0 (reactive) |
 | `error` | `Object?` | Error if failed (reactive) |
 | `result` | `T?` | Final result if completed (reactive) |
+| `compensationErrors` | `List<({Object error, StackTrace stackTrace, String stepName})>` | Errors from failed compensation steps |
 | `isRunning` | `bool` | Whether currently executing |
 | `totalSteps` | `int` | Total number of steps |
 | `run()` | `Future<T?>` | Execute all steps; compensates on failure |
-| `reset()` | `void` | Reset to idle |
+| `reset()` | `void` | Reset to idle (clears compensation errors) |
 | `dispose()` | `void` | Dispose internal state |
 
 #### SagaStep
@@ -1753,7 +1757,15 @@ Batch async operations with concurrency control and partial-failure handling.
 #### Constructor (Pillar factory)
 
 ```dart
-volley<T>({int concurrency = 5, String? name})
+volley<T>({
+  int concurrency = 5,
+  int maxRetries = 0,
+  Duration retryDelay = const Duration(milliseconds: 100),
+  Duration? taskTimeout,
+  void Function(String taskName, T value)? onTaskComplete,
+  void Function(String taskName, Object error)? onTaskFailed,
+  String? name,
+})
 ```
 
 | Property/Method | Type | Description |
@@ -1762,8 +1774,10 @@ volley<T>({int concurrency = 5, String? name})
 | `progress` | `double` | Progress 0.0–1.0 (reactive) |
 | `completedCount` | `int` | Number of completed tasks (reactive) |
 | `totalCount` | `int` | Total tasks (reactive) |
+| `successCount` | `int` | Number of successful tasks (reactive) |
+| `failedCount` | `int` | Number of failed tasks (reactive) |
 | `isRunning` | `bool` | Whether currently executing |
-| `successCount` | `int` | Number of successes |
+| `isDisposed` | `bool` | Whether disposed |
 | `execute(List<VolleyTask<T>> tasks)` | `Future<List<VolleyResult<T>>>` | Run batch with concurrency limit |
 | `cancel()` | `void` | Cancel execution |
 | `reset()` | `void` | Reset to idle |
@@ -1772,7 +1786,11 @@ volley<T>({int concurrency = 5, String? name})
 #### VolleyTask / VolleyResult
 
 ```dart
-VolleyTask<T>({required String name, required Future<T> Function() execute})
+VolleyTask<T>({
+  required String name,
+  required Future<T> Function() execute,
+  Duration? timeout, // per-task timeout override
+})
 ```
 
 `VolleyResult<T>` is a sealed class: `VolleySuccess<T>` (with `value`) or `VolleyFailure<T>` (with `error`, `stackTrace`). Common getters: `taskName`, `isSuccess`, `isFailure`, `valueOrNull`, `errorOrNull`.
@@ -1792,11 +1810,12 @@ Static audit trail for Core mutations. Immutable, append-only, FIFO-evicted.
 | `Annals.record(AnnalEntry entry)` | `void` | Record an entry |
 | `Annals.entries` | `List<AnnalEntry>` | All entries (unmodifiable) |
 | `Annals.length` | `int` | Entry count |
-| `Annals.stream` | `Stream<AnnalEntry>` | Broadcast stream of entries |
+| `Annals.stream` | `Stream<AnnalEntry>` | Broadcast stream of entries (lazy-initialized) |
 | `Annals.query({...})` | `List<AnnalEntry>` | Filter by coreName, pillarType, action, userId, after, before, limit |
 | `Annals.export({...})` | `List<Map<String, dynamic>>` | Export as serializable maps |
 | `Annals.clear()` | `void` | Clear all entries |
 | `Annals.reset()` | `void` | Clear, disable, reset max |
+| `Annals.dispose()` | `void` | Close stream controller, clear entries, disable |
 
 #### AnnalEntry
 
@@ -1819,17 +1838,42 @@ AnnalEntry({
 
 > **Package:** `titan_basalt` — `import 'package:titan_basalt/titan_basalt.dart';`
 
-Static request-response channels between Pillars.
+Instance-based request-response channels between Pillars with global convenience API.
+
+#### Constructor (Pillar factory)
+
+```dart
+tether({String? name})
+```
+
+#### Instance API
+
+| Method/Property | Type | Description |
+|-----------------|------|-------------|
+| `register<Req, Res>(name, handler, {timeout})` | `void` | Register a typed handler |
+| `unregister(name)` | `bool` | Remove a handler |
+| `has(name)` | `bool` | Check if registered |
+| `call<Req, Res>(name, request, {timeout})` | `Future<Res>` | Invoke and await response |
+| `tryCall<Req, Res>(name, request, {timeout})` | `Future<Res?>` | Returns null if not registered |
+| `names` | `Set<String>` | All registered names |
+| `registeredCount` | `int` | Number of registered handlers (reactive) |
+| `callCount` | `int` | Total calls made (reactive) |
+| `lastCallTime` | `DateTime?` | Timestamp of last call (reactive) |
+| `errorCount` | `int` | Total failed calls (reactive) |
+| `reset()` | `void` | Clear all registrations |
+| `dispose()` | `void` | Dispose instance and reactive state |
+
+#### Global Convenience API (via `Tether.global`)
 
 | Method | Type | Description |
 |--------|------|-------------|
-| `Tether.register<Req, Res>(name, handler, {timeout})` | `void` | Register a typed handler |
-| `Tether.unregister(name)` | `bool` | Remove a handler |
-| `Tether.has(name)` | `bool` | Check if registered |
-| `Tether.call<Req, Res>(name, request, {timeout})` | `Future<Res>` | Invoke and await response |
-| `Tether.tryCall<Req, Res>(name, request, {timeout})` | `Future<Res?>` | Returns null if not registered |
-| `Tether.names` | `Set<String>` | All registered names |
-| `Tether.reset()` | `void` | Clear all registrations |
+| `Tether.registerGlobal<Req, Res>(name, handler, {timeout})` | `void` | Register on global instance |
+| `Tether.unregisterGlobal(name)` | `bool` | Remove from global instance |
+| `Tether.hasGlobal(name)` | `bool` | Check global registry |
+| `Tether.callGlobal<Req, Res>(name, request, {timeout})` | `Future<Res>` | Call on global instance |
+| `Tether.tryCallGlobal<Req, Res>(name, request, {timeout})` | `Future<Res?>` | Safe call on global instance |
+| `Tether.globalNames` | `Set<String>` | All global names |
+| `Tether.resetGlobal()` | `void` | Reset global instance |
 
 ---
 
