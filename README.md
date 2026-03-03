@@ -434,7 +434,7 @@ Titan's reactive engine is built for speed. Benchmarks run automatically in CI o
 | Package | Description |
 |---------|-------------|
 | [`titan`](packages/titan/) | Core reactive engine (pure Dart) |
-| [`titan_basalt`](packages/titan_basalt/) | Infrastructure & resilience (Trove, Moat, Portcullis, Anvil, Pyre, Codex, Quarry, Bulwark, Saga, Volley, Tether, Annals, Banner) |
+| [`titan_basalt`](packages/titan_basalt/) | Infrastructure & resilience (Trove, Moat, Portcullis, Anvil, Pyre, Codex, Quarry, Bulwark, Saga, Volley, Tether, Annals, Banner, Sieve) |
 | [`titan_bastion`](packages/titan_bastion/) | Flutter widgets & extensions |
 | [`titan_atlas`](packages/titan_atlas/) | Routing & navigation (Atlas) |
 | [`titan_argus`](packages/titan_argus/) | Authentication & authorization |

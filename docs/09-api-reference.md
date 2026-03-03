@@ -2724,4 +2724,60 @@ const BannerRule({
 
 ---
 
+## Sieve — Reactive Search, Filter & Sort
+
+> **Package:** `titan_basalt`
+
+### Sieve Constructor
+
+```dart
+Sieve<T>({
+  List<T> items = const [],
+  List<String Function(T)> textFields = const [],
+  String? name,
+})
+```
+
+### Sieve Methods
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `setItems(List<T>)` | `void` | Replace the source dataset |
+| `clearQuery()` | `void` | Clear the search query |
+| `where(key, predicate)` | `void` | Add/replace a named filter |
+| `removeWhere(key)` | `void` | Remove a named filter |
+| `clearFilters()` | `void` | Remove all filters |
+| `sortBy(Comparator<T>?)` | `void` | Set sort comparator (null to remove) |
+| `reset()` | `void` | Clear query, filters, and sort |
+| `hasFilter(key)` | `bool` | Check if filter exists |
+
+### Sieve Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `items` | `Core<List<T>>` | Source dataset (reactive) |
+| `query` | `Core<String>` | Search query (reactive) |
+| `results` | `Derived<List<T>>` | Filtered + sorted results |
+| `resultCount` | `Derived<int>` | Count of results |
+| `totalCount` | `Derived<int>` | Total source items |
+| `isFiltered` | `Derived<bool>` | Any filter/search active |
+| `filterKeys` | `List<String>` | Active filter names |
+| `filterCount` | `int` | Number of active filters |
+| `name` | `String?` | Debug name |
+| `managedNodes` | `Iterable<ReactiveNode>` | Lifecycle nodes for Pillar |
+
+### Pillar Extension
+
+```dart
+class MyPillar extends Pillar {
+  late final search = sieve<Item>(
+    items: inventory,
+    textFields: [(i) => i.name],
+    name: 'search',
+  );
+}
+```
+
+---
+
 [← Advanced Patterns](08-advanced-patterns.md) · [Migration Guide →](10-migration-guide.md)

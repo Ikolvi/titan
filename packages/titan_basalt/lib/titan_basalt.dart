@@ -42,6 +42,7 @@ export 'src/portcullis.dart';
 export 'src/pyre.dart';
 export 'src/quarry.dart';
 export 'src/saga.dart';
+export 'src/sieve.dart';
 export 'src/tether.dart';
 export 'src/trove.dart';
 export 'src/volley.dart';

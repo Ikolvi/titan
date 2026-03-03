@@ -24,6 +24,7 @@ enum QuestAction { claim, start, complete, fail, reset }
 ///   Saga       — Multi-step workflow (quest publish)
 ///   Volley     — Batch async operations
 ///   Sigil      — Feature flags\n///   Banner     — Reactive feature flags with rollout & rules
+///   Sieve      — Reactive search, filter & sort
 ///   Aegis      — Retry with backoff
 ///   Annals     — Audit trail
 ///   Tether     — Request-response channels
@@ -226,6 +227,39 @@ class EnterpriseDemoPillar extends Pillar {
         flags.clearOverride(flagName);
       } else {
         flags.setOverride(flagName, !flags.isEnabled(flagName));
+      }
+    });
+  }
+
+  // --------------- Sieve (Reactive Search/Filter/Sort) ---------------
+
+  /// Reactive search, filter & sort engine for the quest list.
+  late final questSearch = sieve<Map<String, dynamic>>(
+    items: const [
+      {'title': 'Dragon Hunt', 'difficulty': 5, 'region': 'Highlands'},
+      {'title': 'Herb Gathering', 'difficulty': 1, 'region': 'Meadows'},
+      {'title': 'Escort Mission', 'difficulty': 2, 'region': 'Roads'},
+      {'title': 'Cave Exploration', 'difficulty': 3, 'region': 'Mountains'},
+      {'title': 'Village Defense', 'difficulty': 4, 'region': 'Lowlands'},
+      {'title': 'Royal Delivery', 'difficulty': 1, 'region': 'Capital'},
+    ],
+    textFields: [
+      (q) => q['title'] as String,
+      (q) => q['region'] as String,
+    ],
+    name: 'questSearch',
+  );
+
+  /// Filter quests by minimum difficulty.
+  void filterByDifficulty(int minDifficulty) {
+    strike(() {
+      if (minDifficulty <= 1) {
+        questSearch.removeWhere('difficulty');
+      } else {
+        questSearch.where(
+          'difficulty',
+          (q) => (q['difficulty'] as int) >= minDifficulty,
+        );
       }
     });
   }

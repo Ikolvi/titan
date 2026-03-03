@@ -6,7 +6,7 @@ import '../pillars/enterprise_demo_pillar.dart';
 
 /// Enterprise Demo Screen — showcases enterprise features.
 ///
-/// Demonstrates: Loom, Bulwark, Saga, Volley, Sigil, Aegis, Annals, Banner,
+/// Demonstrates: Loom, Bulwark, Saga, Volley, Sigil, Aegis, Annals, Banner, Sieve,
 /// Tether, Core extensions, onInitAsync, VestigeWhen, VestigeSelector.
 class EnterpriseDemoScreen extends StatelessWidget {
   const EnterpriseDemoScreen({super.key});
@@ -1146,6 +1146,62 @@ class _ToolkitTab extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Sieve (Reactive Search/Filter/Sort)
+              _SectionHeader('Sieve (Search/Filter/Sort)'),
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          hintText: 'Search quests...',
+                          isDense: true,
+                        ),
+                        onChanged: (v) =>
+                            pillar.questSearch.query.value = v,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          for (final d in [1, 2, 3, 4, 5])
+                            ChoiceChip(
+                              label: Text('$d+'),
+                              selected:
+                                  pillar.questSearch.hasFilter('difficulty') &&
+                                      d > 1,
+                              onSelected: (_) =>
+                                  pillar.filterByDifficulty(d),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${pillar.questSearch.resultCount.value} '
+                        'of ${pillar.questSearch.totalCount.value} quests'
+                        '${pillar.questSearch.isFiltered.value ? " (filtered)" : ""}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 4),
+                      for (final q in pillar.questSearch.results.value)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            '${q['title']} — '
+                            'Difficulty ${q['difficulty']} '
+                            '(${q['region']})',
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),

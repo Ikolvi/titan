@@ -53,6 +53,7 @@
 | [XXXVII](chapter-37-the-portcullis-descends.md) | **The Portcullis Descends** | `Portcullis`, `PortcullisState`, `protect()`, circuit breaker, `shouldTrip`, `PortcullisOpenException` |
 | [XXXVIII](chapter-38-the-anvil-strikes.md) | **The Anvil Strikes** | `Anvil`, `AnvilBackoff`, `AnvilEntry`, `AnvilStatus`, dead letter queue, retry with backoff, `retryDeadLetters()` |
 | [XXXIX](chapter-39-the-banner-rises.md) | **The Banner Rises** | `Banner`, `BannerFlag`, `BannerRule`, `BannerEvaluation`, reactive feature flags, rollout, targeting rules, overrides |
+| [XL](chapter-40-the-sieve-filters.md) | **The Sieve Filters** | `Sieve<T>`, reactive search/filter/sort, text search, predicate filters, composable pipeline |
 
 ---
 

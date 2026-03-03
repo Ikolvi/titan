@@ -36,6 +36,7 @@ void main() {
   _benchNexusListAdd();
   _benchRefreshCycle();
   _benchBannerLookup();
+  _benchSieveFilter();
 
   // Output JSON
   print(
@@ -566,4 +567,24 @@ void _benchBannerLookup() {
   sw.stop();
   final usPerLookup = sw.elapsedMicroseconds / n;
   _record('Banner Lookup (100 flags, 100K)', 'µs/op', usPerLookup);
+}
+
+// ---------------------------------------------------------------------------
+// Sieve — filter throughput
+// ---------------------------------------------------------------------------
+
+void _benchSieveFilter() {
+  const n = 10000;
+  final items = List.generate(n, (i) => i);
+  final s = Sieve<int>(items: items);
+  s.where('even', (v) => v.isEven);
+
+  final sw = Stopwatch()..start();
+  for (var i = 0; i < 1000; i++) {
+    s.where('even', (v) => v.isEven);
+    s.results.value;
+  }
+  sw.stop();
+  final usPerFilter = sw.elapsedMicroseconds / 1000;
+  _record('Sieve Filter (10K items, 1K)', 'µs/op', usPerFilter);
 }

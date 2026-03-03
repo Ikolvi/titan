@@ -28,6 +28,7 @@ import 'portcullis.dart';
 import 'pyre.dart';
 import 'quarry.dart';
 import 'saga.dart';
+import 'sieve.dart';
 import 'trove.dart';
 import 'volley.dart';
 
@@ -453,5 +454,40 @@ extension PillarBasaltExtension on Pillar {
     final b = Banner(flags: flags, name: name);
     registerNodes(b.managedNodes);
     return b;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sieve — reactive search, filter & sort
+  // ---------------------------------------------------------------------------
+
+  /// Creates a [Sieve] (reactive search/filter/sort) managed by this Pillar.
+  ///
+  /// A Sieve manages a dataset with text search, predicate-based filters,
+  /// and sorting — all reactive. Results auto-update when source data,
+  /// search query, or filters change.
+  ///
+  /// ```dart
+  /// late final search = sieve<Quest>(
+  ///   items: allQuests,
+  ///   textFields: [(q) => q.title, (q) => q.description],
+  /// );
+  ///
+  /// void filterByDifficulty(int min) {
+  ///   search.where('difficulty', (q) => q.difficulty >= min);
+  /// }
+  ///
+  /// void onSearch(String text) {
+  ///   search.query.value = text;
+  /// }
+  /// ```
+  @protected
+  Sieve<T> sieve<T>({
+    List<T> items = const [],
+    List<String Function(T)> textFields = const [],
+    String? name,
+  }) {
+    final s = Sieve<T>(items: items, textFields: textFields, name: name);
+    registerNodes(s.managedNodes);
+    return s;
   }
 }

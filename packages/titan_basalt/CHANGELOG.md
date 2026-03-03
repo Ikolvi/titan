@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+### Added
+
+- **Sieve** — Reactive search, filter & sort engine for collections. Text search, named predicate filters (AND logic), sorting, and reactive outputs — all Pillar-managed.
+
 ## 1.1.0
 
 ### Added

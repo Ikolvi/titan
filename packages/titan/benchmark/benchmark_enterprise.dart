@@ -34,6 +34,7 @@ import 'package:titan_basalt/titan_basalt.dart';
 //  37. Portcullis — Reactive circuit breaker
 //  38. Anvil — Dead letter & retry queue
 //  39. Banner — Reactive feature flags
+//  40. Sieve — Reactive search/filter/sort
 // =============================================================================
 
 void main() async {
@@ -67,6 +68,7 @@ void main() async {
   await _benchPortcullis();
   await _benchAnvil();
   await _benchBanner();
+  await _benchSieve();
 
   print('');
   print('═══════════════════════════════════════════════════════');
@@ -2622,6 +2624,119 @@ Future<void> _benchBanner() async {
     print(
       '39. Banner      | Snapshot(1k flags)       '
       '| ${_pad(1000)} × ${us.toStringAsFixed(3)} µs/op = ${_ms(sw)}',
+    );
+  }
+
+  print('');
+}
+
+// ---------------------------------------------------------------------------
+// 40. Sieve — Reactive Search, Filter & Sort
+// ---------------------------------------------------------------------------
+
+Future<void> _benchSieve() async {
+  print('┌─ 40. Sieve (Search/Filter/Sort) ─────────────────────');
+
+  // 40a. Filter throughput
+  {
+    for (final count in [1000, 10000, 100000]) {
+      final items = List.generate(count, (i) => i);
+      final s = Sieve<int>(items: items);
+      s.where('even', (n) => n.isEven);
+
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 1000; i++) {
+        s.where('even', (n) => n.isEven);
+        s.results.value;
+      }
+      sw.stop();
+      final us = sw.elapsedMicroseconds / 1000;
+      print(
+        '40. Sieve       | Filter($count)           '
+        '| ${_pad(1000)} × ${us.toStringAsFixed(1)} µs/op = ${_ms(sw)}',
+      );
+    }
+  }
+
+  // 40b. Text search throughput
+  {
+    for (final count in [1000, 10000]) {
+      final items = List.generate(
+        count,
+        (i) => 'item-$i description for entry $i',
+      );
+      final s = Sieve<String>(items: items, textFields: [(s) => s]);
+
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 100; i++) {
+        s.query.value = 'item-$i';
+        s.results.value;
+      }
+      sw.stop();
+      final us = sw.elapsedMicroseconds / 100;
+      print(
+        '40. Sieve       | TextSearch($count)       '
+        '| ${_pad(100)} × ${us.toStringAsFixed(1)} µs/op = ${_ms(sw)}',
+      );
+    }
+  }
+
+  // 40c. Sort throughput
+  {
+    for (final count in [1000, 10000]) {
+      final items = List.generate(count, (i) => count - i);
+      final s = Sieve<int>(items: items);
+
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 100; i++) {
+        if (i.isEven) {
+          s.sortBy((a, b) => a.compareTo(b));
+        } else {
+          s.sortBy((a, b) => b.compareTo(a));
+        }
+        s.results.value;
+      }
+      sw.stop();
+      final us = sw.elapsedMicroseconds / 100;
+      print(
+        '40. Sieve       | Sort($count)             '
+        '| ${_pad(100)} × ${us.toStringAsFixed(1)} µs/op = ${_ms(sw)}',
+      );
+    }
+  }
+
+  // 40d. Combined: search + filter + sort
+  {
+    const count = 10000;
+    final items = List.generate(count, (i) => 'item-$i priority-${i % 5}');
+    final s = Sieve<String>(items: items, textFields: [(s) => s]);
+    s.where('priority', (s) => s.contains('priority-0'));
+    s.sortBy((a, b) => a.compareTo(b));
+
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < 100; i++) {
+      s.query.value = 'item-${i * 10}';
+      s.results.value;
+    }
+    sw.stop();
+    final us = sw.elapsedMicroseconds / 100;
+    print(
+      '40. Sieve       | Combined(10k)            '
+      '| ${_pad(100)} × ${us.toStringAsFixed(1)} µs/op = ${_ms(sw)}',
+    );
+  }
+
+  // 40e. Create + setup
+  {
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < 10000; i++) {
+      Sieve<int>(items: List.generate(10, (j) => j));
+    }
+    sw.stop();
+    final us = sw.elapsedMicroseconds / 10000;
+    print(
+      '40. Sieve       | Create(10 items)         '
+      '| ${_pad(10000)} × ${us.toStringAsFixed(3)} µs/op = ${_ms(sw)}',
     );
   }
 

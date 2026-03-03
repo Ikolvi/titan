@@ -455,7 +455,7 @@ print(txManager.lastRecord);   // LedgerRecord(#0, committed, cores: 2)
 
 Atomic state transactions with `capture()` snapshots, auto-commit/rollback, reactive counters, and `LedgerRecord` audit history.
 
-> **Infrastructure features** — Codex, Quarry, Trove, Moat, Pyre, Portcullis, Anvil, Bulwark, Saga, Volley, Tether, Annals, and Banner are in the [`titan_basalt`](https://pub.dev/packages/titan_basalt) package. Add `import 'package:titan_basalt/titan_basalt.dart';` to use them.
+> **Infrastructure features** — Codex, Quarry, Trove, Moat, Pyre, Portcullis, Anvil, Bulwark, Saga, Volley, Tether, Annals, Banner, and Sieve are in the [`titan_basalt`](https://pub.dev/packages/titan_basalt) package. Add `import 'package:titan_basalt/titan_basalt.dart';` to use them.
 
 ---
 
@@ -508,7 +508,7 @@ test('counter pillar works', () {
 | Package | Description |
 |---------|-------------|
 | **`titan`** | Core reactive engine — pure Dart (this package) |
-| [`titan_basalt`](https://pub.dev/packages/titan_basalt) | Infrastructure & resilience (Trove, Moat, Portcullis, Anvil, Pyre, Codex, Quarry, Bulwark, Saga, Volley, Tether, Annals, Banner) |
+| [`titan_basalt`](https://pub.dev/packages/titan_basalt) | Infrastructure & resilience (Trove, Moat, Portcullis, Anvil, Pyre, Codex, Quarry, Bulwark, Saga, Volley, Tether, Annals, Banner, Sieve) |
 | [`titan_bastion`](https://pub.dev/packages/titan_bastion) | Flutter widgets (Vestige, Beacon) |
 | [`titan_atlas`](https://pub.dev/packages/titan_atlas) | Routing & navigation (Atlas) |
 | [`titan_argus`](https://pub.dev/packages/titan_argus) | Authentication & authorization |

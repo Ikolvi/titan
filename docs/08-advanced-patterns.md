@@ -2804,4 +2804,74 @@ BannerFlag(
 
 ---
 
+## Sieve — Reactive Search, Filter & Sort
+
+> **Package:** `titan_basalt`
+
+A **Sieve** is a reactive search, filter, and sort engine that combines text search, predicate-based filters, and sorting into a single Pillar-managed component.
+
+### Basic Setup
+
+```dart
+class QuestPillar extends Pillar {
+  late final search = sieve<Quest>(
+    items: allQuests,
+    textFields: [(q) => q.title, (q) => q.description],
+    name: 'questSearch',
+  );
+}
+```
+
+### Text Search
+
+```dart
+search.query.value = 'dragon';
+// results now contain only items matching "dragon" (case-insensitive)
+```
+
+### Filters
+
+Named filters stack with AND logic:
+
+```dart
+search.where('active', (q) => q.status == 'active');
+search.where('hard', (q) => q.difficulty >= 4);
+// Only active quests with difficulty >= 4
+
+search.removeWhere('hard');   // Remove one filter
+search.clearFilters();        // Remove all filters
+```
+
+### Sorting
+
+```dart
+search.sortBy((a, b) => a.difficulty.compareTo(b.difficulty));
+search.sortBy(null); // Remove sort
+```
+
+### Reactive Outputs
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `results` | `Derived<List<T>>` | Filtered + sorted items |
+| `resultCount` | `Derived<int>` | Count of results |
+| `totalCount` | `Derived<int>` | Total source items |
+| `isFiltered` | `Derived<bool>` | Any filter/search active? |
+
+### Reset
+
+```dart
+search.reset(); // Clears query, filters, and sort
+```
+
+### Filter Inspection
+
+```dart
+search.filterKeys;          // ['active', 'hard']
+search.hasFilter('active'); // true
+search.filterCount;         // 2
+```
+
+---
+
 [← Testing](07-testing.md) · [API Reference →](09-api-reference.md)
