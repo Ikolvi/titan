@@ -3372,4 +3372,78 @@ extension PillarBasaltExtension on Pillar {
 
 ---
 
+## Tapestry API
+
+### `Tapestry<E>`
+
+```dart
+Tapestry({String? name, int? maxEvents})
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `append(event, {correlationId, metadata})` | `int` | Append event, return sequence |
+| `appendAll(events, {correlationId})` | `List<int>` | Append multiple events |
+| `weave<S>({name, initial, fold, where})` | `TapestryWeave<E,S>` | Create reactive projection |
+| `getWeave<S>(name)` | `TapestryWeave<E,S>?` | Get existing weave |
+| `removeWeave(name)` | `void` | Remove a weave |
+| `query({fromSequence, toSequence, after, before, where, correlationId, limit})` | `List<TapestryStrand<E>>` | Query events |
+| `at(sequence)` | `TapestryStrand<E>?` | Get event by sequence |
+| `frame<S>(weaveName)` | `TapestryFrame<S>` | Snapshot weave state |
+| `replay({fromSequence})` | `void` | Replay events through weaves |
+| `compact(upToSequence)` | `int` | Remove old events |
+| `reset()` | `void` | Clear all events and reset weaves |
+| `dispose()` | `void` | Dispose store |
+| `managedNodes` | `List<ReactiveNode>` | Nodes for `Pillar.registerNodes` |
+
+| Reactive Property | Type |
+|---|---|
+| `eventCount` | `Core<int>` |
+| `lastSequence` | `Core<int>` |
+| `status` | `Core<TapestryStatus>` |
+| `lastEventTime` | `Core<DateTime?>` |
+| `weaveCount` | `Core<int>` |
+
+### `TapestryWeave<E, S>`
+
+| Property | Type |
+|---|---|
+| `state` | `Core<S>` |
+| `version` | `Core<int>` |
+| `lastUpdated` | `Core<DateTime?>` |
+| `name` | `String` |
+
+### `TapestryStrand<E>`
+
+| Property | Type |
+|---|---|
+| `sequence` | `int` |
+| `event` | `E` |
+| `timestamp` | `DateTime` |
+| `correlationId` | `String?` |
+| `metadata` | `Map<String, dynamic>?` |
+
+### `TapestryFrame<S>`
+
+| Property | Type |
+|---|---|
+| `weaveName` | `String` |
+| `state` | `S` |
+| `sequence` | `int` |
+| `createdAt` | `DateTime` |
+
+### `TapestryStatus`
+
+`idle` · `appending` · `replaying` · `disposed`
+
+### Pillar Extension
+
+```dart
+extension PillarBasaltExtension on Pillar {
+  Tapestry<E> tapestry<E>({String? name, int? maxEvents}) { ... }
+}
+```
+
+---
+
 [← Advanced Patterns](08-advanced-patterns.md) · [Migration Guide →](10-migration-guide.md)

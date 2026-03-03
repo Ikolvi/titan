@@ -1632,6 +1632,50 @@ class _ToolkitTab extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
+              // Tapestry (Event Store)
+              _SectionHeader('Tapestry (Event Store)'),
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Events: ${pillar.questEvents.eventCount.value} '
+                        '| Weaves: ${pillar.questEvents.weaveCount.value} '
+                        '| Seq: ${pillar.questEvents.lastSequence.value}',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Created: ${pillar.questsCreated.state.value} '
+                        '| Completed: ${pillar.questsCompleted.state.value}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          FilledButton.tonal(
+                            onPressed: () =>
+                                pillar.recordQuestCreated('Dragon Slayer'),
+                            child: const Text('Quest Created'),
+                          ),
+                          FilledButton.tonal(
+                            onPressed: () =>
+                                pillar.recordQuestCompleted('Dragon Slayer'),
+                            child: const Text('Quest Completed'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
               // Annals Audit Trail
               _SectionHeader('Annals (Audit Trail)'),
               const SizedBox(height: 8),

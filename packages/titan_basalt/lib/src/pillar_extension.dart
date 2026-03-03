@@ -36,6 +36,7 @@ import 'quarry.dart';
 import 'saga.dart';
 import 'sieve.dart';
 import 'sluice.dart';
+import 'tapestry.dart';
 import 'tithe.dart';
 import 'trove.dart';
 import 'volley.dart';
@@ -797,5 +798,26 @@ extension PillarBasaltExtension on Pillar {
     final c = Clarion(name: name);
     registerNodes(c.managedNodes);
     return c;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tapestry — event store
+  // ---------------------------------------------------------------------------
+
+  /// Creates a [Tapestry] event store managed by this Pillar.
+  ///
+  /// An append-only event store with reactive CQRS projections.
+  /// All reactive nodes auto-dispose on Pillar disposal.
+  ///
+  /// ```dart
+  /// class OrderPillar extends Pillar {
+  ///   late final events = tapestry<OrderEvent>(name: 'orders');
+  /// }
+  /// ```
+  @protected
+  Tapestry<E> tapestry<E>({String? name, int? maxEvents}) {
+    final t = Tapestry<E>(name: name, maxEvents: maxEvents);
+    registerNodes(t.managedNodes);
+    return t;
   }
 }

@@ -46,6 +46,7 @@ void main() async {
   _benchTitheConsume();
   await _benchSluiceFeedFlush();
   await _benchClarionTrigger();
+  _benchTapestryAppend();
 
   // Output JSON
   print(
@@ -758,4 +759,18 @@ Future<void> _benchClarionTrigger() async {
   c.dispose();
   final usPerOp = sw.elapsedMicroseconds / n;
   _record('Clarion Trigger (100K)', 'µs/op', usPerOp);
+}
+
+void _benchTapestryAppend() {
+  final t = Tapestry<int>(name: 'bench');
+  t.weave<int>(name: 'sum', initial: 0, fold: (s, e) => s + e);
+  const n = 100000;
+  final sw = Stopwatch()..start();
+  for (var i = 0; i < n; i++) {
+    t.append(i);
+  }
+  sw.stop();
+  t.dispose();
+  final usPerOp = sw.elapsedMicroseconds / n;
+  _record('Tapestry Append+Weave (100K)', 'µs/op', usPerOp);
 }

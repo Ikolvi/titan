@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.0
+
+### Added
+
+- **Tapestry** — Reactive event store with CQRS projections. Append-only event log with `TapestryStrand` envelopes (sequence, timestamp, correlationId, metadata), reactive `TapestryWeave` projections with fold functions and optional `where` filters, temporal event querying, `TapestryFrame` snapshots, replay, compaction, and `maxEvents` limit. Aggregate reactive state (eventCount, lastSequence, status, lastEventTime, weaveCount). Per-weave state (state, version, lastUpdated).
+
 ## 1.11.0
 
 ### Added

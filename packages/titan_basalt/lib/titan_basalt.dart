@@ -52,6 +52,7 @@ export 'src/sieve.dart';
 export 'src/tether.dart';
 export 'src/tithe.dart';
 export 'src/sluice.dart';
+export 'src/tapestry.dart';
 export 'src/trove.dart';
 export 'src/volley.dart';
 export 'src/warden.dart';

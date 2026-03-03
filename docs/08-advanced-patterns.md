@@ -3471,4 +3471,85 @@ class SyncPillar extends Pillar {
 
 ---
 
+## Tapestry — Reactive Event Store
+
+`Tapestry` is an append-only event store that derives current state through reactive projection functions (`TapestryWeave`).
+
+### Basic Usage
+
+```dart
+final store = Tapestry<OrderEvent>(name: 'orders');
+
+// Create a reactive projection.
+final revenue = store.weave<double>(
+  name: 'revenue',
+  initial: 0.0,
+  fold: (total, event) => switch (event) {
+    OrderPlaced(:final amount) => total + amount,
+    _ => total,
+  },
+);
+
+store.append(OrderPlaced(amount: 49.99));
+print(revenue.state.value); // 49.99
+
+store.dispose();
+```
+
+### Event Envelope
+
+Every appended event is wrapped in a `TapestryStrand`:
+
+| Property | Type | Description |
+|---|---|---|
+| `sequence` | `int` | Monotonically increasing (1-based) |
+| `event` | `E` | The domain event |
+| `timestamp` | `DateTime` | When appended |
+| `correlationId` | `String?` | Optional grouping key |
+| `metadata` | `Map<String, dynamic>?` | Arbitrary metadata |
+
+### Querying Events
+
+```dart
+store.query(fromSequence: 10, toSequence: 50);
+store.query(correlationId: 'tx-42');
+store.query(after: oneHourAgo, where: (e) => e is OrderPlaced);
+store.at(5); // Get strand by sequence number.
+```
+
+### Replay and Compaction
+
+```dart
+store.replay();           // Reset weaves and re-fold all events.
+store.compact(1000);      // Drop events with sequence <= 1000.
+```
+
+### Reactive State
+
+| Property | Type | Description |
+|---|---|---|
+| `eventCount` | `Core<int>` | Total events in store |
+| `lastSequence` | `Core<int>` | Latest sequence number |
+| `status` | `Core<TapestryStatus>` | `idle`/`appending`/`replaying`/`disposed` |
+| `lastEventTime` | `Core<DateTime?>` | Most recent event timestamp |
+| `weaveCount` | `Core<int>` | Active projection count |
+
+### Per-Weave State
+
+| Property | Type | Description |
+|---|---|---|
+| `state` | `Core<S>` | Current projected state |
+| `version` | `Core<int>` | Events processed |
+| `lastUpdated` | `Core<DateTime?>` | Last fold timestamp |
+
+### Pillar Integration
+
+```dart
+class OrderPillar extends Pillar {
+  late final events = tapestry<OrderEvent>(name: 'orders');
+}
+```
+
+---
+
 [← Testing](07-testing.md) · [API Reference →](09-api-reference.md)

@@ -492,6 +492,35 @@ class EnterpriseDemoPillar extends Pillar {
     scheduler.trigger(name);
   }
 
+  // --------------- Tapestry (Event Store) ---------------
+
+  /// Quest event store — append-only log of quest lifecycle events.
+  late final questEvents = tapestry<String>(name: 'quest_events');
+
+  /// Read model: total quests created.
+  late final questsCreated = questEvents.weave<int>(
+    name: 'created',
+    initial: 0,
+    fold: (count, event) => event.startsWith('created:') ? count + 1 : count,
+  );
+
+  /// Read model: total quests completed.
+  late final questsCompleted = questEvents.weave<int>(
+    name: 'completed',
+    initial: 0,
+    fold: (count, event) => event.startsWith('completed:') ? count + 1 : count,
+  );
+
+  /// Record a quest creation event.
+  void recordQuestCreated(String title) {
+    questEvents.append('created:$title');
+  }
+
+  /// Record a quest completion event.
+  void recordQuestCompleted(String title) {
+    questEvents.append('completed:$title');
+  }
+
   // --------------- Prism (Fine-Grained State Projections) ---------------
 
   /// Hero profile — a complex object stored in a single Core.

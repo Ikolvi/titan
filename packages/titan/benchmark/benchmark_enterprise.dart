@@ -79,6 +79,7 @@ void main() async {
   _benchTithe();
   await _benchSluice();
   await _benchClarion();
+  _benchTapestry();
 
   print('');
   print('═══════════════════════════════════════════════════════');
@@ -3455,6 +3456,67 @@ Future<void> _benchClarion() async {
       '| ${_pad(ops)} × ${us.toStringAsFixed(3)} µs/op = ${_ms(sw)}',
     );
     c.dispose();
+  }
+
+  print('');
+}
+
+void _benchTapestry() {
+  print('\n─── 50. Tapestry (Event Store) ───');
+
+  // Benchmark 1: Append throughput (no weaves).
+  {
+    const ops = 100000;
+    final t = Tapestry<int>(name: 'bench');
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < ops; i++) {
+      t.append(i);
+    }
+    sw.stop();
+    final us = sw.elapsedMicroseconds / ops;
+    print(
+      '50. Tapestry    | append(100K, no weave)     '
+      '| ${_pad(ops)} × ${us.toStringAsFixed(3)} µs/op = ${_ms(sw)}',
+    );
+    t.dispose();
+  }
+
+  // Benchmark 2: Append throughput with 1 weave.
+  {
+    const ops = 100000;
+    final t = Tapestry<int>(name: 'bench');
+    t.weave<int>(name: 'sum', initial: 0, fold: (s, e) => s + e);
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < ops; i++) {
+      t.append(i);
+    }
+    sw.stop();
+    final us = sw.elapsedMicroseconds / ops;
+    print(
+      '50. Tapestry    | append(100K, 1 weave)      '
+      '| ${_pad(ops)} × ${us.toStringAsFixed(3)} µs/op = ${_ms(sw)}',
+    );
+    t.dispose();
+  }
+
+  // Benchmark 3: Query throughput.
+  {
+    const ops = 100000;
+    final t = Tapestry<int>(name: 'bench');
+    for (var i = 0; i < 1000; i++) {
+      t.append(i);
+    }
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < ops; i++) {
+      t.query(fromSequence: 100, toSequence: 200);
+    }
+    sw.stop();
+    final us = sw.elapsedMicroseconds / ops;
+    print(
+      '50. Tapestry    | query(100K, range)          '
+      '| ${_pad(ops)} × ${us.toStringAsFixed(3)} µs/op = ${_ms(sw)}',
+    );
+    t.dispose();
   }
 
   print('');

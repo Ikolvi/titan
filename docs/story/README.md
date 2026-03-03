@@ -63,6 +63,7 @@
 | [XLVII](chapter-47-the-tithe-is-tallied.md) | **The Tithe is Tallied** | `Tithe`, reactive quota & budget, `consume()`, `tryConsume()`, threshold alerts, per-key breakdown, auto-reset |
 | [XLVIII](chapter-48-the-sluice-channels.md) | **The Sluice Channels** | `Sluice`, `SluiceStage`, multi-stage data pipeline, per-stage metrics, overflow strategies, pause/resume |
 | [XLIX](chapter-49-the-clarion-sounds.md) | **The Clarion Sounds** | `Clarion`, `ClarionRun`, `ClarionPolicy`, reactive job scheduler, per-job state, schedule/trigger/pause |
+| [L](chapter-50-the-tapestry-unfolds.md) | **The Tapestry Unfolds** | `Tapestry`, `TapestryStrand`, `TapestryWeave`, `TapestryFrame`, event sourcing, CQRS projections, temporal queries |
 
 ---
 
