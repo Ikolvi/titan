@@ -392,6 +392,8 @@ extension PillarBasaltExtension on Pillar {
     void Function(T? result)? onComplete,
     void Function(Object error, String failedStep)? onError,
     void Function(String stepName, int index, int total)? onStepComplete,
+    void Function(Object error, StackTrace stackTrace, String stepName)?
+    onCompensationError,
     String? name,
   }) {
     final s = Saga<T>(
@@ -399,6 +401,7 @@ extension PillarBasaltExtension on Pillar {
       onComplete: onComplete,
       onError: onError,
       onStepComplete: onStepComplete,
+      onCompensationError: onCompensationError,
       name: name,
     );
     registerNodes(s.managedNodes);
@@ -412,14 +415,30 @@ extension PillarBasaltExtension on Pillar {
   /// Creates a [Volley] (batch async executor) managed by this Pillar.
   ///
   /// A Volley runs multiple async tasks in parallel with a configurable
-  /// concurrency limit and reactive progress tracking.
+  /// concurrency limit, retry logic, timeouts, and reactive progress tracking.
   ///
   /// ```dart
-  /// late final upload = volley<String>(concurrency: 3);
+  /// late final upload = volley<String>(concurrency: 3, maxRetries: 2);
   /// ```
   @protected
-  Volley<T> volley<T>({int concurrency = 5, String? name}) {
-    final v = Volley<T>(concurrency: concurrency, name: name);
+  Volley<T> volley<T>({
+    int concurrency = 5,
+    int maxRetries = 0,
+    Duration retryDelay = const Duration(milliseconds: 100),
+    Duration? taskTimeout,
+    void Function(String taskName, T result)? onTaskComplete,
+    void Function(String taskName, Object error)? onTaskFailed,
+    String? name,
+  }) {
+    final v = Volley<T>(
+      concurrency: concurrency,
+      maxRetries: maxRetries,
+      retryDelay: retryDelay,
+      taskTimeout: taskTimeout,
+      onTaskComplete: onTaskComplete,
+      onTaskFailed: onTaskFailed,
+      name: name,
+    );
     registerNodes(v.managedNodes);
     return v;
   }

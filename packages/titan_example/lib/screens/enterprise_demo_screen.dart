@@ -6,7 +6,7 @@ import '../pillars/enterprise_demo_pillar.dart';
 
 /// Enterprise Demo Screen — showcases enterprise features.
 ///
-/// Demonstrates: Loom, Bulwark, Saga, Volley, Sigil, Aegis, Annals, Banner, Sieve,
+/// Demonstrates: Loom, Portcullis, Saga, Volley, Sigil, Aegis, Annals, Banner, Sieve,
 /// Lattice, Embargo, Census, Warden, Arbiter, Lode, Tether, Core extensions, onInitAsync, VestigeWhen, VestigeSelector.
 class EnterpriseDemoScreen extends StatelessWidget {
   const EnterpriseDemoScreen({super.key});
@@ -52,7 +52,7 @@ class _EnterpriseTabs extends StatelessWidget {
             isScrollable: true,
             tabs: [
               Tab(text: 'Loom'),
-              Tab(text: 'Bulwark'),
+              Tab(text: 'Portcullis'),
               Tab(text: 'Saga'),
               Tab(text: 'Volley'),
               Tab(text: 'Conduit'),
@@ -64,7 +64,7 @@ class _EnterpriseTabs extends StatelessWidget {
               Tab(text: 'Pyre'),
               Tab(text: 'Mandate'),
               Tab(text: 'Ledger'),
-              Tab(text: 'Portcullis'),
+              Tab(text: 'Portcullis+'),
               Tab(text: 'Anvil'),
               Tab(text: 'Toolkit'),
             ],
@@ -73,7 +73,7 @@ class _EnterpriseTabs extends StatelessWidget {
             child: TabBarView(
               children: [
                 _LoomTab(),
-                _BulwarkTab(),
+                _PortcullisTab(),
                 _SagaTab(),
                 _VolleyTab(),
                 _ConduitTab(),
@@ -85,7 +85,7 @@ class _EnterpriseTabs extends StatelessWidget {
                 _PyreTab(),
                 _MandateTab(),
                 _LedgerTab(),
-                _PortcullisTab(),
+                _PortcullisDetailTab(),
                 _AnvilTab(),
                 _ToolkitTab(),
               ],
@@ -195,11 +195,11 @@ class _LoomTab extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Bulwark Tab — Circuit Breaker
+// Portcullis Tab — Circuit Breaker
 // ---------------------------------------------------------------------------
 
-class _BulwarkTab extends StatelessWidget {
-  const _BulwarkTab();
+class _PortcullisTab extends StatelessWidget {
+  const _PortcullisTab();
 
   @override
   Widget build(BuildContext context) {
@@ -221,14 +221,14 @@ class _BulwarkTab extends StatelessWidget {
               Card(
                 child: ListTile(
                   leading: Icon(
-                    breakerState == BulwarkState.closed
+                    breakerState == PortcullisState.closed
                         ? Icons.check_circle
-                        : breakerState == BulwarkState.halfOpen
+                        : breakerState == PortcullisState.halfOpen
                         ? Icons.warning
                         : Icons.block,
-                    color: breakerState == BulwarkState.closed
+                    color: breakerState == PortcullisState.closed
                         ? Colors.green
-                        : breakerState == BulwarkState.halfOpen
+                        : breakerState == PortcullisState.halfOpen
                         ? Colors.orange
                         : Colors.red,
                   ),
@@ -358,6 +358,44 @@ class _SagaTab extends StatelessWidget {
                     ),
                   ),
                 ),
+
+              // Compensation errors (if any)
+              if (saga.compensationErrors.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Card(
+                  color: Colors.orange.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.warning, color: Colors.orange),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Compensation errors '
+                              '(${saga.compensationErrors.length})',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        for (final e in saga.compensationErrors)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              '• $e',
+                              style: TextStyle(color: Colors.orange.shade900),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         );
@@ -421,7 +459,7 @@ class _VolleyTab extends StatelessWidget {
                       : status == VolleyStatus.done
                       ? Text(
                           '${batch.successCount} succeeded, '
-                          '${batch.completedCount - batch.successCount} failed',
+                          '${batch.failedCount} failed',
                         )
                       : null,
                 ),
@@ -1010,7 +1048,7 @@ class _ToolkitTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Vestige<EnterpriseDemoPillar>(
-      builder: (context, p) {
+      builder: (context, pillar) {
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1029,15 +1067,15 @@ class _ToolkitTab extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           IconButton(
-                            onPressed: p.counter.decrement,
+                            onPressed: pillar.counter.decrement,
                             icon: const Icon(Icons.remove),
                           ),
                           Text(
-                            '${p.counter.value}',
+                            '${pillar.counter.value}',
                             style: Theme.of(context).textTheme.headlineMedium,
                           ),
                           IconButton(
-                            onPressed: p.counter.increment,
+                            onPressed: pillar.counter.increment,
                             icon: const Icon(Icons.add),
                           ),
                         ],
@@ -1046,26 +1084,27 @@ class _ToolkitTab extends StatelessWidget {
                       // Toggle
                       SwitchListTile(
                         title: const Text('Special Mode'),
-                        value: p.isSpecialMode.value,
-                        onChanged: (_) => p.isSpecialMode.toggle(),
+                        value: pillar.isSpecialMode.value,
+                        onChanged: (_) => pillar.isSpecialMode.toggle(),
                       ),
                       // Tags
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
-                        children: p.tags.value
+                        children: pillar.tags.value
                             .map(
                               (t) => Chip(
                                 label: Text(t),
                                 onDeleted: () =>
-                                    p.tags.removeWhere((tag) => tag == t),
+                                    pillar.tags.removeWhere((tag) => tag == t),
                               ),
                             )
                             .toList(),
                       ),
                       const SizedBox(height: 8),
                       FilledButton.tonal(
-                        onPressed: () => p.tags.add('tag-${p.counter.value}'),
+                        onPressed: () =>
+                            pillar.tags.add('tag-${pillar.counter.value}'),
                         child: const Text('Add Tag'),
                       ),
                     ],
@@ -1710,7 +1749,7 @@ class _ToolkitTab extends StatelessWidget {
               const SizedBox(height: 8),
               FilledButton.tonal(
                 onPressed: () async {
-                  final title = await p.getQuestTitle('quest-0');
+                  final title = await pillar.getQuestTitle('quest-0');
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -2581,11 +2620,11 @@ class _CounterChip extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Portcullis Tab — Circuit Breaker
+// Portcullis Detail Tab — Circuit Breaker (extended demo)
 // ---------------------------------------------------------------------------
 
-class _PortcullisTab extends StatelessWidget {
-  const _PortcullisTab();
+class _PortcullisDetailTab extends StatelessWidget {
+  const _PortcullisDetailTab();
 
   @override
   Widget build(BuildContext context) {

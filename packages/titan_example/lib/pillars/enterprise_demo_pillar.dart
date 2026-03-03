@@ -20,7 +20,7 @@ enum QuestAction { claim, start, complete, fail, reset }
 
 /// Demonstrates enterprise Titan features:
 ///   Loom       — Finite state machine for quest status
-///   Bulwark    — Circuit breaker for resilient API calls
+///   Portcullis — Circuit breaker for resilient API calls
 ///   Saga       — Multi-step workflow (quest publish)
 ///   Volley     — Batch async operations
 ///   Sigil      — Feature flags\n///   Banner     — Reactive feature flags with rollout & rules
@@ -81,15 +81,12 @@ class EnterpriseDemoPillar extends Pillar {
     name: 'questStatus',
   );
 
-  // --------------- Bulwark (Circuit Breaker) ---------------
+  // --------------- Portcullis (Circuit Breaker) ---------------
 
   /// Circuit breaker protecting API calls.
-  late final apiBreaker = bulwark<Quest>(
+  late final apiBreaker = portcullis(
     failureThreshold: 3,
     resetTimeout: const Duration(seconds: 10),
-    onOpen: (error) => log.error('Circuit OPEN: $error'),
-    onClose: () => log.info('Circuit recovered'),
-    onHalfOpen: () => log.info('Testing recovery...'),
     name: 'api-breaker',
   );
 
@@ -141,6 +138,9 @@ class EnterpriseDemoPillar extends Pillar {
     onStepComplete: (name, index, total) {
       log.info('Saga step "$name" done ($index/$total)');
     },
+    onCompensationError: (error, stackTrace, stepName) {
+      log.error('Saga compensation failed at $stepName: $error');
+    },
     name: 'publish-saga',
   );
 
@@ -150,7 +150,16 @@ class EnterpriseDemoPillar extends Pillar {
   // --------------- Volley (Batch Async) ---------------
 
   /// Batch operation runner.
-  late final batchRunner = volley<String>(concurrency: 2, name: 'batch-runner');
+  late final batchRunner = volley<String>(
+    concurrency: 2,
+    maxRetries: 1,
+    retryDelay: const Duration(milliseconds: 200),
+    onTaskComplete: (name, result) =>
+        log.info('Batch task "$name" done: $result'),
+    onTaskFailed: (name, error) =>
+        log.warning('Batch task "$name" failed: $error'),
+    name: 'batch-runner',
+  );
 
   // --------------- Core Extensions Demo ---------------
 
@@ -676,7 +685,7 @@ class EnterpriseDemoPillar extends Pillar {
     Annals.enable(maxEntries: 100);
 
     // Register a Tether handler
-    Tether.register<String, String>('getQuestTitle', (id) async {
+    Tether.registerGlobal<String, String>('getQuestTitle', (id) async {
       final quest = await _api.fetchQuest(id);
       return quest.title;
     }, timeout: const Duration(seconds: 5));
@@ -694,8 +703,8 @@ class EnterpriseDemoPillar extends Pillar {
 
   @override
   void onDispose() {
-    Tether.unregister('getQuestTitle');
-    Annals.reset();
+    Tether.unregisterGlobal('getQuestTitle');
+    Annals.dispose();
     Sigil.reset();
   }
 
@@ -704,10 +713,10 @@ class EnterpriseDemoPillar extends Pillar {
   /// Fetch a quest through the circuit breaker.
   Future<void> fetchProtected(String questId) async {
     try {
-      final quest = await apiBreaker.call(() => _api.fetchQuest(questId));
+      final quest = await apiBreaker.protect(() => _api.fetchQuest(questId));
       protectedQuest.value = quest;
-    } on BulwarkOpenException catch (e) {
-      log.warning('API unavailable (${e.failureCount} consecutive failures)');
+    } on PortcullisOpenException catch (e) {
+      log.warning('API unavailable: $e');
       captureError(e, action: 'fetchProtected');
     } catch (e, s) {
       captureError(e, stackTrace: s, action: 'fetchProtected');
@@ -743,7 +752,7 @@ class EnterpriseDemoPillar extends Pillar {
 
   /// Call a Tether handler.
   Future<String?> getQuestTitle(String id) async {
-    return Tether.tryCall<String, String>('getQuestTitle', id);
+    return Tether.tryCallGlobal<String, String>('getQuestTitle', id);
   }
 
   /// Use Aegis retry to fetch with exponential backoff.

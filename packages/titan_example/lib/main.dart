@@ -40,7 +40,7 @@ import 'screens/spark_demo_screen.dart';
 //   Confluence                 -- Multi-Pillar consumers
 //   Lens                       -- Debug overlay
 //   Loom                       -- Finite state machine
-//   Bulwark                    -- Circuit breaker
+//   Portcullis                 -- Circuit breaker
 //   Saga                       -- Multi-step workflows
 //   Volley                     -- Batch async operations
 //   Sigil                      -- Feature flags

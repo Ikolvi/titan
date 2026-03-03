@@ -88,7 +88,7 @@ class AboutScreen extends StatelessWidget {
               ),
               const _FeatureRow(
                 icon: Icons.shield_outlined,
-                text: 'Bulwark — Circuit breaker',
+                text: 'Portcullis — Circuit breaker',
               ),
               const _FeatureRow(
                 icon: Icons.route,
