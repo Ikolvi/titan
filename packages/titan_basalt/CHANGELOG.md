@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.4
+
+### Fixed
+- **BannerFlag**: Removed `assert` for rollout range validation in const constructor. Rollout is now validated exclusively via `ArgumentError` in `Banner()` constructor and `Banner.register()`, ensuring the check fires in release builds too.
+
 ## 1.12.3
 
 ### Changed
