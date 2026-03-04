@@ -23,12 +23,13 @@ Titan's enterprise performance monitoring package provides frame tracking, page 
 | Capture Widget | **ShadeListener** | `ShadeListener` |
 | Session Store | **ShadeVault** | `ShadeVault` |
 | Text Controller | **ShadeTextController** | `ShadeTextController` |
+| Plugin Adapter | **ColossusPlugin** | `ColossusPlugin` |
 
 ## Installation
 
 ```yaml
 dependencies:
-  titan_colossus: ^0.0.1
+  titan_colossus: ^1.1.0
 ```
 
 ```dart
@@ -38,6 +39,37 @@ import 'package:titan_colossus/titan_colossus.dart';
 ---
 
 ## Quick Start
+
+### Plugin Integration (Recommended)
+
+The simplest way to add Colossus — one line to add, one line to remove:
+
+```dart
+import 'package:titan_colossus/titan_colossus.dart';
+
+void main() {
+  runApp(
+    Beacon(
+      pillars: [MyPillar.new],
+      plugins: [
+        if (kDebugMode) ColossusPlugin(
+          tremors: [Tremor.fps(), Tremor.leaks()],
+          enableLens: true,
+          enableShade: true,
+          getCurrentRoute: () => Atlas.current.path,
+        ),
+      ],
+      child: MaterialApp.router(routerConfig: atlas.config),
+    ),
+  );
+}
+```
+
+`ColossusPlugin` handles everything: `Colossus.init()`, `Lens` overlay, `ShadeListener` wrapping, export/route callbacks, and `Colossus.shutdown()` on dispose. Remove the plugin line for production builds — no widget tree restructuring needed.
+
+### Manual Integration
+
+For more control over initialization order:
 
 ```dart
 void main() async {
@@ -277,6 +309,39 @@ print(result.path); // SaveResult with file path
 
 ## Integration
 
+### ColossusPlugin — One-Line Integration
+
+`ColossusPlugin` is a `TitanPlugin` that wraps all Colossus setup into a single Beacon plugin:
+
+```dart
+Beacon(
+  pillars: [MyPillar.new],
+  plugins: [
+    if (kDebugMode) ColossusPlugin(
+      tremors: [Tremor.fps(), Tremor.leaks()],
+      enableLens: true,           // wraps with Lens overlay
+      enableShade: true,          // wraps with ShadeListener
+      enableLensTab: true,        // registers Perf + Shade tabs
+      enableChronicle: true,      // logs to Chronicle
+      shadeStoragePath: '/path',  // session persistence
+      exportDirectory: '/export', // report export directory
+      onExport: (paths) => Share.shareFiles(paths),
+      getCurrentRoute: () => Atlas.current.path,
+      autoReplayOnStartup: true,
+    ),
+  ],
+  child: MaterialApp(...),
+)
+```
+
+| Lifecycle | What Happens |
+|-----------|-------------|
+| `onAttach()` | Calls `Colossus.init()`, wires export/route callbacks, schedules auto-replay |
+| `buildOverlay()` | Wraps child with `Lens` and `ShadeListener` (if enabled) |
+| `onDetach()` | Calls `Colossus.shutdown()` |
+
+To remove Colossus entirely: delete the `ColossusPlugin(...)` line and remove the `titan_colossus` import.
+
 ### Lens Debug Overlay
 
 Lens (debug overlay) is part of `titan_colossus`. Add performance tabs to the Lens debug overlay:
@@ -452,6 +517,49 @@ Replay outcome data:
 
 ## Complete Example
 
+### With ColossusPlugin (Recommended)
+
+```dart
+import 'package:titan_colossus/titan_colossus.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final atlas = Atlas(
+    observers: [HeraldAtlasObserver(), ColossusAtlasObserver()],
+    passages: [
+      Passage('/', (_) => const HomeScreen()),
+      Passage('/profile', (_) => const ProfileScreen()),
+    ],
+  );
+
+  runApp(
+    Beacon(
+      pillars: [HomePillar.new, ProfilePillar.new],
+      plugins: [
+        if (kDebugMode) ColossusPlugin(
+          tremors: [Tremor.fps(), Tremor.jankRate(), Tremor.leaks()],
+          enableLens: true,
+          enableShade: true,
+          enableChronicle: true,
+          shadeStoragePath: '/tmp/shade_sessions',
+          exportDirectory: '/tmp/reports',
+          onExport: (paths) => Share.shareFiles(paths),
+          getCurrentRoute: () {
+            try { return Atlas.current.path; }
+            catch (_) { return null; }
+          },
+          autoReplayOnStartup: true,
+        ),
+      ],
+      child: MaterialApp.router(routerConfig: atlas.config),
+    ),
+  );
+}
+```
+
+### Manual Integration
+
 ```dart
 import 'package:titan_colossus/titan_colossus.dart';
 import 'package:titan_argus/titan_argus.dart';
@@ -504,7 +612,7 @@ void main() async {
 ## Testing
 
 ```bash
-cd packages/titan_colossus && flutter test  # 277+ tests
+cd packages/titan_colossus && flutter test  # 303+ tests
 ```
 
 ---
