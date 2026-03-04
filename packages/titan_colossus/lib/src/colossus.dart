@@ -98,7 +98,9 @@ class Colossus extends Pillar {
   ///
   /// Throws if [init] has not been called.
   static Colossus get instance {
-    assert(_instance != null, 'Colossus.init() must be called first.');
+    if (_instance == null) {
+      throw StateError('Colossus.init() must be called first.');
+    }
     return _instance!;
   }
 

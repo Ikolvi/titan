@@ -17,21 +17,27 @@ import 'package:titan/titan.dart';
 // ---------------------------------------------------------------------------
 
 class CounterPillar extends Pillar {
-  /// Mutable reactive state
-  late final count = core(0);
+  /// Private mutable state — only this Pillar can mutate
+  late final _count = core(0);
+
+  /// Public read-only view — consumers can read & track, but cannot mutate
+  ReadCore<int> get count => _count;
 
   /// Computed value — auto-tracks `count`
-  late final doubled = derived(() => count.value * 2);
+  late final doubled = derived(() => _count.value * 2);
 
   /// Named mutations via Strike
-  void increment() => strike(() => count.value++);
-  void decrement() => strike(() => count.value--);
+  void increment() => strike(() => _count.value++);
+  void decrement() => strike(() => _count.value--);
+
+  /// Explicit setter for direct value changes
+  void setCount(int value) => strike(() => _count.value = value);
 
   @override
   void onInit() {
     // Watcher — runs automatically when dependencies change
     watch(() {
-      print('Count changed to: ${count.value} (doubled: ${doubled.value})');
+      print('Count changed to: ${_count.value} (doubled: ${doubled.value})');
     });
   }
 }
@@ -56,14 +62,14 @@ void main() {
   print('After increment: ${counter.count.value}'); // 1
   print('Doubled: ${counter.doubled.value}'); // 2
 
-  // Direct mutation
-  counter.count.value = 5;
+  // Explicit setter — all mutations flow through Pillar methods
+  counter.setCount(5);
   // Watcher fires: "Count changed to: 5 (doubled: 10)"
 
   // Batch multiple changes (single notification)
   titanBatch(() {
-    counter.count.value = 10;
-    counter.count.value = 20;
+    counter.setCount(10);
+    counter.setCount(20);
   });
   // Watcher fires once: "Count changed to: 20 (doubled: 40)"
 

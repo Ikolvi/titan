@@ -54,7 +54,7 @@ void main() {
     test('asserts on maxEntries <= 0', () {
       expect(
         () => Census<int>(window: const Duration(seconds: 1), maxEntries: 0),
-        throwsA(isA<AssertionError>()),
+        throwsA(isA<ArgumentError>()),
       );
     });
 
@@ -224,8 +224,8 @@ void main() {
       final c = Census<int>(window: const Duration(seconds: 60));
       c.record(10);
 
-      expect(() => c.percentile(-1), throwsA(isA<AssertionError>()));
-      expect(() => c.percentile(101), throwsA(isA<AssertionError>()));
+      expect(() => c.percentile(-1), throwsA(isA<ArgumentError>()));
+      expect(() => c.percentile(101), throwsA(isA<ArgumentError>()));
     });
 
     // ── Reset ──────────────────────────────────────────────────────────

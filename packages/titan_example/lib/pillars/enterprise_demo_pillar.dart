@@ -122,7 +122,7 @@ class EnterpriseDemoPillar extends Pillar {
         execute: (prev) async {
           await Future<void>.delayed(const Duration(milliseconds: 600));
           // Simulate occasional failure for demonstration
-          if (shouldFailSaga.value) {
+          if (_shouldFailSaga.value) {
             throw Exception('Publication server unavailable');
           }
           log.info('Saga: Published quest $prev');
@@ -145,7 +145,14 @@ class EnterpriseDemoPillar extends Pillar {
   );
 
   /// Toggle to simulate saga failure.
-  late final shouldFailSaga = core(false, name: 'shouldFailSaga');
+  late final _shouldFailSaga = core(false, name: 'shouldFailSaga');
+
+  /// Read-only view of saga failure toggle.
+  ReadCore<bool> get shouldFailSaga => _shouldFailSaga;
+
+  /// Set whether the saga should fail.
+  void setShouldFailSaga({required bool value}) =>
+      _shouldFailSaga.value = value;
 
   // --------------- Volley (Batch Async) ---------------
 
@@ -164,29 +171,59 @@ class EnterpriseDemoPillar extends Pillar {
   // --------------- Core Extensions Demo ---------------
 
   /// Demo counter for Core extensions (increment/decrement).
-  late final counter = core(0, name: 'counter');
+  late final _counter = core(0, name: 'counter');
+
+  /// Read-only view of the counter.
+  ReadCore<int> get counter => _counter;
 
   /// Demo toggle for Core extensions.
-  late final isSpecialMode = core(false, name: 'isSpecialMode');
+  late final _isSpecialMode = core(false, name: 'isSpecialMode');
+
+  /// Read-only view of special mode.
+  ReadCore<bool> get isSpecialMode => _isSpecialMode;
 
   /// Demo list for Core list extensions.
-  late final tags = core<List<String>>([
+  late final _tags = core<List<String>>([
     'combat',
     'stealth',
     'magic',
   ], name: 'tags');
 
+  /// Read-only view of tags.
+  ReadCore<List<String>> get tags => _tags;
+
+  /// Increment the counter.
+  void incrementCounter([int amount = 1]) => _counter.increment(amount);
+
+  /// Decrement the counter.
+  void decrementCounter([int amount = 1]) => _counter.decrement(amount);
+
+  /// Toggle special mode.
+  void toggleSpecialMode() => _isSpecialMode.toggle();
+
+  /// Add a tag to the list.
+  void addTag(String tag) => _tags.add(tag);
+
+  /// Remove tags matching a predicate.
+  void removeTagWhere(bool Function(String) test) => _tags.removeWhere(test);
+
   // --------------- Conduit (Core-Level Middleware) ---------------
 
   /// Quest reward with clamping — cannot go below 0 or above 10,000.
-  late final questReward = core(
+  late final _questReward = core(
     100,
     name: 'questReward',
     conduits: [ClampConduit(min: 0, max: 10000)],
   );
 
+  /// Read-only view of quest reward.
+  ReadCore<int> get questReward => _questReward;
+
+  /// Set the quest reward (clamped by Conduit to 0–10,000).
+  void setQuestReward(int value) => _questReward.value = value;
+
   /// Hero name with trimming and lowercase transformation.
-  late final heroNameInput = core(
+  late final _heroNameInput = core(
     '',
     name: 'heroNameInput',
     conduits: [
@@ -195,8 +232,14 @@ class EnterpriseDemoPillar extends Pillar {
     ],
   );
 
+  /// Read-only view of hero name input.
+  ReadCore<String> get heroNameInput => _heroNameInput;
+
+  /// Set the hero name input (transformed by Conduit: trim + lowercase).
+  void setHeroNameInput(String value) => _heroNameInput.value = value;
+
   /// Validated difficulty level — must be 1-5.
-  late final difficulty = core(
+  late final _difficulty = core(
     1,
     name: 'difficulty',
     conduits: [
@@ -205,6 +248,12 @@ class EnterpriseDemoPillar extends Pillar {
       ),
     ],
   );
+
+  /// Read-only view of difficulty.
+  ReadCore<int> get difficulty => _difficulty;
+
+  /// Set the difficulty level (validated by Conduit to 1–5).
+  void setDifficulty(int value) => _difficulty.value = value;
 
   // --------------- Sigil (Feature Flags) ---------------
 
@@ -836,16 +885,22 @@ class EnterpriseDemoPillar extends Pillar {
   // --------------- Omen (Reactive Async Derived) ---------------
 
   /// Reactive search term for Omen demo.
-  late final omenQuery = core('');
+  late final _omenQuery = core('');
+
+  /// Read-only view of omen query.
+  ReadCore<String> get omenQuery => _omenQuery;
 
   /// Reactive sort order.
-  late final omenSort = core('name');
+  late final _omenSort = core('name');
+
+  /// Read-only view of omen sort.
+  ReadCore<String> get omenSort => _omenSort;
 
   /// Omen that auto-re-fetches when query or sort changes.
   late final omenResults = omen<List<String>>(
     () async {
-      final q = omenQuery.value;
-      final s = omenSort.value;
+      final q = _omenQuery.value;
+      final s = _omenSort.value;
       // Simulate API call
       await Future<void>.delayed(const Duration(milliseconds: 300));
       final items = [
@@ -872,11 +927,11 @@ class EnterpriseDemoPillar extends Pillar {
   );
 
   /// Change the search query.
-  void updateOmenQuery(String q) => omenQuery.value = q;
+  void updateOmenQuery(String q) => _omenQuery.value = q;
 
   /// Toggle sort order.
   void toggleOmenSort() {
-    omenSort.value = omenSort.value == 'name' ? 'reverse' : 'name';
+    _omenSort.value = _omenSort.value == 'name' ? 'reverse' : 'name';
   }
 
   // --------------- Pyre (Priority Task Queue) ---------------
@@ -919,13 +974,22 @@ class EnterpriseDemoPillar extends Pillar {
   // --------------- Mandate (Reactive Policy Engine) ---------------
 
   /// User role for permission checks.
-  late final userRole = core('viewer');
+  late final _userRole = core('viewer');
+
+  /// Read-only view of user role.
+  ReadCore<String> get userRole => _userRole;
 
   /// Whether the user is verified.
-  late final isVerified = core(false);
+  late final _isVerified = core(false);
+
+  /// Read-only view of verification status.
+  ReadCore<bool> get isVerified => _isVerified;
 
   /// Whether editing is enabled (feature flag).
-  late final editingEnabled = core(true);
+  late final _editingEnabled = core(true);
+
+  /// Read-only view of editing enabled flag.
+  ReadCore<bool> get editingEnabled => _editingEnabled;
 
   /// Edit access — all conditions must pass (allOf strategy).
   late final editAccess = mandate(
@@ -933,17 +997,18 @@ class EnterpriseDemoPillar extends Pillar {
     writs: [
       Writ(
         name: 'has-role',
-        evaluate: () => userRole.value == 'editor' || userRole.value == 'admin',
+        evaluate: () =>
+            _userRole.value == 'editor' || _userRole.value == 'admin',
         reason: 'Editor or admin role required',
       ),
       Writ(
         name: 'is-verified',
-        evaluate: () => isVerified.value,
+        evaluate: () => _isVerified.value,
         reason: 'Email verification required',
       ),
       Writ(
         name: 'editing-on',
-        evaluate: () => editingEnabled.value,
+        evaluate: () => _editingEnabled.value,
         reason: 'Editing is disabled',
       ),
     ],
@@ -961,7 +1026,7 @@ class EnterpriseDemoPillar extends Pillar {
       ),
       Writ(
         name: 'is-member',
-        evaluate: () => userRole.value != 'viewer',
+        evaluate: () => _userRole.value != 'viewer',
         reason: 'Must be a member',
       ),
     ],
@@ -982,24 +1047,33 @@ class EnterpriseDemoPillar extends Pillar {
   });
 
   /// Change the user's role.
-  void setUserRole(String role) => userRole.value = role;
+  void setUserRole(String role) => _userRole.value = role;
 
   /// Toggle email verification.
-  void toggleVerification() => isVerified.value = !isVerified.value;
+  void toggleVerification() => _isVerified.value = !_isVerified.value;
 
   /// Toggle editing feature flag.
-  void toggleEditing() => editingEnabled.value = !editingEnabled.value;
+  void toggleEditing() => _editingEnabled.value = !_editingEnabled.value;
 
   // --------------- Ledger (State Transactions) ---------------
 
   /// Gold balance for demo.
-  late final goldBalance = core(1000);
+  late final _goldBalance = core(1000);
+
+  /// Read-only view of gold balance.
+  ReadCore<int> get goldBalance => _goldBalance;
 
   /// Item inventory for demo.
-  late final itemCount = core(50);
+  late final _itemCount = core(50);
+
+  /// Read-only view of item count.
+  ReadCore<int> get itemCount => _itemCount;
 
   /// Last transaction result message.
-  late final txResultMessage = core('No transactions yet');
+  late final _txResultMessage = core('No transactions yet');
+
+  /// Read-only view of transaction result.
+  ReadCore<String> get txResultMessage => _txResultMessage;
 
   /// Transaction manager.
   late final txManager = ledger(maxHistory: 20, name: 'demo');
@@ -1008,15 +1082,15 @@ class EnterpriseDemoPillar extends Pillar {
   void purchaseItems(int qty, int pricePerItem) {
     final totalCost = qty * pricePerItem;
     txManager.transactSync((tx) {
-      tx.capture(goldBalance);
-      tx.capture(itemCount);
-      goldBalance.value -= totalCost;
-      itemCount.value += qty;
-      if (goldBalance.value < 0) {
+      tx.capture(_goldBalance);
+      tx.capture(_itemCount);
+      _goldBalance.value -= totalCost;
+      _itemCount.value += qty;
+      if (_goldBalance.value < 0) {
         throw StateError('Insufficient gold');
       }
     }, name: 'purchase');
-    txResultMessage.value =
+    _txResultMessage.value =
         'Purchased $qty items for $totalCost gold (committed)';
   }
 
@@ -1024,23 +1098,23 @@ class EnterpriseDemoPillar extends Pillar {
   void failedPurchase() {
     try {
       txManager.transactSync((tx) {
-        tx.capture(goldBalance);
-        tx.capture(itemCount);
-        goldBalance.value -= 99999;
-        itemCount.value += 100;
+        tx.capture(_goldBalance);
+        tx.capture(_itemCount);
+        _goldBalance.value -= 99999;
+        _itemCount.value += 100;
         throw StateError('Payment declined');
       }, name: 'failed-purchase');
     } catch (_) {
-      txResultMessage.value =
-          'Transaction rolled back — gold: ${goldBalance.value}, items: ${itemCount.value}';
+      _txResultMessage.value =
+          'Transaction rolled back — gold: ${_goldBalance.value}, items: ${_itemCount.value}';
     }
   }
 
   /// Reset gold and items.
   void resetLedgerDemo() {
-    goldBalance.value = 1000;
-    itemCount.value = 50;
-    txResultMessage.value = 'Reset complete';
+    _goldBalance.value = 1000;
+    _itemCount.value = 50;
+    _txResultMessage.value = 'Reset complete';
   }
 
   // --------------- Portcullis (Circuit Breaker) ---------------
@@ -1054,7 +1128,10 @@ class EnterpriseDemoPillar extends Pillar {
   );
 
   /// Simulated call counter.
-  late final callResult = core('No calls yet');
+  late final _callResult = core('No calls yet');
+
+  /// Read-only view of call result.
+  ReadCore<String> get callResult => _callResult;
 
   /// Simulate a successful API call.
   Future<void> simulateSuccess() async {
@@ -1063,9 +1140,9 @@ class EnterpriseDemoPillar extends Pillar {
         await Future<void>.delayed(const Duration(milliseconds: 100));
         return 'ok';
       });
-      callResult.value = 'Call succeeded!';
+      _callResult.value = 'Call succeeded!';
     } on PortcullisOpenException catch (e) {
-      callResult.value =
+      _callResult.value =
           'BLOCKED: circuit open'
           '${e.remainingTimeout != null ? ' (resets in ${e.remainingTimeout!.inSeconds}s)' : ''}';
     }
@@ -1078,24 +1155,24 @@ class EnterpriseDemoPillar extends Pillar {
         throw Exception('Service unavailable');
       });
     } on PortcullisOpenException catch (e) {
-      callResult.value =
+      _callResult.value =
           'BLOCKED: circuit open'
           '${e.remainingTimeout != null ? ' (resets in ${e.remainingTimeout!.inSeconds}s)' : ''}';
     } catch (e) {
-      callResult.value = 'Call failed: $e';
+      _callResult.value = 'Call failed: $e';
     }
   }
 
   /// Manually trip the breaker.
   void tripBreaker() {
     circuitBreaker.trip();
-    callResult.value = 'Circuit manually tripped';
+    _callResult.value = 'Circuit manually tripped';
   }
 
   /// Manually reset the breaker.
   void resetBreaker() {
     circuitBreaker.reset();
-    callResult.value = 'Circuit manually reset';
+    _callResult.value = 'Circuit manually reset';
   }
 
   // --------------- Anvil (Dead Letter & Retry Queue) ---------------
@@ -1111,7 +1188,10 @@ class EnterpriseDemoPillar extends Pillar {
   );
 
   /// Result message for UI display.
-  late final anvilResult = core('Tap a button to test the retry queue');
+  late final _anvilResult = core('Tap a button to test the retry queue');
+
+  /// Read-only view of anvil result.
+  ReadCore<String> get anvilResult => _anvilResult;
 
   /// Simulate a successful operation being enqueued.
   void enqueueSuccess() {
@@ -1119,10 +1199,10 @@ class EnterpriseDemoPillar extends Pillar {
       () async => 'Quest completed!',
       id: 'success-${DateTime.now().millisecondsSinceEpoch}',
       onSuccess: (result) {
-        anvilResult.value = 'Succeeded: $result';
+        _anvilResult.value = 'Succeeded: $result';
       },
     );
-    anvilResult.value = 'Enqueued a successful operation...';
+    _anvilResult.value = 'Enqueued a successful operation...';
   }
 
   /// Simulate a failing operation that will be dead-lettered.
@@ -1131,28 +1211,28 @@ class EnterpriseDemoPillar extends Pillar {
       () async => throw Exception('Quest failed!'),
       id: 'fail-${DateTime.now().millisecondsSinceEpoch}',
       onDeadLetter: (entry) {
-        anvilResult.value =
+        _anvilResult.value =
             'Dead lettered: ${entry.id} after ${entry.attempts} attempts';
       },
     );
-    anvilResult.value = 'Enqueued a failing operation...';
+    _anvilResult.value = 'Enqueued a failing operation...';
   }
 
   /// Retry all dead-lettered entries.
   void retryDead() {
     final count = retryQueue.retryDeadLetters();
-    anvilResult.value = 'Re-enqueued $count dead letters';
+    _anvilResult.value = 'Re-enqueued $count dead letters';
   }
 
   /// Purge all dead letters.
   void purgeDead() {
     final count = retryQueue.purge();
-    anvilResult.value = 'Purged $count dead letters';
+    _anvilResult.value = 'Purged $count dead letters';
   }
 
   /// Clear all entries.
   void clearQueue() {
     retryQueue.clear();
-    anvilResult.value = 'Queue cleared';
+    _anvilResult.value = 'Queue cleared';
   }
 }

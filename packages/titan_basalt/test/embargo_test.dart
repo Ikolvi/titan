@@ -28,8 +28,8 @@ void main() {
       });
 
       test('rejects permits <= 0', () {
-        expect(() => Embargo(permits: 0), throwsA(isA<AssertionError>()));
-        expect(() => Embargo(permits: -1), throwsA(isA<AssertionError>()));
+        expect(() => Embargo(permits: 0), throwsA(isA<ArgumentError>()));
+        expect(() => Embargo(permits: -1), throwsA(isA<ArgumentError>()));
       });
     });
 

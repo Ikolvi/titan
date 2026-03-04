@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.12.3
+
+### Changed
+
+- **Assert → Runtime Errors**: All debug-only `assert` statements converted to runtime errors that fire in release builds:
+  - `Embargo`: `ArgumentError` for non-positive permits
+  - `Trove`: `ArgumentError` for non-positive maxEntries
+  - `Volley`: `ArgumentError` for non-positive concurrency/maxRetries
+  - `Census`: `ArgumentError` for non-positive maxEntries and invalid percentile range
+  - `Moat`: `ArgumentError` for non-positive maxTokens and invalid consume amounts
+  - `Pyre`: `ArgumentError` for non-positive concurrency/maxQueueSize/maxRetries
+  - `Arbiter`: `ArgumentError` for null merge callback on custom strategy, `StateError` for use-after-dispose
+  - `Tithe`: `ArgumentError` for non-positive budget/amount and invalid percentages, `StateError` for use-after-dispose
+  - `Lode`: `ArgumentError` for non-positive maxSize, `StateError` for use-after-dispose and released lease access
+  - `Warden`: `ArgumentError` for empty services list
+  - `Clarion`: `StateError` for duplicate job registration
+  - `Tapestry`: `StateError` for duplicate weave registration
+  - `Sluice`: `ArgumentError` for empty stages and non-positive stage concurrency
+  - `Banner`: `ArgumentError` for rollout values outside 0.0–1.0 (validated at `Banner` registration time)
+
 ## 1.12.2
 
 ### Fixed

@@ -3,6 +3,89 @@ import 'conduit.dart';
 import 'observer.dart';
 import 'reactive.dart';
 
+// ---------------------------------------------------------------------------
+// ReadCore<T> — Read-only view of a Core
+// ---------------------------------------------------------------------------
+
+/// A read-only view of a [TitanState] (Core).
+///
+/// Exposes only the read side of a reactive state — `.value`, `.peek()`,
+/// `.listen()`, `.select()` — while hiding the `.value` setter and
+/// mutation methods. Use this as the public return type to enforce that
+/// **only the owning Pillar can mutate its Cores**.
+///
+/// ## Why?
+///
+/// By default, `Core<T>.value` has a public setter. While Conduits and
+/// TitanObserver can validate and audit mutations, they cannot *prevent*
+/// external code from assigning to `.value` at compile time. Exposing
+/// Cores as `ReadCore<T>` closes that gap:
+///
+/// ```dart
+/// class CounterPillar extends Pillar {
+///   // Private — only this class can mutate
+///   late final _count = core(0);
+///
+///   // Public — consumers can read, but not write
+///   ReadCore<int> get count => _count;
+///
+///   void increment() => strike(() => _count.value++);
+/// }
+///
+/// // External code:
+/// final pillar = Titan.get<CounterPillar>();
+/// print(pillar.count.value); // ✅ Reading works
+/// pillar.count.value = 99;  // ❌ Compile error — no setter on ReadCore
+/// ```
+///
+/// ## Auto-tracking
+///
+/// `ReadCore<T>` preserves full auto-tracking behavior. Reading `.value`
+/// inside a [TitanComputed] or Vestige still registers the dependency
+/// because the underlying object is a [TitanState] that calls `track()`.
+///
+/// ## Casting escape hatch
+///
+/// Determined code can cast back to `Core<T>`, but the cast is explicit
+/// and visible in code review:
+///
+/// ```dart
+/// (pillar.count as Core<int>).value = 99; // Works, but reviewable
+/// ```
+abstract interface class ReadCore<T> {
+  /// The current value. Reading auto-tracks dependencies in reactive scopes.
+  T get value;
+
+  /// The previous value before the most recent change.
+  ///
+  /// Returns `null` if the value has never been changed.
+  T? get previousValue;
+
+  /// The debug name, if provided.
+  String? get name;
+
+  /// Whether this node has been disposed.
+  bool get isDisposed;
+
+  /// Returns the current value without tracking it as a dependency.
+  T peek();
+
+  /// Listens for value changes with a typed callback.
+  ///
+  /// Returns a function that removes the listener when called.
+  void Function() listen(void Function(T value) callback);
+
+  /// Creates a [TitanComputed] that selects a sub-value from this state.
+  ///
+  /// Only triggers downstream updates when the selected value actually
+  /// changes.
+  TitanComputed<R> select<R>(R Function(T value) selector);
+}
+
+// ---------------------------------------------------------------------------
+// TitanState<T> — Mutable reactive state
+// ---------------------------------------------------------------------------
+
 /// A mutable reactive state container.
 ///
 /// [TitanState] holds a single value of type [T] and notifies dependents
@@ -29,7 +112,7 @@ import 'reactive.dart';
 /// By default, notifications are skipped when the new value equals the old
 /// value (using `==`). Provide a custom [equals] function for custom
 /// comparison logic.
-class TitanState<T> extends ReactiveNode {
+class TitanState<T> extends ReactiveNode implements ReadCore<T> {
   T _value;
   T? _previousValue;
   final bool Function(T previous, T next)? _equals;
@@ -54,12 +137,14 @@ class TitanState<T> extends ReactiveNode {
            : null;
 
   /// The debug name of this state, if provided.
+  @override
   String? get name => _name;
 
   /// The current value.
   ///
   /// Reading this inside a [TitanComputed] or [TitanEffect] automatically
   /// registers a dependency.
+  @override
   T get value {
     track();
     return _value;
@@ -75,6 +160,7 @@ class TitanState<T> extends ReactiveNode {
   /// name.value = 'Bob';
   /// print(name.previousValue); // 'Alice'
   /// ```
+  @override
   T? get previousValue => _previousValue;
 
   /// Sets the value. If Conduits are attached, the value is piped through
@@ -122,6 +208,7 @@ class TitanState<T> extends ReactiveNode {
   ///
   /// Useful when you need to read the value without triggering
   /// a rebuild on change.
+  @override
   T peek() => _value;
 
   /// Updates the value using a transformation function.
@@ -178,6 +265,7 @@ class TitanState<T> extends ReactiveNode {
   /// counter.value = 5; // Prints: 5
   /// unsub(); // Stops listening
   /// ```
+  @override
   void Function() listen(void Function(T value) callback) {
     void listener() => callback(_value);
     addListener(listener);
@@ -195,6 +283,7 @@ class TitanState<T> extends ReactiveNode {
   /// // Only rebuilds when the name changes, not when age changes
   /// final userName = user.select((u) => u.name);
   /// ```
+  @override
   TitanComputed<R> select<R>(R Function(T value) selector) {
     return TitanComputed<R>(() => selector(value));
   }

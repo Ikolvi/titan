@@ -182,7 +182,13 @@ class Aegis {
     bool Function(Object error)? retryIf,
     void Function(int attempt, Object error, Duration nextDelay)? onRetry,
   }) async {
-    assert(maxAttempts > 0, 'maxAttempts must be at least 1');
+    if (maxAttempts <= 0) {
+      throw ArgumentError.value(
+        maxAttempts,
+        'maxAttempts',
+        'must be at least 1',
+      );
+    }
 
     final stopwatch = Stopwatch()..start();
     Object? lastError;
@@ -237,6 +243,13 @@ class Aegis {
     AegisConfig config = AegisConfig.defaults,
     void Function(int attempt, Object error, Duration nextDelay)? onRetry,
   }) async {
+    if (config.maxAttempts <= 0) {
+      throw ArgumentError.value(
+        config.maxAttempts,
+        'maxAttempts',
+        'must be at least 1',
+      );
+    }
     final stopwatch = Stopwatch()..start();
     Object? lastError;
     StackTrace? lastTrace;

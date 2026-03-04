@@ -97,8 +97,10 @@ class Tithe {
   /// [resetInterval] if provided, automatically resets the budget
   /// on that interval. [name] is an optional prefix for reactive nodes.
   Tithe({required int budget, Duration? resetInterval, String? name})
-    : _budget = budget,
-      assert(budget > 0, 'budget must be positive') {
+    : _budget = budget {
+    if (budget <= 0) {
+      throw ArgumentError.value(budget, 'budget', 'must be positive');
+    }
     final prefix = name ?? 'tithe';
 
     _consumed = TitanState<int>(0, name: '${prefix}_consumed');
@@ -173,7 +175,9 @@ class Tithe {
   /// Use [tryConsume] to check before consuming.
   void consume(int amount, {String? key}) {
     _assertNotDisposed();
-    assert(amount > 0, 'amount must be positive');
+    if (amount <= 0) {
+      throw ArgumentError.value(amount, 'amount', 'must be positive');
+    }
 
     _consumed.value += amount;
 
@@ -213,7 +217,9 @@ class Tithe {
   /// that percentage of the budget. Thresholds re-arm on [reset].
   void onThreshold(double percent, void Function() callback) {
     _assertNotDisposed();
-    assert(percent > 0.0 && percent <= 1.0, 'percent must be in (0.0, 1.0]');
+    if (percent <= 0.0 || percent > 1.0) {
+      throw ArgumentError.value(percent, 'percent', 'must be in (0.0, 1.0]');
+    }
     _thresholds.add(_ThresholdEntry(percent, callback));
   }
 
@@ -241,6 +247,8 @@ class Tithe {
   }
 
   void _assertNotDisposed() {
-    assert(!_disposed, 'Cannot use a disposed Tithe');
+    if (_disposed) {
+      throw StateError('Cannot use a disposed Tithe');
+    }
   }
 }

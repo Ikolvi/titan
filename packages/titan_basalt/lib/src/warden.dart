@@ -157,7 +157,10 @@ class Warden {
     required this.interval,
     required List<WardenService> services,
     this.name,
-  }) : assert(services.isNotEmpty, 'services must not be empty') {
+  }) {
+    if (services.isEmpty) {
+      throw ArgumentError.value(services, 'services', 'must not be empty');
+    }
     final n = name ?? 'warden';
     _isChecking = TitanState<bool>(false, name: '${n}_checking');
     _totalChecks = TitanState<int>(0, name: '${n}_totalChecks');

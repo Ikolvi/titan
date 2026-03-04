@@ -134,8 +134,7 @@ class Moat {
     int? initialTokens,
     this.onReject,
     String? name,
-  }) : assert(maxTokens > 0, 'maxTokens must be positive'),
-       _lastRefill = DateTime.now(),
+  }) : _lastRefill = DateTime.now(),
        _fractionalTokens = 0.0,
        _remaining = TitanState<int>(
          initialTokens ?? maxTokens,
@@ -143,6 +142,9 @@ class Moat {
        ),
        _rejections = TitanState<int>(0, name: '${name ?? 'moat'}_rejections'),
        _consumed = TitanState<int>(0, name: '${name ?? 'moat'}_consumed') {
+    if (maxTokens <= 0) {
+      throw ArgumentError.value(maxTokens, 'maxTokens', 'must be positive');
+    }
     _startRefillTimer();
   }
 
@@ -195,7 +197,9 @@ class Moat {
   /// }
   /// ```
   bool tryConsume([int tokens = 1]) {
-    assert(tokens > 0, 'tokens must be positive');
+    if (tokens <= 0) {
+      throw ArgumentError.value(tokens, 'tokens', 'must be positive');
+    }
     _refillTokens();
     if (_remaining.value >= tokens) {
       _remaining.value -= tokens;
@@ -217,7 +221,9 @@ class Moat {
   /// await performAction();
   /// ```
   Future<bool> consume({int tokens = 1, Duration? timeout}) async {
-    assert(tokens > 0, 'tokens must be positive');
+    if (tokens <= 0) {
+      throw ArgumentError.value(tokens, 'tokens', 'must be positive');
+    }
     if (tryConsume(tokens)) return true;
 
     final completer = Completer<bool>();

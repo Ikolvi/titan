@@ -106,7 +106,7 @@ void main() {
     test('merge with no callback throws assertion', () {
       expect(
         () => Arbiter<String>(strategy: ArbiterStrategy.merge),
-        throwsA(isA<AssertionError>()),
+        throwsA(isA<ArgumentError>()),
       );
     });
 
@@ -238,7 +238,7 @@ void main() {
 
     test('dispose prevents further use', () {
       arbiter.dispose();
-      expect(() => arbiter.submit('a', 'v'), throwsA(isA<AssertionError>()));
+      expect(() => arbiter.submit('a', 'v'), throwsA(isA<StateError>()));
     });
 
     test('double dispose is safe', () {

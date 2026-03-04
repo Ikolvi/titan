@@ -160,7 +160,7 @@ abstract class Pillar {
   /// }
   /// ```
   void registerNodes(Iterable<ReactiveNode> nodes) {
-    assert(!_isDisposed, '$runtimeType has already been disposed.');
+    _assertNotDisposed();
     _managedNodes.addAll(nodes);
   }
 
@@ -1136,7 +1136,9 @@ abstract class Pillar {
   }
 
   void _assertNotDisposed() {
-    assert(!_isDisposed, '$runtimeType has already been disposed.');
+    if (_isDisposed) {
+      throw StateError('$runtimeType has already been disposed.');
+    }
   }
 }
 

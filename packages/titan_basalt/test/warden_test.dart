@@ -67,7 +67,7 @@ void main() {
     test('asserts on empty services', () {
       expect(
         () => Warden(interval: const Duration(seconds: 10), services: []),
-        throwsA(isA<AssertionError>()),
+        throwsA(isA<ArgumentError>()),
       );
     });
 

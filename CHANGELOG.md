@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - Unreleased
 
 ### Added
+- **titan**: **ReadCore\<T\>** — Read-only abstract interface for `Core<T>` (compile-time type narrowing, recommended convention for Pillar fields)
 - **titan_basalt**: New package — Infrastructure & Resilience Toolkit
 - **titan_basalt**: **Trove** — Reactive in-memory cache with TTL expiry, LRU eviction, O(1) operations, reactive stats, Pillar integration
 - **titan_basalt**: **Moat** — Token-bucket rate limiter with `MoatPool` per-key quotas, `guard()` pattern, reactive state, Pillar integration
@@ -21,6 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **titan**: Moved Trove, Moat, Portcullis, Anvil, Pyre to `titan_basalt` package (infrastructure/resilience separation)
+- **titan**: All debug-only `assert` statements converted to runtime errors across all packages — catches bugs in release builds:
+  - `ClampConduit`: `ArgumentError` for invalid min/max range
+  - `Pillar`, `TitanStore`, `TitanContainer`, `Relic`: `StateError` for use-after-dispose
+  - `Aegis.run()` / `Aegis.runWithConfig()`: `ArgumentError` for `maxAttempts <= 0`
+- **titan_basalt**: All debug-only `assert` statements converted to runtime errors:
+  - `Embargo`, `Trove`, `Volley`, `Census`, `Moat`, `Pyre`: `ArgumentError` for invalid constructor parameters
+  - `Arbiter`, `Tithe`, `Lode`: `StateError` for use-after-dispose, `ArgumentError` for invalid values
+  - `Warden`: `ArgumentError` for empty services list
+  - `Clarion`, `Tapestry`: `StateError` for duplicate registration
+  - `Banner`: `ArgumentError` for rollout values outside 0.0–1.0 (validated at registration time)
+  - `Sluice`: `ArgumentError` for non-positive stage concurrency (validated at pipeline creation)
+- **titan_colossus**: `Phantom` speedMultiplier and `Colossus.instance` changed from `assert` to runtime errors
 
 ## [1.0.2] - 2026-03-03
 

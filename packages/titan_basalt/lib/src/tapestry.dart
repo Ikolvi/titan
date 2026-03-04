@@ -319,7 +319,9 @@ class Tapestry<E> {
     required S Function(S state, E event) fold,
     bool Function(E event)? where,
   }) {
-    assert(!_weaves.containsKey(name), 'Weave "$name" already exists');
+    if (_weaves.containsKey(name)) {
+      throw StateError('Weave "$name" already exists');
+    }
 
     final prefix = '${name}_weave';
     final w = TapestryWeave<E, S>._(

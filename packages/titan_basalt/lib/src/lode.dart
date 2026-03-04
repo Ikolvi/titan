@@ -84,7 +84,9 @@ class LodeLease<T> {
 
   /// The pooled resource.
   T get resource {
-    assert(!_released, 'Cannot access a released LodeLease');
+    if (_released) {
+      throw StateError('Cannot access a released LodeLease');
+    }
     return _resource;
   }
 
@@ -140,8 +142,10 @@ class Lode<T> {
   }) : _create = create,
        _destroy_ = destroy,
        _validate = validate,
-       _maxSize = maxSize,
-       assert(maxSize > 0, 'maxSize must be positive') {
+       _maxSize = maxSize {
+    if (maxSize <= 0) {
+      throw ArgumentError.value(maxSize, 'maxSize', 'must be positive');
+    }
     final prefix = name ?? 'lode';
 
     _available = TitanState<int>(0, name: '${prefix}_available');
@@ -392,6 +396,8 @@ class Lode<T> {
   }
 
   void _assertNotDisposed() {
-    assert(!_disposed, 'Cannot use a disposed Lode');
+    if (_disposed) {
+      throw StateError('Cannot use a disposed Lode');
+    }
   }
 }

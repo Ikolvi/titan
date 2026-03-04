@@ -88,6 +88,50 @@ counter.dispose(); // Remove all listeners and dependents
 
 > Inside a Pillar, all Cores are auto-disposed when the Pillar is disposed.
 
+### ReadCore — Read-Only Access (Recommended)
+
+`ReadCore<T>` is an abstract interface that exposes only the read-only surface of a Core — `.value` getter, `.peek()`, `.listen()`, `.select()`, and `.previousValue` — while hiding the `.value` setter at compile time.
+
+**The recommended convention** is to make Core fields private and expose them as `ReadCore<T>` getters. This prevents consumers from mutating state directly — all changes must go through explicit Pillar methods:
+
+```dart
+class CounterPillar extends Pillar {
+  // Private — only this Pillar can mutate
+  late final _count = core(0);
+
+  // Public read-only view — consumers can read & track, but not write
+  ReadCore<int> get count => _count;
+
+  // Explicit mutation methods
+  void increment() => strike(() => _count.value++);
+  void decrement() => strike(() => _count.value--);
+  void reset() => strike(() => _count.value = 0);
+}
+```
+
+Consumers interact with the Pillar via methods, not direct state assignment:
+
+```dart
+// ✅ Good — mutation through Pillar methods
+pillar.increment();
+pillar.reset();
+
+// ✅ Good — reading state (auto-tracked in Vestige/Derived)
+print(pillar.count.value);
+
+// ❌ Won't compile — ReadCore hides the setter
+// pillar.count.value = 42;
+```
+
+**Why use ReadCore?**
+
+- **Prevents spaghetti mutations** — state changes are traceable to named methods
+- **Team-scale safety** — junior developers can't accidentally mutate from UI code
+- **Works with all reactive features** — `Derived`, `watch()`, `Vestige`, `listen()` all accept `ReadCore<T>`
+- **Zero runtime cost** — `ReadCore<T>` is a compile-time type narrowing, not a wrapper
+
+> **Note**: The basic examples in this guide use public Cores for simplicity. For production Pillars, prefer the ReadCore convention.
+
 ---
 
 ## Derived (TitanComputed)

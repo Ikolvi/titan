@@ -409,7 +409,7 @@ class _SagaTab extends StatelessWidget {
                 title: const Text('Simulate failure'),
                 subtitle: const Text('Saga will fail at publish step'),
                 value: p.shouldFailSaga.value,
-                onChanged: (v) => p.shouldFailSaga.value = v,
+                onChanged: (v) => p.setShouldFailSaga(value: v),
               ),
               const SizedBox(height: 8),
 
@@ -616,15 +616,15 @@ class _ConduitTab extends StatelessWidget {
                       spacing: 8,
                       children: [
                         FilledButton(
-                          onPressed: () => p.questReward.value = 500,
+                          onPressed: () => p.setQuestReward(500),
                           child: const Text('Set 500'),
                         ),
                         FilledButton(
-                          onPressed: () => p.questReward.value = 15000,
+                          onPressed: () => p.setQuestReward(15000),
                           child: const Text('Set 15,000 (clamped)'),
                         ),
                         FilledButton(
-                          onPressed: () => p.questReward.value = -100,
+                          onPressed: () => p.setQuestReward(-100),
                           child: const Text('Set -100 (clamped)'),
                         ),
                       ],
@@ -665,11 +665,11 @@ class _ConduitTab extends StatelessWidget {
                       children: [
                         FilledButton(
                           onPressed: () =>
-                              p.heroNameInput.value = '  SIR LANCELOT  ',
+                              p.setHeroNameInput('  SIR LANCELOT  '),
                           child: const Text('Set "  SIR LANCELOT  "'),
                         ),
                         FilledButton(
-                          onPressed: () => p.heroNameInput.value = '   KAEL   ',
+                          onPressed: () => p.setHeroNameInput('   KAEL   '),
                           child: const Text('Set "   KAEL   "'),
                         ),
                       ],
@@ -709,13 +709,13 @@ class _ConduitTab extends StatelessWidget {
                       spacing: 8,
                       children: [
                         FilledButton(
-                          onPressed: () => p.difficulty.value = 3,
+                          onPressed: () => p.setDifficulty(3),
                           child: const Text('Set 3 (valid)'),
                         ),
                         FilledButton(
                           onPressed: () {
                             try {
-                              p.difficulty.value = 10;
+                              p.setDifficulty(10);
                             } on ConduitRejectedException catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -729,7 +729,7 @@ class _ConduitTab extends StatelessWidget {
                         FilledButton(
                           onPressed: () {
                             try {
-                              p.difficulty.value = 0;
+                              p.setDifficulty(0);
                             } on ConduitRejectedException catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -1148,7 +1148,7 @@ class _ToolkitTab extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           IconButton(
-                            onPressed: pillar.counter.decrement,
+                            onPressed: pillar.decrementCounter,
                             icon: const Icon(Icons.remove),
                           ),
                           Text(
@@ -1156,7 +1156,7 @@ class _ToolkitTab extends StatelessWidget {
                             style: Theme.of(context).textTheme.headlineMedium,
                           ),
                           IconButton(
-                            onPressed: pillar.counter.increment,
+                            onPressed: pillar.incrementCounter,
                             icon: const Icon(Icons.add),
                           ),
                         ],
@@ -1166,7 +1166,7 @@ class _ToolkitTab extends StatelessWidget {
                       SwitchListTile(
                         title: const Text('Special Mode'),
                         value: pillar.isSpecialMode.value,
-                        onChanged: (_) => pillar.isSpecialMode.toggle(),
+                        onChanged: (_) => pillar.toggleSpecialMode(),
                       ),
                       // Tags
                       const SizedBox(height: 8),
@@ -1177,7 +1177,7 @@ class _ToolkitTab extends StatelessWidget {
                               (t) => Chip(
                                 label: Text(t),
                                 onDeleted: () =>
-                                    pillar.tags.removeWhere((tag) => tag == t),
+                                    pillar.removeTagWhere((tag) => tag == t),
                               ),
                             )
                             .toList(),
@@ -1185,7 +1185,7 @@ class _ToolkitTab extends StatelessWidget {
                       const SizedBox(height: 8),
                       FilledButton.tonal(
                         onPressed: () =>
-                            pillar.tags.add('tag-${pillar.counter.value}'),
+                            pillar.addTag('tag-${pillar.counter.value}'),
                         child: const Text('Add Tag'),
                       ),
                     ],

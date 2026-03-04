@@ -313,7 +313,7 @@ void main() {
       emitter.initialize();
       emitter.dispose();
 
-      expect(() => emitter.login('fail'), throwsA(isA<AssertionError>()));
+      expect(() => emitter.login('fail'), throwsA(isA<StateError>()));
     });
 
     test('listenOnce receives exactly one event', () {

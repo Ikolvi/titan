@@ -69,15 +69,19 @@ Or see the latest version on [pub.dev](https://pub.dev/packages/titan/install).
 import 'package:titan/titan.dart';
 
 class CounterPillar extends Pillar {
-  late final count = core(0);
-  late final doubled = derived(() => count.value * 2);
-  late final isEven = derived(() => count.value % 2 == 0);
+  late final _count = core(0);
+  ReadCore<int> get count => _count; // read-only public view
 
-  void increment() => strike(() => count.value++);
-  void decrement() => strike(() => count.value--);
-  void reset() => strike(() => count.value = 0);
+  late final doubled = derived(() => _count.value * 2);
+  late final isEven = derived(() => _count.value % 2 == 0);
+
+  void increment() => strike(() => _count.value++);
+  void decrement() => strike(() => _count.value--);
+  void reset() => strike(() => _count.value = 0);
 }
 ```
+
+> **ReadCore convention**: Core fields are private; public getters return `ReadCore<T>` which hides the setter. All mutations go through named Pillar methods. See [Core Concepts](../../docs/03-core-concepts.md#readcore--read-only-access-recommended).
 
 ### Use It (Pure Dart)
 

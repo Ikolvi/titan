@@ -192,14 +192,13 @@ class Trove<K, V> {
     this.onEvict,
     this.cleanupInterval = const Duration(seconds: 60),
     String? name,
-  }) : assert(
-         maxEntries == null || maxEntries > 0,
-         'maxEntries must be positive',
-       ),
-       _size = TitanState<int>(0, name: '${name ?? 'trove'}_size'),
+  }) : _size = TitanState<int>(0, name: '${name ?? 'trove'}_size'),
        _hits = TitanState<int>(0, name: '${name ?? 'trove'}_hits'),
        _misses = TitanState<int>(0, name: '${name ?? 'trove'}_misses'),
        _evictions = TitanState<int>(0, name: '${name ?? 'trove'}_evictions') {
+    if (maxEntries != null && maxEntries! <= 0) {
+      throw ArgumentError.value(maxEntries, 'maxEntries', 'must be positive');
+    }
     if (defaultTtl != null) {
       _cleanupTimer = Timer.periodic(cleanupInterval, (_) => _purgeExpired());
     }

@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-03-04
 
 ### Added
+- **ReadCore\<T\>** — Read-only abstract interface for `Core<T>` (compile-time type narrowing)
+  - Exposes only: `value` getter, `previousValue`, `name`, `isDisposed`, `peek()`, `listen()`, `select()`
+  - Hides `.value` setter at compile time — all mutations go through Pillar methods
+  - `TitanState<T>` implements `ReadCore<T>` — any Core can be returned as ReadCore
+  - Recommended convention: private Core fields + public `ReadCore<T>` getters
 - **Omen** — Reactive async derived with automatic dependency tracking (`Omen<T>`)
   - Auto-tracks Core reads inside async compute function
   - `AsyncValue` lifecycle: loading → data, refreshing, error
@@ -36,6 +41,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Moved to `titan_basalt`**: Trove, Moat, Portcullis, Anvil, Pyre, Codex, Quarry, Bulwark, Saga, Volley, Tether, Annals (infrastructure/resilience features)
+- **Assert → Runtime Errors**: All debug-only `assert` statements converted to runtime errors that fire in release builds:
+  - `ClampConduit`: `ArgumentError` for invalid min/max range
+  - `Pillar._assertNotDisposed()`: `StateError` for use-after-dispose
+  - `TitanStore._assertNotDisposed()`: `StateError` for use-after-dispose
+  - `TitanContainer._assertNotDisposed()`: `StateError` for use-after-dispose
+  - `Relic._assertNotDisposed()`: `StateError` for use-after-dispose
+  - `Aegis.run()`: `ArgumentError` for `maxAttempts <= 0`
+  - `Aegis.runWithConfig()`: `ArgumentError` for `config.maxAttempts <= 0`
+  - `Herald`: `StateError` for emit-after-dispose
 
 ## [1.0.2] - 2026-03-03
 

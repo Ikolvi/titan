@@ -34,19 +34,28 @@ class QuestboardPillar extends Pillar {
   late final heroName = epoch<String>('Kael', maxHistory: 20, name: 'heroName');
 
   /// Hero class selection.
-  late final heroClass = core(HeroClass.scout, name: 'heroClass');
+  late final _heroClass = core(HeroClass.scout, name: 'heroClass');
+
+  /// Read-only view of the hero class.
+  ReadCore<HeroClass> get heroClass => _heroClass;
 
   /// Total glory earned.
-  late final glory = core(0, name: 'glory');
+  late final _glory = core(0, name: 'glory');
+
+  /// Read-only view of glory.
+  ReadCore<int> get glory => _glory;
 
   /// Number of quests completed.
-  late final questsCompleted = core(0, name: 'questsCompleted');
+  late final _questsCompleted = core(0, name: 'questsCompleted');
+
+  /// Read-only view of quests completed.
+  ReadCore<int> get questsCompleted => _questsCompleted;
 
   // --------------- Derived State ---------------
 
   /// The hero's current rank based on glory.
   late final rank = derived(() {
-    final g = glory.value;
+    final g = _glory.value;
     if (g >= 500) return 'Titan';
     if (g >= 200) return 'Champion';
     if (g >= 50) return 'Warrior';
@@ -55,7 +64,7 @@ class QuestboardPillar extends Pillar {
 
   /// Progress to next rank (0.0 – 1.0).
   late final rankProgress = derived(() {
-    final g = glory.value;
+    final g = _glory.value;
     if (g >= 500) return 1.0;
     if (g >= 200) return (g - 200) / 300;
     if (g >= 50) return (g - 50) / 150;
@@ -68,9 +77,9 @@ class QuestboardPillar extends Pillar {
       id: 'hero-1',
       name: heroName.value,
       email: '',
-      heroClass: heroClass.value,
-      glory: glory.value,
-      questsCompleted: questsCompleted.value,
+      heroClass: _heroClass.value,
+      glory: _glory.value,
+      questsCompleted: _questsCompleted.value,
     ),
     name: 'hero',
   );
@@ -89,7 +98,7 @@ class QuestboardPillar extends Pillar {
     // Watch glory changes to log rank milestones
     watch(() {
       final r = rank.value;
-      log.info('Rank updated: $r (glory: ${glory.value})');
+      log.info('Rank updated: $r (glory: ${_glory.value})');
     });
   }
 
@@ -98,8 +107,8 @@ class QuestboardPillar extends Pillar {
   /// Award glory for completing a quest.
   void _onQuestCompleted(Quest quest) {
     strike(() {
-      glory.value += quest.gloryReward;
-      questsCompleted.value++;
+      _glory.value += quest.gloryReward;
+      _questsCompleted.value++;
     });
     log.info('Quest completed: "${quest.title}" (+${quest.gloryReward} glory)');
   }
@@ -129,7 +138,7 @@ class QuestboardPillar extends Pillar {
 
   /// Change hero class.
   void changeClass(HeroClass cls) {
-    heroClass.value = cls;
+    _heroClass.value = cls;
     emit(HeroUpdatedEvent(hero.value));
     log.debug('Hero class changed to ${cls.label}');
   }

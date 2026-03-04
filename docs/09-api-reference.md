@@ -305,6 +305,42 @@ Core<T>(T initialValue, {String? name, bool Function(T, T)? equals, List<Conduit
 
 ---
 
+### ReadCore\<T\>
+
+Read-only view of a `Core<T>`. An abstract interface class that exposes only the read surface — consumers can read and track the value but cannot mutate it.
+
+`Core<T>` implements `ReadCore<T>`, so any Core can be returned as a ReadCore.
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `value` | `T` | Read current value (tracks dependency) |
+| `previousValue` | `T?` | Previous value before last change |
+| `name` | `String?` | Debug name |
+| `isDisposed` | `bool` | Whether the underlying Core is disposed |
+
+#### Methods
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `peek()` | `T` | Read without dependency tracking |
+| `listen(void Function(T) callback)` | `void Function()` | Listen for changes, returns unsubscribe |
+| `select<R>(R Function(T) selector, {bool Function(R, R)? equals})` | `TitanComputed<R>` | Create a derived computation from a selector |
+
+#### Usage
+
+```dart
+class CartPillar extends Pillar {
+  late final _items = core<List<Item>>([]);
+  ReadCore<List<Item>> get items => _items; // Read-only public API
+
+  void addItem(Item item) => strike(() => _items.value = [..._items.value, item]);
+}
+```
+
+---
+
 ### Derived\<T\> (TitanComputed\<T\>)
 
 Derived reactive value with auto-tracking and caching. `Derived<T>` is a type alias for `TitanComputed<T>`.

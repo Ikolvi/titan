@@ -142,8 +142,10 @@ class Embargo {
   /// - [permits] defaults to 1 (mutex mode).
   /// - [timeout] sets the default wait timeout for [guard] and [acquire].
   /// - [name] is used for debug output and [managedNodes] naming.
-  Embargo({this.permits = 1, this.timeout, this.name})
-    : assert(permits > 0, 'permits must be > 0') {
+  Embargo({this.permits = 1, this.timeout, this.name}) {
+    if (permits <= 0) {
+      throw ArgumentError.value(permits, 'permits', 'must be > 0');
+    }
     final n = name ?? 'embargo';
     _activeCount = TitanState<int>(0, name: '${n}_active');
     _queueLength = TitanState<int>(0, name: '${n}_queue');

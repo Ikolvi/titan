@@ -64,6 +64,14 @@ typedef Core<T> = TitanState<T>;
 /// ```
 typedef Derived<T> = TitanComputed<T>;
 
+// Note: ReadCore<T> is exported directly from core/state.dart (not a typedef).
+// It is the read-only view of a Core, used to prevent external mutation:
+//
+//   class MyPillar extends Pillar {
+//     late final _count = core(0);
+//     ReadCore<int> get count => _count; // consumers can read, not write
+//   }
+
 // ---------------------------------------------------------------------------
 // Top-level functions
 // ---------------------------------------------------------------------------

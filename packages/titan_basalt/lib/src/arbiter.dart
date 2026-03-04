@@ -155,11 +155,12 @@ class Arbiter<T> {
     String? name,
   }) : _strategy = strategy,
        _merge = merge,
-       _autoResolve = autoResolve,
-       assert(
-         strategy != ArbiterStrategy.merge || merge != null,
-         'A merge callback is required when using ArbiterStrategy.merge',
-       ) {
+       _autoResolve = autoResolve {
+    if (strategy == ArbiterStrategy.merge && merge == null) {
+      throw ArgumentError(
+        'A merge callback is required when using ArbiterStrategy.merge',
+      );
+    }
     final prefix = name ?? 'arbiter';
 
     _conflictCount = TitanState<int>(0, name: '${prefix}_conflictCount');
@@ -332,6 +333,8 @@ class Arbiter<T> {
   }
 
   void _assertNotDisposed() {
-    assert(!_disposed, 'Cannot use a disposed Arbiter');
+    if (_disposed) {
+      throw StateError('Cannot use a disposed Arbiter');
+    }
   }
 }

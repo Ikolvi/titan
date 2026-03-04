@@ -249,8 +249,12 @@ class Volley<T> {
          0,
          name: name != null ? '${name}_total' : null,
        ) {
-    assert(concurrency > 0, 'concurrency must be > 0');
-    assert(maxRetries >= 0, 'maxRetries must be >= 0');
+    if (concurrency <= 0) {
+      throw ArgumentError.value(concurrency, 'concurrency', 'must be > 0');
+    }
+    if (maxRetries < 0) {
+      throw ArgumentError.value(maxRetries, 'maxRetries', 'must be >= 0');
+    }
   }
 
   /// Current status (reactive).

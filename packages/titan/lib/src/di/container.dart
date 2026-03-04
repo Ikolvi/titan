@@ -173,7 +173,9 @@ class TitanContainer {
   }
 
   void _assertNotDisposed() {
-    assert(!_isDisposed, 'TitanContainer has already been disposed.');
+    if (_isDisposed) {
+      throw StateError('TitanContainer has already been disposed.');
+    }
   }
 }
 

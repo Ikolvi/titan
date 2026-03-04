@@ -475,6 +475,8 @@ class Relic {
   }
 
   void _assertNotDisposed() {
-    assert(!_disposed, 'Relic has already been disposed.');
+    if (_disposed) {
+      throw StateError('Relic has already been disposed.');
+    }
   }
 }

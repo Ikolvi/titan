@@ -164,6 +164,8 @@ abstract class TitanStore {
   }
 
   void _assertNotDisposed() {
-    assert(!_isDisposed, '$runtimeType has already been disposed.');
+    if (_isDisposed) {
+      throw StateError('$runtimeType has already been disposed.');
+    }
   }
 }

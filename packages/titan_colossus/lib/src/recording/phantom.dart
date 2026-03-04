@@ -185,7 +185,15 @@ class Phantom {
     this.onTextInput,
     this.onTextAction,
     this.onKeyEvent,
-  }) : assert(speedMultiplier > 0, 'speedMultiplier must be positive');
+  }) {
+    if (speedMultiplier <= 0) {
+      throw ArgumentError.value(
+        speedMultiplier,
+        'speedMultiplier',
+        'must be positive',
+      );
+    }
+  }
 
   // -----------------------------------------------------------------------
   // Replay

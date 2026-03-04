@@ -4,6 +4,7 @@
 
 ### Changed
 - Updated `titan` dependency to `^1.1.0`
+- **Assert → Runtime Errors**: `Phantom` speedMultiplier validation and `Colossus.instance` guard changed from debug-only `assert` to runtime errors (`ArgumentError` / `StateError`)
 
 ## [1.0.2] - 2026-03-03
 

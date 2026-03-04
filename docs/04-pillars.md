@@ -286,7 +286,47 @@ void checkout() {
 }
 ```
 
-### 4. Always Dispose in Tests
+### 4. Use ReadCore for Public State (Recommended)
+
+Expose Core fields as `ReadCore<T>` getters to prevent external mutation. All state changes go through explicit Pillar methods:
+
+```dart
+class CartPillar extends Pillar {
+  // Private — only this Pillar can mutate
+  late final _items = core<List<CartItem>>([]);
+  late final _orderStatus = core(OrderStatus.idle);
+
+  // Public read-only views
+  ReadCore<List<CartItem>> get items => _items;
+  ReadCore<OrderStatus> get orderStatus => _orderStatus;
+
+  // Derived works transparently with ReadCore
+  late final total = derived(() =>
+    _items.value.fold(0.0, (s, i) => s + i.price));
+
+  // All mutations through named methods
+  void addItem(CartItem item) =>
+    strike(() => _items.value = [..._items.value, item]);
+
+  void checkout() => strike(() {
+    _items.value = [];
+    _orderStatus.value = OrderStatus.processing;
+  });
+}
+```
+
+Consumers can read and track state, but cannot mutate it directly:
+
+```dart
+Vestige<CartPillar>(
+  builder: (context, cart) => Text('${cart.items.value.length} items'),
+  // cart.items.value = []; ← Won't compile
+)
+```
+
+> See [Core Concepts — ReadCore](03-core-concepts.md#readcore--read-only-access-recommended) for details.
+
+### 5. Always Dispose in Tests
 
 ```dart
 late CounterPillar pillar;

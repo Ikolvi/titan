@@ -221,6 +221,14 @@ class Banner {
     @visibleForTesting DateTime Function()? now,
   }) : _now = now ?? DateTime.now {
     for (final flag in flags) {
+      final r = flag.rollout;
+      if (r != null && (r < 0.0 || r > 1.0)) {
+        throw ArgumentError.value(
+          r,
+          'rollout',
+          'rollout must be between 0.0 and 1.0 (flag "${flag.name}")',
+        );
+      }
       _configs[flag.name] = flag;
       _states[flag.name] = TitanState<bool>(flag.defaultValue);
     }

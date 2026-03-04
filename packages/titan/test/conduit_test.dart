@@ -457,7 +457,7 @@ void main() {
     test('ClampConduit asserts min <= max', () {
       expect(
         () => ClampConduit<int>(min: 10, max: 5),
-        throwsA(isA<AssertionError>()),
+        throwsA(isA<ArgumentError>()),
       );
     });
 

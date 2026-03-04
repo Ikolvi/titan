@@ -57,8 +57,8 @@ void main() {
     });
 
     test('rejects non-positive speed multiplier', () {
-      expect(() => Phantom(speedMultiplier: 0), throwsAssertionError);
-      expect(() => Phantom(speedMultiplier: -1), throwsAssertionError);
+      expect(() => Phantom(speedMultiplier: 0), throwsA(isA<ArgumentError>()));
+      expect(() => Phantom(speedMultiplier: -1), throwsA(isA<ArgumentError>()));
     });
 
     // ---------------------------------------------------------

@@ -166,8 +166,11 @@ class ClampConduit<T extends num> extends Conduit<T> {
   final T max;
 
   /// Creates a clamping conduit with the given range.
-  ClampConduit({required this.min, required this.max})
-    : assert(min <= max, 'min ($min) must be <= max ($max)');
+  ClampConduit({required this.min, required this.max}) {
+    if (min > max) {
+      throw ArgumentError('min ($min) must be <= max ($max)');
+    }
+  }
 
   @override
   T pipe(T oldValue, T newValue) => newValue.clamp(min, max) as T;

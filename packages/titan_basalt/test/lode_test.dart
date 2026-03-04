@@ -394,7 +394,7 @@ void main() {
       final pool = Lode<int>(create: () async => 42);
       await pool.dispose();
 
-      expect(() => pool.acquire(), throwsA(isA<AssertionError>()));
+      expect(() => pool.acquire(), throwsA(isA<StateError>()));
     });
 
     // ─── Pillar Extension ─────────────────────────────────────

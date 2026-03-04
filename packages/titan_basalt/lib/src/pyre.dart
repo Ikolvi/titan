@@ -347,12 +347,15 @@ class Pyre<T> {
          0,
          name: '${name ?? 'pyre'}_totalEnqueued',
        ) {
-    assert(concurrency > 0, 'concurrency must be > 0');
-    assert(
-      maxQueueSize == null || maxQueueSize > 0,
-      'maxQueueSize must be > 0',
-    );
-    assert(maxRetries >= 0, 'maxRetries must be >= 0');
+    if (concurrency <= 0) {
+      throw ArgumentError.value(concurrency, 'concurrency', 'must be > 0');
+    }
+    if (maxQueueSize != null && maxQueueSize <= 0) {
+      throw ArgumentError.value(maxQueueSize, 'maxQueueSize', 'must be > 0');
+    }
+    if (maxRetries < 0) {
+      throw ArgumentError.value(maxRetries, 'maxRetries', 'must be >= 0');
+    }
   }
 
   // ---------------------------------------------------------------------------

@@ -113,7 +113,10 @@ class Census<T extends num> {
     Core<T>? source,
     this.maxEntries = 10000,
     this.name,
-  }) : assert(maxEntries > 0, 'maxEntries must be > 0') {
+  }) {
+    if (maxEntries <= 0) {
+      throw ArgumentError.value(maxEntries, 'maxEntries', 'must be > 0');
+    }
     final n = name ?? 'census';
     _count = TitanState<int>(0, name: '${n}_count');
     _sum = TitanState<double>(0, name: '${n}_sum');
@@ -238,7 +241,9 @@ class Census<T extends num> {
   /// final p50 = stats.percentile(50); // median
   /// ```
   double percentile(int p) {
-    assert(p >= 0 && p <= 100, 'percentile must be 0–100');
+    if (p < 0 || p > 100) {
+      throw ArgumentError.value(p, 'p', 'must be between 0 and 100');
+    }
     if (_entries.isEmpty) return 0;
 
     final sorted = _entries.map((e) => e.value.toDouble()).toList()..sort();

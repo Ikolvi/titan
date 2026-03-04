@@ -219,7 +219,10 @@ class Sluice<T> {
     this.onComplete,
     this.onError,
     String? name,
-  }) : assert(stages.isNotEmpty, 'stages must not be empty') {
+  }) {
+    if (stages.isEmpty) {
+      throw ArgumentError.value(stages, 'stages', 'must not be empty');
+    }
     final prefix = name ?? 'sluice';
 
     _fed = TitanState<int>(0, name: '${prefix}_fed');
@@ -251,6 +254,13 @@ class Sluice<T> {
 
     // Initialize stages and per-stage metrics.
     for (final stageDef in stages) {
+      if (stageDef.concurrency <= 0) {
+        throw ArgumentError.value(
+          stageDef.concurrency,
+          'concurrency',
+          'must be positive (stage "${stageDef.name}")',
+        );
+      }
       final metrics = SluiceStageMetrics._(
         prefix: '${prefix}_${stageDef.name}',
       );

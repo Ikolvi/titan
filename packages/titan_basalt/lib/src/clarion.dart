@@ -290,7 +290,9 @@ class Clarion {
     bool immediate = false,
   }) {
     if (_disposed) return;
-    assert(!_jobs.containsKey(name), 'Job "$name" already registered');
+    if (_jobs.containsKey(name)) {
+      throw StateError('Job "$name" already registered');
+    }
 
     final prefix = '${name}_job';
     final state = ClarionJobState._(prefix: prefix);
@@ -323,7 +325,9 @@ class Clarion {
     Future<void> Function() handler,
   ) {
     if (_disposed) return;
-    assert(!_jobs.containsKey(name), 'Job "$name" already registered');
+    if (_jobs.containsKey(name)) {
+      throw StateError('Job "$name" already registered');
+    }
 
     final prefix = '${name}_job';
     final state = ClarionJobState._(prefix: prefix);

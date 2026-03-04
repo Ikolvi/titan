@@ -657,19 +657,19 @@ void main() {
       });
 
       test('rollout assertion enforces range', () {
-        // Valid values
-        const BannerFlag(name: 'a', rollout: 0.0);
-        const BannerFlag(name: 'b', rollout: 0.5);
-        const BannerFlag(name: 'c', rollout: 1.0);
+        // Valid values — no error
+        Banner(flags: [const BannerFlag(name: 'a', rollout: 0.0)]);
+        Banner(flags: [const BannerFlag(name: 'b', rollout: 0.5)]);
+        Banner(flags: [const BannerFlag(name: 'c', rollout: 1.0)]);
 
-        // Invalid values trigger assertion
+        // Invalid values trigger ArgumentError at registration time
         expect(
-          () => BannerFlag(name: 'bad', rollout: -0.1),
-          throwsA(isA<AssertionError>()),
+          () => Banner(flags: [BannerFlag(name: 'bad', rollout: -0.1)]),
+          throwsA(isA<ArgumentError>()),
         );
         expect(
-          () => BannerFlag(name: 'bad', rollout: 1.1),
-          throwsA(isA<AssertionError>()),
+          () => Banner(flags: [BannerFlag(name: 'bad', rollout: 1.1)]),
+          throwsA(isA<ArgumentError>()),
         );
       });
     });
