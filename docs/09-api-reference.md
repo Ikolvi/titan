@@ -1842,8 +1842,8 @@ volley<T>({
 | `progress` | `double` | Progress 0.0–1.0 (reactive) |
 | `completedCount` | `int` | Number of completed tasks (reactive) |
 | `totalCount` | `int` | Total tasks (reactive) |
-| `successCount` | `int` | Number of successful tasks (reactive) |
-| `failedCount` | `int` | Number of failed tasks (reactive) |
+| `successCount` | `int` | Number of successful tasks |
+| `failedCount` | `int` | Number of failed tasks |
 | `isRunning` | `bool` | Whether currently executing |
 | `isDisposed` | `bool` | Whether disposed |
 | `execute(List<VolleyTask<T>> tasks)` | `Future<List<VolleyResult<T>>>` | Run batch with concurrency limit |
@@ -1925,8 +1925,8 @@ tether({String? name})
 | `tryCall<Req, Res>(name, request, {timeout})` | `Future<Res?>` | Returns null if not registered |
 | `names` | `Set<String>` | All registered names |
 | `registeredCount` | `int` | Number of registered handlers (reactive) |
-| `callCount` | `int` | Total calls made (reactive) |
-| `lastCallTime` | `DateTime?` | Timestamp of last call (reactive) |
+| `callCount` | `int` | Total calls made |
+| `lastCallTime` | `DateTime?` | Timestamp of last call (lazy) |
 | `errorCount` | `int` | Total failed calls (reactive) |
 | `reset()` | `void` | Clear all registrations |
 | `dispose()` | `void` | Dispose instance and reactive state |
