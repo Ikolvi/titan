@@ -719,6 +719,7 @@ class EnterpriseDemoPillar extends Pillar {
       log.warning('API unavailable: $e');
       captureError(e, action: 'fetchProtected');
     } catch (e, s) {
+      log.error('fetchProtected error: $e');
       captureError(e, stackTrace: s, action: 'fetchProtected');
     }
   }

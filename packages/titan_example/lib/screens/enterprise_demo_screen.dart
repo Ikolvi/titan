@@ -198,8 +198,16 @@ class _LoomTab extends StatelessWidget {
 // Portcullis Tab — Circuit Breaker
 // ---------------------------------------------------------------------------
 
-class _PortcullisTab extends StatelessWidget {
+class _PortcullisTab extends StatefulWidget {
   const _PortcullisTab();
+
+  @override
+  State<_PortcullisTab> createState() => _PortcullisTabState();
+}
+
+class _PortcullisTabState extends State<_PortcullisTab> {
+  int _fetchIndex = 0;
+  String _lastAction = '';
 
   @override
   Widget build(BuildContext context) {
@@ -207,6 +215,7 @@ class _PortcullisTab extends StatelessWidget {
       builder: (context, p) {
         final breakerState = p.apiBreaker.state;
         final failures = p.apiBreaker.failureCount;
+        final successes = p.apiBreaker.successCount;
         final quest = p.protectedQuest.value;
 
         return SingleChildScrollView(
@@ -219,6 +228,11 @@ class _PortcullisTab extends StatelessWidget {
 
               // Circuit status
               Card(
+                color: breakerState == PortcullisState.closed
+                    ? Colors.green.shade50
+                    : breakerState == PortcullisState.halfOpen
+                    ? Colors.orange.shade50
+                    : Colors.red.shade50,
                 child: ListTile(
                   leading: Icon(
                     breakerState == PortcullisState.closed
@@ -231,48 +245,115 @@ class _PortcullisTab extends StatelessWidget {
                         : breakerState == PortcullisState.halfOpen
                         ? Colors.orange
                         : Colors.red,
+                    size: 32,
                   ),
-                  title: Text('State: ${breakerState.name}'),
-                  subtitle: Text('Failures: $failures / 3'),
+                  title: Text(
+                    'State: ${breakerState.name.toUpperCase()}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    'Failures: $failures / ${p.apiBreaker.failureThreshold}'
+                    ' • Successes: $successes',
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
 
               // Actions
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () => p.fetchProtected('quest-0'),
-                      icon: const Icon(Icons.cloud_download),
-                      label: const Text('Fetch'),
-                    ),
+                  FilledButton.icon(
+                    onPressed: breakerState == PortcullisState.open
+                        ? null
+                        : () {
+                            p.fetchProtected('quest-$_fetchIndex');
+                            setState(() {
+                              _fetchIndex = (_fetchIndex + 1) % 42;
+                              _lastAction = 'Fetching quest-$_fetchIndex...';
+                            });
+                          },
+                    icon: const Icon(Icons.cloud_download),
+                    label: const Text('Fetch Quest'),
                   ),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: p.apiBreaker.trip,
-                    child: const Text('Trip'),
+                  OutlinedButton.icon(
+                    onPressed: breakerState == PortcullisState.open
+                        ? null
+                        : () {
+                            p.apiBreaker.trip();
+                            setState(
+                              () => _lastAction = 'Circuit tripped to OPEN',
+                            );
+                          },
+                    icon: const Icon(Icons.flash_on),
+                    label: const Text('Trip'),
                   ),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: p.apiBreaker.reset,
-                    child: const Text('Reset'),
+                  OutlinedButton.icon(
+                    onPressed: breakerState == PortcullisState.closed
+                        ? null
+                        : () {
+                            p.apiBreaker.reset();
+                            setState(
+                              () => _lastAction = 'Circuit reset to CLOSED',
+                            );
+                          },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reset'),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
-              // Result
-              if (quest != null)
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.shield),
-                    title: Text(quest.title),
-                    subtitle: Text(
-                      '${quest.difficulty.label} • ${quest.gloryReward} glory',
+              // Last action feedback
+              if (_lastAction.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    _lastAction,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade600,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
                 ),
+              const SizedBox(height: 16),
+
+              // Open circuit warning
+              if (breakerState == PortcullisState.open)
+                Card(
+                  color: Colors.red.shade50,
+                  child: const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning, color: Colors.red),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Circuit is OPEN — requests are blocked. '
+                            'Press Reset or wait for auto-recovery.',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Result
+              if (quest != null) ...[
+                const SizedBox(height: 8),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.shield, color: Colors.indigo),
+                    title: Text(quest.title),
+                    subtitle: Text(
+                      '${quest.difficulty.label} • ${quest.gloryReward} glory'
+                      ' • ID: ${quest.id}',
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         );
