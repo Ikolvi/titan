@@ -56,6 +56,10 @@ class BannerRule {
 /// ```
 class BannerFlag {
   /// Creates a feature flag configuration.
+  ///
+  /// The [rollout] value, if provided, must be between 0.0 and 1.0.
+  /// This is validated at registration time by [Banner] and
+  /// [Banner.register].
   const BannerFlag({
     required this.name,
     this.defaultValue = false,
@@ -63,10 +67,7 @@ class BannerFlag {
     this.rollout,
     this.expiresAt,
     this.description,
-  }) : assert(
-         rollout == null || (rollout >= 0.0 && rollout <= 1.0),
-         'rollout must be between 0.0 and 1.0',
-       );
+  });
 
   /// Unique identifier for this flag.
   final String name;
@@ -459,6 +460,14 @@ class Banner {
   void register(BannerFlag flag) {
     if (_configs.containsKey(flag.name)) {
       throw ArgumentError('Banner flag "${flag.name}" is already registered');
+    }
+    final r = flag.rollout;
+    if (r != null && (r < 0.0 || r > 1.0)) {
+      throw ArgumentError.value(
+        r,
+        'rollout',
+        'rollout must be between 0.0 and 1.0 (flag "${flag.name}")',
+      );
     }
     _configs[flag.name] = flag;
     _states[flag.name] = TitanState<bool>(flag.defaultValue);
