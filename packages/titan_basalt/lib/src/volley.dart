@@ -193,11 +193,11 @@ class Volley<T> {
   /// Reactive completed count (successes + failures).
   final TitanState<int> _completedCount;
 
-  /// Reactive success count.
-  final TitanState<int> _successCount;
+  /// Plain success count (non-reactive for hot-path performance).
+  int _rawSuccessCount = 0;
 
-  /// Reactive failed count.
-  final TitanState<int> _failedCount;
+  /// Plain failed count (non-reactive for hot-path performance).
+  int _rawFailedCount = 0;
 
   /// Reactive total count.
   final TitanState<int> _totalCount;
@@ -237,14 +237,6 @@ class Volley<T> {
          0,
          name: name != null ? '${name}_completed' : null,
        ),
-       _successCount = TitanState<int>(
-         0,
-         name: name != null ? '${name}_success' : null,
-       ),
-       _failedCount = TitanState<int>(
-         0,
-         name: name != null ? '${name}_failed' : null,
-       ),
        _totalCount = TitanState<int>(
          0,
          name: name != null ? '${name}_total' : null,
@@ -272,11 +264,11 @@ class Volley<T> {
   /// Number of completed tasks — successes + failures (reactive).
   int get completedCount => _completedCount.value;
 
-  /// Number of successful tasks (reactive).
-  int get successCount => _successCount.value;
+  /// Number of successful tasks.
+  int get successCount => _rawSuccessCount;
 
-  /// Number of failed tasks (reactive).
-  int get failedCount => _failedCount.value;
+  /// Number of failed tasks.
+  int get failedCount => _rawFailedCount;
 
   /// Total number of tasks (reactive).
   int get totalCount => _totalCount.value;
@@ -309,8 +301,8 @@ class Volley<T> {
     _status.value = VolleyStatus.running;
     _totalCount.value = tasks.length;
     _completedCount.value = 0;
-    _successCount.value = 0;
-    _failedCount.value = 0;
+    _rawSuccessCount = 0;
+    _rawFailedCount = 0;
     _progress.value = 0.0;
 
     if (tasks.isEmpty) {
@@ -349,6 +341,12 @@ class Volley<T> {
     var nextIndex = 0;
     var completed = 0;
     final total = tasks.length;
+    // Pre-compute fast-path eligibility (avoids per-task field checks).
+    final useFastPath =
+        maxRetries == 0 &&
+        taskTimeout == null &&
+        onTaskComplete == null &&
+        onTaskFailed == null;
 
     Future<void> worker() async {
       while (!_cancelRequested) {
@@ -356,8 +354,24 @@ class Volley<T> {
         if (index >= total) break;
 
         final task = tasks[index];
-        final result = await _executeWithRetry(task);
-        results[index] = result;
+
+        if (useFastPath && task.timeout == null) {
+          // Inline fast path: no retry, no timeout, no callbacks.
+          try {
+            final value = await task.execute();
+            _rawSuccessCount++;
+            results[index] = VolleySuccess(taskName: task.name, value: value);
+          } catch (e, s) {
+            _rawFailedCount++;
+            results[index] = VolleyFailure(
+              taskName: task.name,
+              error: e,
+              stackTrace: s,
+            );
+          }
+        } else {
+          results[index] = await _executeWithRetry(task);
+        }
 
         completed++;
         _completedCount.value = completed;
@@ -385,12 +399,12 @@ class Volley<T> {
           value = await task.execute();
         }
 
-        _successCount.value++;
+        _rawSuccessCount++;
         onTaskComplete?.call(task.name, value);
         return VolleySuccess(taskName: task.name, value: value);
       } catch (e, s) {
         if (attempt >= maxAttempts) {
-          _failedCount.value++;
+          _rawFailedCount++;
           onTaskFailed?.call(task.name, e);
           return VolleyFailure(taskName: task.name, error: e, stackTrace: s);
         }
@@ -400,7 +414,7 @@ class Volley<T> {
     }
 
     // Should not reach here, but satisfy the type system
-    _failedCount.value++;
+    _rawFailedCount++;
     return VolleyFailure(
       taskName: task.name,
       error: StateError('Exhausted retries'),
@@ -421,8 +435,8 @@ class Volley<T> {
     _status.value = VolleyStatus.idle;
     _progress.value = 0.0;
     _completedCount.value = 0;
-    _successCount.value = 0;
-    _failedCount.value = 0;
+    _rawSuccessCount = 0;
+    _rawFailedCount = 0;
     _totalCount.value = 0;
     _cancelRequested = false;
   }
@@ -432,8 +446,6 @@ class Volley<T> {
     _status,
     _progress,
     _completedCount,
-    _successCount,
-    _failedCount,
     _totalCount,
   ];
 
@@ -444,8 +456,6 @@ class Volley<T> {
     _status.dispose();
     _progress.dispose();
     _completedCount.dispose();
-    _successCount.dispose();
-    _failedCount.dispose();
     _totalCount.dispose();
   }
 
@@ -458,7 +468,7 @@ class Volley<T> {
   @override
   String toString() =>
       'Volley(status: ${_status.peek()}, '
-      'success: ${_successCount.peek()}, '
-      'failed: ${_failedCount.peek()}, '
+      'success: $_rawSuccessCount, '
+      'failed: $_rawFailedCount, '
       'total: ${_totalCount.peek()})';
 }

@@ -108,24 +108,25 @@ abstract final class Herald {
   /// Herald.emit(CartCleared());
   /// ```
   static void emit<T>(T event) {
+    // Hot path: dispatch to typed listeners first.
+    final controller = _controllers[T];
+    if (controller != null && !controller.isClosed && controller.hasListener) {
+      controller.add(event);
+    }
+
+    // Cache last event per type.
     if (maxLastEventTypes > 0) {
       _lastEvents[T] = event;
-      // Evict oldest entries if over the cap
-      while (_lastEvents.length > maxLastEventTypes) {
+      // Evict oldest if over the cap (at most 1 removal per emit).
+      if (_lastEvents.length > maxLastEventTypes) {
         _lastEvents.remove(_lastEvents.keys.first);
       }
     }
 
     // Notify global listeners (used by Lens debug overlay).
-    if (_globalController != null &&
-        !_globalController!.isClosed &&
-        _globalController!.hasListener) {
-      _globalController!.add(HeraldEvent(T, event));
-    }
-
-    final controller = _controllers[T];
-    if (controller != null && !controller.isClosed && controller.hasListener) {
-      controller.add(event);
+    final gc = _globalController;
+    if (gc != null && !gc.isClosed && gc.hasListener) {
+      gc.add(HeraldEvent(T, event));
     }
   }
 

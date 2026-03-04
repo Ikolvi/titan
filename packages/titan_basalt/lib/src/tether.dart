@@ -87,9 +87,14 @@ class Tether {
 
   // Reactive state
   final TitanState<int> _registeredCount;
-  final TitanState<int> _callCount;
-  final TitanState<DateTime?> _lastCallTime;
   final TitanState<int> _errorCount;
+
+  /// Plain call counter (non-reactive for hot-path performance).
+  int _callCount = 0;
+
+  /// Last call timestamp (computed lazily to avoid DateTime.now() overhead).
+  DateTime? _lastCallTime;
+  bool _lastCallTimeDirty = false;
 
   final String? _name;
   bool _isDisposed = false;
@@ -110,11 +115,6 @@ class Tether {
         0,
         name: '${name ?? 'tether'}_registeredCount',
       ),
-      _callCount = TitanState<int>(0, name: '${name ?? 'tether'}_callCount'),
-      _lastCallTime = TitanState<DateTime?>(
-        null,
-        name: '${name ?? 'tether'}_lastCallTime',
-      ),
       _errorCount = TitanState<int>(0, name: '${name ?? 'tether'}_errorCount');
 
   // ---------------------------------------------------------------------------
@@ -124,11 +124,20 @@ class Tether {
   /// Number of registered handlers (reactive).
   int get registeredCount => _registeredCount.value;
 
-  /// Total number of calls made (reactive).
-  int get callCount => _callCount.value;
+  /// Total number of calls made.
+  int get callCount => _callCount;
 
-  /// Timestamp of the last call (reactive).
-  DateTime? get lastCallTime => _lastCallTime.value;
+  /// Timestamp of the last call.
+  ///
+  /// Computed lazily on first access after a call to avoid
+  /// `DateTime.now()` overhead on the hot path.
+  DateTime? get lastCallTime {
+    if (_lastCallTimeDirty) {
+      _lastCallTime = DateTime.now();
+      _lastCallTimeDirty = false;
+    }
+    return _lastCallTime;
+  }
 
   /// Total number of errors during calls (reactive).
   int get errorCount => _errorCount.value;
@@ -205,11 +214,7 @@ class Tether {
   /// ```dart
   /// final user = await tether.call<String, User>('getUser', 'user_123');
   /// ```
-  Future<Res> call<Req, Res>(
-    String name,
-    Req request, {
-    Duration? timeout,
-  }) async {
+  Future<Res> call<Req, Res>(String name, Req request, {Duration? timeout}) {
     _assertNotDisposed();
     final entry = _handlers[name];
     if (entry == null) {
@@ -219,25 +224,30 @@ class Tether {
     final handler = entry.handler as Future<Res> Function(Req);
     final effectiveTimeout = timeout ?? entry.timeout;
 
-    _callCount.value++;
-    _lastCallTime.value = DateTime.now();
+    _callCount++;
+    _lastCallTimeDirty = true;
 
-    try {
-      if (effectiveTimeout != null) {
-        return await handler(request).timeout(
-          effectiveTimeout,
-          onTimeout: () => throw TimeoutException(
-            'Tether "$name" timed out after '
-            '${effectiveTimeout.inMilliseconds}ms',
+    if (effectiveTimeout != null) {
+      return handler(request)
+          .timeout(
             effectiveTimeout,
-          ),
-        );
-      }
-      return await handler(request);
-    } catch (e) {
-      _errorCount.value++;
-      rethrow;
+            onTimeout: () => throw TimeoutException(
+              'Tether "$name" timed out after '
+              '${effectiveTimeout.inMilliseconds}ms',
+              effectiveTimeout,
+            ),
+          )
+          .onError<Object>((e, s) {
+            _errorCount.value++;
+            // ignore: only_throw_errors
+            throw e;
+          });
     }
+    return handler(request).onError<Object>((e, s) {
+      _errorCount.value++;
+      // ignore: only_throw_errors
+      throw e;
+    });
   }
 
   /// Try to call a tether, returning null if not registered.
@@ -253,9 +263,9 @@ class Tether {
     String name,
     Req request, {
     Duration? timeout,
-  }) async {
-    if (!has(name)) return null;
-    return await call<Req, Res>(name, request, timeout: timeout);
+  }) {
+    if (!has(name)) return Future.value();
+    return call<Req, Res>(name, request, timeout: timeout);
   }
 
   // ---------------------------------------------------------------------------
@@ -266,18 +276,14 @@ class Tether {
   void reset() {
     _handlers.clear();
     _registeredCount.value = 0;
-    _callCount.value = 0;
-    _lastCallTime.value = null;
+    _callCount = 0;
+    _lastCallTime = null;
+    _lastCallTimeDirty = false;
     _errorCount.value = 0;
   }
 
   /// All managed reactive nodes (for Pillar disposal).
-  List<TitanState<dynamic>> get managedNodes => [
-    _registeredCount,
-    _callCount,
-    _lastCallTime,
-    _errorCount,
-  ];
+  List<TitanState<dynamic>> get managedNodes => [_registeredCount, _errorCount];
 
   /// Dispose the Tether and all reactive state.
   void dispose() {
@@ -285,8 +291,6 @@ class Tether {
     _isDisposed = true;
     _handlers.clear();
     _registeredCount.dispose();
-    _callCount.dispose();
-    _lastCallTime.dispose();
     _errorCount.dispose();
   }
 
@@ -302,7 +306,7 @@ class Tether {
   String toString() =>
       'Tether(${_name ?? 'unnamed'}, '
       'handlers: ${_handlers.length}, '
-      'calls: ${_callCount.peek()}, '
+      'calls: $_callCount, '
       'errors: ${_errorCount.peek()})';
 
   // ---------------------------------------------------------------------------

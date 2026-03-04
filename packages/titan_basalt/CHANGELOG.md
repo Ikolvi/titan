@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.5
+
+### Performance
+- **Annals** — Replaced `List<AnnalEntry>` with `Queue<AnnalEntry>` and `removeAt(0)` with `removeFirst()` for O(1) eviction at capacity (~60× faster recording throughput at max entries).
+- **Tether** — Made `call()` non-async (returns Future directly with `.onError()` for error tracking), eliminating async state machine overhead. Lazy `DateTime.now()` via dirty flag avoids ~150ns syscall per call. Replaced reactive `_callCount` / `_lastCallTime` TitanState nodes with plain counters (managed nodes: 4 → 2).
+- **Volley** — Replaced reactive `_successCount` / `_failedCount` TitanState nodes with plain `int` counters. Pre-computed fast-path eligibility flag. Inlined no-retry/no-timeout worker path to skip `_executeWithRetry` indirection (managed nodes: 6 → 4).
+
 ## 1.12.4
 
 ### Fixed

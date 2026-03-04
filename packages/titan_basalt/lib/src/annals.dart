@@ -34,6 +34,7 @@
 library;
 
 import 'dart:async';
+import 'dart:collection';
 
 /// A single entry in the audit trail.
 ///
@@ -123,7 +124,7 @@ class Annals {
 
   static bool _enabled = false;
   static int _maxEntries = 10000;
-  static final List<AnnalEntry> _entries = [];
+  static final Queue<AnnalEntry> _entries = Queue<AnnalEntry>();
   static StreamController<AnnalEntry>? _controller;
 
   /// Lazily creates the broadcast StreamController.
@@ -185,11 +186,11 @@ class Annals {
   static void record(AnnalEntry entry) {
     if (!_enabled) return;
 
-    _entries.add(entry);
+    _entries.addLast(entry);
 
-    // Evict oldest when over capacity — O(1) with List.removeAt(0) amortized.
+    // Evict oldest when over capacity — O(1) with Queue.removeFirst().
     while (_entries.length > _maxEntries) {
-      _entries.removeAt(0);
+      _entries.removeFirst();
     }
 
     final c = _controller;
@@ -203,7 +204,7 @@ class Annals {
   // ---------------------------------------------------------------------------
 
   /// All recorded entries (oldest first, unmodifiable view).
-  static List<AnnalEntry> get entries => List.unmodifiable(_entries);
+  static List<AnnalEntry> get entries => List.unmodifiable(_entries.toList());
 
   /// The number of recorded entries.
   static int get length => _entries.length;
@@ -242,16 +243,13 @@ class Annals {
     }
 
     // Fast path: when limit is specified, collect the last N matches
-    // by iterating backwards — avoids materializing a copy.
+    // by iterating backwards.
     if (limit != null && limit > 0) {
+      final asList = _entries.toList(growable: false);
       final collected = <AnnalEntry>[];
-      for (
-        var i = _entries.length - 1;
-        i >= 0 && collected.length < limit;
-        i--
-      ) {
-        if (matches(_entries[i])) {
-          collected.add(_entries[i]);
+      for (var i = asList.length - 1; i >= 0 && collected.length < limit; i--) {
+        if (matches(asList[i])) {
+          collected.add(asList[i]);
         }
       }
       return collected.reversed.toList();

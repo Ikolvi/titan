@@ -482,7 +482,7 @@ class Mandate {
   MandateVerdict _evaluate() {
     if (_writs.isEmpty) return const MandateGrant();
 
-    final violations = <WritViolation>[];
+    List<WritViolation>? violations;
     var passWeight = 0;
     var failWeight = 0;
 
@@ -494,25 +494,27 @@ class Mandate {
         passWeight += writ.weight;
       } else {
         failWeight += writ.weight;
-        violations.add(WritViolation(writName: writ.name, reason: writ.reason));
+        (violations ??= []).add(
+          WritViolation(writName: writ.name, reason: writ.reason),
+        );
       }
     }
 
     switch (_strategy) {
       case MandateStrategy.allOf:
-        return violations.isEmpty
+        return violations == null
             ? const MandateGrant()
             : MandateDenial(violations: violations);
 
       case MandateStrategy.anyOf:
         return passWeight > 0
             ? const MandateGrant()
-            : MandateDenial(violations: violations);
+            : MandateDenial(violations: violations ?? const []);
 
       case MandateStrategy.majority:
         return passWeight > failWeight
             ? const MandateGrant()
-            : MandateDenial(violations: violations);
+            : MandateDenial(violations: violations ?? const []);
     }
   }
 

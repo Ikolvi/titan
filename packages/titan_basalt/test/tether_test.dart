@@ -183,7 +183,7 @@ void main() {
 
     test('managedNodes returns reactive cores', () {
       final t = Tether();
-      expect(t.managedNodes, hasLength(4));
+      expect(t.managedNodes, hasLength(2));
       t.dispose();
     });
 

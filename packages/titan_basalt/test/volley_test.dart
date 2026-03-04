@@ -211,7 +211,7 @@ void main() {
 
       final nodes = volley.managedNodes;
       expect(nodes, isNotEmpty);
-      expect(nodes.length, 6);
+      expect(nodes.length, 4);
 
       volley.dispose();
     });
