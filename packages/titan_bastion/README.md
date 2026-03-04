@@ -68,6 +68,7 @@ Vestige<CounterPillar>(
 |--------|-------------|
 | **Vestige\<P\>** | Auto-tracking consumer — rebuilds only when read Cores change |
 | **Beacon** | Scoped Pillar provider — creates, initializes, and auto-disposes |
+| **TitanPlugin** | Abstract plugin interface for Beacon lifecycle hooks |
 | **Confluence2/3/4** | Multi-Pillar consumer widget |
 | **Lens** | In-app debug panel (moved to `titan_colossus`) |
 | **Spark** | Hooks-style widget — `useCore`, `useEffect`, auto-managed lifecycle |
@@ -102,6 +103,13 @@ Beacon(
     AuthPillar.new,
     CartPillar.new,
   ],
+  child: const MyApp(),
+)
+
+// With plugins (e.g., add/remove Colossus with one line)
+Beacon(
+  pillars: [CounterPillar.new],
+  plugins: [if (kDebugMode) ColossusPlugin()],
   child: const MyApp(),
 )
 

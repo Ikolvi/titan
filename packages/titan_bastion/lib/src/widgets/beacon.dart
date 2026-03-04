@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:titan/titan.dart';
 
+import 'titan_plugin.dart';
+
 /// **Beacon** — Shines Pillar state down to all children.
 ///
 /// `Beacon` is the scoped provider widget that creates [Pillar]
@@ -130,6 +132,24 @@ class Beacon extends StatefulWidget {
   /// ```
   final List<Pillar>? overrides;
 
+  /// Plugins that augment the Beacon with additional widget wrapping.
+  ///
+  /// Plugins are attached during `initState` and detached during
+  /// `dispose`. Each plugin's [TitanPlugin.buildOverlay] wraps the
+  /// child widget tree, enabling zero-refactoring integration of
+  /// cross-cutting concerns like performance monitoring.
+  ///
+  /// ```dart
+  /// Beacon(
+  ///   pillars: [CounterPillar.new],
+  ///   plugins: [
+  ///     if (kDebugMode) ColossusPlugin(tremors: [...]),
+  ///   ],
+  ///   child: MaterialApp(...),
+  /// )
+  /// ```
+  final List<TitanPlugin>? plugins;
+
   /// The widget subtree that can access the Pillars via [Vestige].
   final Widget child;
 
@@ -139,6 +159,7 @@ class Beacon extends StatefulWidget {
     required this.pillars,
     required this.child,
     this.overrides,
+    this.plugins,
   }) : values = const [];
 
   /// Creates a Beacon with pre-existing Pillar instances.
@@ -159,6 +180,7 @@ class Beacon extends StatefulWidget {
     required this.values,
     required this.child,
     this.overrides,
+    this.plugins,
   }) : pillars = const [];
 
   @override
@@ -173,6 +195,14 @@ class _BeaconState extends State<Beacon> {
   void initState() {
     super.initState();
     _createPillars();
+
+    // Attach plugins after Pillars are created
+    final plugins = widget.plugins;
+    if (plugins != null) {
+      for (final plugin in plugins) {
+        plugin.onAttach();
+      }
+    }
   }
 
   void _createPillars() {
@@ -211,6 +241,7 @@ class _BeaconState extends State<Beacon> {
 
   @override
   void dispose() {
+    // Dispose owned Pillars first
     for (final entry in _pillars.entries) {
       if (_ownedTypes.contains(entry.key)) {
         entry.value.dispose();
@@ -218,12 +249,31 @@ class _BeaconState extends State<Beacon> {
     }
     _pillars.clear();
     _ownedTypes.clear();
+
+    // Detach plugins after Pillars are disposed (reverse order)
+    final plugins = widget.plugins;
+    if (plugins != null) {
+      for (final plugin in plugins.reversed) {
+        plugin.onDetach();
+      }
+    }
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return _BeaconInherited(pillars: _pillars, child: widget.child);
+    Widget child = widget.child;
+
+    // Apply plugin overlays inside the InheritedWidget scope
+    final plugins = widget.plugins;
+    if (plugins != null) {
+      for (final plugin in plugins) {
+        child = plugin.buildOverlay(context, child);
+      }
+    }
+
+    return _BeaconInherited(pillars: _pillars, child: child);
   }
 }
 

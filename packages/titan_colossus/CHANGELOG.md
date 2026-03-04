@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.0] - 2026-03-04
+
+### Added
+- **ColossusPlugin** — One-line `TitanPlugin` adapter for full Colossus integration. Add or remove performance monitoring with a single line in `Beacon(plugins: [...])`
+  - Manages `Colossus.init()`, `Lens` overlay, `ShadeListener`, export/route callbacks, auto-replay, and `Colossus.shutdown()` automatically
+
 ## [1.0.4] - 2026-03-04
 
 ### Changed

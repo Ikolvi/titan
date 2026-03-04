@@ -74,6 +74,8 @@ A uniquely powerful reactive state management architecture for Flutter — struc
 | Recorded Event | **Imprint** | Serialized pointer event with timestamp |
 | Replay Engine | **Phantom** | Replay recorded sessions via synthetic events |
 | Capture Widget | **ShadeListener** | Transparent listener capturing all pointer events |
+| Plugin | **TitanPlugin** | Abstract base class for Beacon plugin architecture |
+| Colossus Plugin | **ColossusPlugin** | One-line Colossus integration via TitanPlugin |
 
 ---
 

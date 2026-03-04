@@ -452,13 +452,27 @@ const VestigeRaw({
 
 ### Beacon
 
-Scoped Pillar provider.
+Scoped Pillar provider with optional plugin support.
 
 ```dart
 const Beacon({
   required List<Pillar Function()> pillars,
+  List<TitanPlugin>? plugins,
   required Widget child,
 })
+```
+
+### TitanPlugin
+
+Abstract base class for Beacon plugins. Hooks into Beacon lifecycle.
+
+```dart
+abstract class TitanPlugin {
+  const TitanPlugin();
+  void onAttach() {}
+  Widget buildOverlay(BuildContext context, Widget child) => child;
+  void onDetach() {}
+}
 ```
 
 ### BeaconScope (Static Helpers)
@@ -975,6 +989,24 @@ Atlas observer — automatically starts Stride timing on every navigation event.
 
 ```dart
 class ColossusAtlasObserver extends AtlasObserver
+```
+
+### ColossusPlugin
+
+One-line Colossus integration via TitanPlugin. Manages `Colossus.init()`, `Lens`, `ShadeListener`, and `Colossus.shutdown()` automatically through Beacon's lifecycle.
+
+```dart
+Beacon(
+  plugins: [
+    if (kDebugMode) ColossusPlugin(
+      tremors: [Tremor.fps(), Tremor.leaks()],
+      enableLens: true,
+      enableShade: true,
+      getCurrentRoute: () => Atlas.current.path,
+    ),
+  ],
+  child: MaterialApp(...),
+)
 ```
 
 ### Inscribe

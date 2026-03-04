@@ -37,19 +37,40 @@ dev_dependencies:
   titan_colossus: ^1.0.0
 ```
 
-### 2. Initialize in main
+### 2. Initialize via plugin (recommended)
 
 ```dart
 import 'package:titan_colossus/titan_colossus.dart';
 
 void main() {
-  // Initialize performance monitoring (debug mode only)
+  runApp(
+    Beacon(
+      pillars: [MyPillar.new],
+      plugins: [
+        if (kDebugMode) ColossusPlugin(
+          tremors: [Tremor.fps(), Tremor.leaks()],
+        ),
+      ],
+      child: MaterialApp.router(routerConfig: atlas.config),
+    ),
+  );
+}
+```
+
+One line to add, one line to remove. ColossusPlugin handles `Colossus.init()`, wraps with `Lens` and `ShadeListener`, and calls `Colossus.shutdown()` on dispose.
+
+### Manual initialization (alternative)
+
+```dart
+import 'package:titan_colossus/titan_colossus.dart';
+
+void main() {
   if (kDebugMode) {
     Colossus.init(
       tremors: [
-        Tremor.fps(),          // Alert when FPS < 50
-        Tremor.leaks(),        // Alert on leak suspects
-        Tremor.pageLoad(),     // Alert on slow page loads
+        Tremor.fps(),
+        Tremor.leaks(),
+        Tremor.pageLoad(),
       ],
     );
   }
@@ -90,6 +111,7 @@ That's it. Colossus auto-registers its Lens tab and begins monitoring.
 | `Phantom` | 👻 | Replays sessions via handlePointerEvent |
 | `PhantomResult` | 📊 | Replay outcome statistics |
 | `ShadeListener` | 👂 | Transparent widget capturing pointer events |
+| `ColossusPlugin` | 🔌 | One-line Beacon plugin for full Colossus integration |
 
 ## Usage
 

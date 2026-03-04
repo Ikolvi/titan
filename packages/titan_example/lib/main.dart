@@ -50,6 +50,7 @@ import 'screens/spark_demo_screen.dart';
 //   Core extensions            -- toggle, increment, add, removeWhere
 //   onInitAsync                -- Async Pillar initialization
 //   Colossus                   -- Performance monitoring (Pulse, Vessel, Stride)
+//   ColossusPlugin             -- One-line plugin integration for Colossus
 //   Shade                      -- Gesture recording & macro replay
 //   Phantom                    -- Automated gesture replay engine
 //   CoreRefresh                -- Reactive Sentinel re-evaluation on auth change
@@ -65,39 +66,11 @@ void main() {
   // Set up Vigil error tracking with console output
   Vigil.addHandler(ConsoleErrorHandler());
 
-  // Initialize Colossus performance monitoring with session persistence
+  // Colossus is now integrated via ColossusPlugin — see the Beacon
+  // in runApp() below. All performance monitoring configuration is
+  // centralized in a single plugin declaration.
   final shadeDir = '${Directory.systemTemp.path}/questboard_shade';
   final exportDir = _getExportDirectory();
-  Colossus.init(
-    tremors: [Tremor.fps(), Tremor.jankRate(), Tremor.leaks()],
-    enableLensTab: true,
-    enableChronicle: true,
-    shadeStoragePath: shadeDir,
-    exportDirectory: exportDir,
-  );
-
-  // Share exported reports via the system share sheet.
-  // This works on all platforms without storage permissions.
-  Colossus.instance.onExport = (paths) {
-    SharePlus.instance.share(
-      ShareParams(files: paths.map((p) => XFile(p)).toList()),
-    );
-  };
-
-  // Wire up route-aware recording — Shade captures the current route
-  // so Phantom can verify the correct page before replay
-  Colossus.instance.shade.getCurrentRoute = () {
-    try {
-      return Atlas.current.path;
-    } catch (_) {
-      return null;
-    }
-  };
-
-  // Check for auto-replay on startup (replays saved session if configured)
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    Colossus.instance.checkAutoReplay();
-  });
 
   // Register AuthPillar globally for Sentinel access during Atlas construction
   Titan.put(AuthPillar());
@@ -164,34 +137,52 @@ void main() {
   );
 
   runApp(
-    // ShadeListener -- captures all gestures for recording
-    ShadeListener(
-      shade: Colossus.instance.shade,
-      // Lens -- debug overlay (disable in production)
-      child: Lens(
-        enabled: true,
-        child: Beacon(
-          pillars: [
-            QuestboardPillar.new,
-            QuestListPillar.new,
-            QuestDetailPillar.new,
-          ],
-          child: MaterialApp.router(
-            title: 'Questboard',
-            debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              colorSchemeSeed: Colors.deepPurple,
-              useMaterial3: true,
-              brightness: Brightness.light,
-            ),
-            darkTheme: ThemeData(
-              colorSchemeSeed: Colors.deepPurple,
-              useMaterial3: true,
-              brightness: Brightness.dark,
-            ),
-            routerConfig: atlas.config,
-          ),
+    // ColossusPlugin: one-line performance monitoring integration.
+    // Remove this single plugin to strip all Colossus features.
+    // It handles Colossus.init(), Lens overlay, ShadeListener, and
+    // Colossus.shutdown() automatically.
+    Beacon(
+      pillars: [
+        QuestboardPillar.new,
+        QuestListPillar.new,
+        QuestDetailPillar.new,
+      ],
+      plugins: [
+        ColossusPlugin(
+          tremors: [Tremor.fps(), Tremor.jankRate(), Tremor.leaks()],
+          enableLensTab: true,
+          enableChronicle: true,
+          shadeStoragePath: shadeDir,
+          exportDirectory: exportDir,
+          onExport: (paths) {
+            SharePlus.instance.share(
+              ShareParams(files: paths.map((p) => XFile(p)).toList()),
+            );
+          },
+          getCurrentRoute: () {
+            try {
+              return Atlas.current.path;
+            } catch (_) {
+              return null;
+            }
+          },
+          autoReplayOnStartup: true,
         ),
+      ],
+      child: MaterialApp.router(
+        title: 'Questboard',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorSchemeSeed: Colors.deepPurple,
+          useMaterial3: true,
+          brightness: Brightness.light,
+        ),
+        darkTheme: ThemeData(
+          colorSchemeSeed: Colors.deepPurple,
+          useMaterial3: true,
+          brightness: Brightness.dark,
+        ),
+        routerConfig: atlas.config,
       ),
     ),
   );

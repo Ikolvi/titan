@@ -263,4 +263,4 @@ The names were different. The learning was faster.
 
 ---
 
-| [← Chapter LI: The Veil Conceals](chapter-51-the-veil-conceals.md) |
+| [← Chapter LI: The Veil Conceals](chapter-51-the-veil-conceals.md) | [Chapter LIII: The Forge Accepts →](chapter-53-the-forge-accepts.md) |

@@ -5,6 +5,12 @@ All notable changes to the Titan packages will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-04
+
+### Added
+- **titan_bastion** (v1.1.0): `TitanPlugin` — abstract plugin interface for Beacon lifecycle hooks. Beacon now accepts `plugins` parameter for modular integrations.
+- **titan_colossus** (v1.1.0): `ColossusPlugin` — one-line `TitanPlugin` adapter for full Colossus integration. Add/remove all performance monitoring with a single plugin declaration.
+
 ## [1.1.1] - 2026-03-04
 
 ### Changed

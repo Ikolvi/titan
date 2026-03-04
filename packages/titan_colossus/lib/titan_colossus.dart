@@ -62,6 +62,7 @@ export 'src/recording/shade_vault.dart';
 
 // Core
 export 'src/colossus.dart';
+export 'src/colossus_plugin.dart';
 
 // Integrations
 export 'src/integration/colossus_atlas_observer.dart';

@@ -5,6 +5,13 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-04
+
+### Added
+- **TitanPlugin** — Abstract plugin interface for Beacon lifecycle hooks (`onAttach`, `buildOverlay`, `onDetach`)
+- **Beacon `plugins` parameter** — Pass `List<TitanPlugin>?` to Beacon for modular integrations
+  - Plugins attach after Pillars are created, overlays wrap inside the inherited scope, detach runs in reverse order
+
 ## [1.0.3] - 2026-03-04
 
 ### Changed
