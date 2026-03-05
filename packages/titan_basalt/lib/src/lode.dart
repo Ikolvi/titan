@@ -33,10 +33,10 @@
 ///
 /// | Property      | Type               | Description                        |
 /// |---------------|--------------------|------------------------------------|
-/// | `available`   | `Core<int>`        | Idle resources ready for checkout   |
-/// | `inUse`       | `Core<int>`        | Resources currently checked out     |
-/// | `size`        | `Core<int>`        | Total pool size (available + inUse) |
-/// | `waiters`     | `Core<int>`        | Callers waiting for a resource      |
+/// | `available`   | `ReadCore<int>`    | Idle resources ready for checkout   |
+/// | `inUse`       | `ReadCore<int>`    | Resources currently checked out     |
+/// | `size`        | `ReadCore<int>`    | Total pool size (available + inUse) |
+/// | `waiters`     | `ReadCore<int>`    | Callers waiting for a resource      |
 /// | `utilization` | `Derived<double>`  | inUse / maxSize (0.0–1.0)           |
 ///
 /// ## Key Methods
@@ -183,16 +183,16 @@ class Lode<T> {
   // ─── Public reactive state ───────────────────────────────────
 
   /// Number of idle resources available for checkout.
-  Core<int> get available => _available;
+  ReadCore<int> get available => _available;
 
   /// Number of resources currently checked out.
-  Core<int> get inUse => _inUse;
+  ReadCore<int> get inUse => _inUse;
 
   /// Total pool size (available + inUse).
-  Core<int> get size => _size;
+  ReadCore<int> get size => _size;
 
   /// Number of callers waiting for a resource.
-  Core<int> get waiters => _waiters;
+  ReadCore<int> get waiters => _waiters;
 
   /// Pool utilization ratio (0.0–1.0). Equals `inUse / maxSize`.
   Derived<double> get utilization => _utilization;

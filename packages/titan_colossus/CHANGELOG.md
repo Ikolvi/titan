@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0] - 2026-03-05
+
+### Fixed
+- **Shade session persistence** — Recorded sessions now survive Lens hide/show cycles. Session is stored on `Colossus` instance instead of disposed Pillar.
+
+### Added
+- **Auto-show Lens after FAB stop** — Lens overlay automatically opens when stopping a recording via the floating action button.
+- **Draggable FAB** — Lens floating button can be dragged to any position. Position persists across hide/show. Added `Lens.resetFabPosition()` to restore defaults.
+
+### Changed
+- **Plugin tabs first** — Plugin tabs (Shade) now appear before built-in tabs (Pillars, Herald, Vigil, Chronicle) in the Lens panel.
+
 ## [1.1.0] - 2026-03-04
 
 ### Added

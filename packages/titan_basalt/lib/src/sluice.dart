@@ -38,11 +38,11 @@
 ///
 /// | Property    | Type              | Description                        |
 /// |-------------|-------------------|------------------------------------|
-/// | `fed`       | `Core<int>`       | Total items fed into the pipeline  |
-/// | `completed` | `Core<int>`       | Items exiting the final stage      |
-/// | `failed`    | `Core<int>`       | Items that failed permanently      |
-/// | `inFlight`  | `Core<int>`       | Items currently inside pipeline    |
-/// | `status`    | `Core<SluiceStatus>` | idle / processing / paused / disposed |
+/// | `fed`       | `ReadCore<int>`       | Total items fed into the pipeline  |
+/// | `completed` | `ReadCore<int>`       | Items exiting the final stage      |
+/// | `failed`    | `ReadCore<int>`       | Items that failed permanently      |
+/// | `inFlight`  | `ReadCore<int>`       | Items currently inside pipeline    |
+/// | `status`    | `ReadCore<SluiceStatus>` | idle / processing / paused / disposed |
 /// | `isIdle`    | `Derived<bool>`   | Whether the pipeline has no work   |
 /// | `errorRate` | `Derived<double>` | failed / fed ratio (0.0–1.0)       |
 ///
@@ -163,16 +163,16 @@ class SluiceStageMetrics {
   late final TitanComputed<bool> _isIdle;
 
   /// Number of items successfully processed by this stage.
-  Core<int> get processed => _processed;
+  ReadCore<int> get processed => _processed;
 
   /// Number of items filtered out (process returned `null`).
-  Core<int> get filtered => _filtered;
+  ReadCore<int> get filtered => _filtered;
 
   /// Number of items that failed permanently in this stage.
-  Core<int> get errors => _errors;
+  ReadCore<int> get errors => _errors;
 
   /// Number of items waiting to be processed by this stage.
-  Core<int> get queued => _queued;
+  ReadCore<int> get queued => _queued;
 
   /// Whether the stage has no queued or in-flight items.
   Derived<bool> get isIdle => _isIdle;
@@ -305,19 +305,19 @@ class Sluice<T> {
   // ── Public reactive state ──
 
   /// Total items fed into the pipeline.
-  Core<int> get fed => _fed;
+  ReadCore<int> get fed => _fed;
 
   /// Items that successfully exited the final stage.
-  Core<int> get completed => _completed;
+  ReadCore<int> get completed => _completed;
 
   /// Items that failed permanently (after retries).
-  Core<int> get failed => _failed;
+  ReadCore<int> get failed => _failed;
 
   /// Items currently in-flight inside the pipeline.
-  Core<int> get inFlight => _inFlight;
+  ReadCore<int> get inFlight => _inFlight;
 
   /// Current pipeline lifecycle status.
-  Core<SluiceStatus> get status => _status;
+  ReadCore<SluiceStatus> get status => _status;
 
   /// Whether the pipeline is idle with no items.
   Derived<bool> get isIdle => _isIdle;

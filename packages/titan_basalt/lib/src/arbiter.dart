@@ -34,10 +34,10 @@
 ///
 /// | Property         | Type                                 | Description                      |
 /// |------------------|--------------------------------------|----------------------------------|
-/// | `conflictCount`  | `Core<int>`                          | Number of pending conflicts      |
-/// | `lastResolution` | `Core<ArbiterResolution<T>?>`        | Most recent resolution outcome   |
+/// | `conflictCount`  | `ReadCore<int>`                      | Number of pending conflicts      |
+/// | `lastResolution` | `ReadCore<ArbiterResolution<T>?>`    | Most recent resolution outcome   |
 /// | `hasConflicts`   | `Derived<bool>`                      | Whether unresolved conflicts exist |
-/// | `totalResolved`  | `Core<int>`                          | Lifetime resolved count          |
+/// | `totalResolved`  | `ReadCore<int>`                      | Lifetime resolved count          |
 ///
 /// ## Strategies
 ///
@@ -196,16 +196,16 @@ class Arbiter<T> {
   // ─── Public reactive state ───────────────────────────────────
 
   /// Number of pending conflicts (sources with unresolved submissions).
-  Core<int> get conflictCount => _conflictCount;
+  ReadCore<int> get conflictCount => _conflictCount;
 
   /// Most recent resolution outcome, or `null` if none yet.
-  Core<ArbiterResolution<T>?> get lastResolution => _lastResolution;
+  ReadCore<ArbiterResolution<T>?> get lastResolution => _lastResolution;
 
   /// Whether two or more unresolved submissions exist.
   Derived<bool> get hasConflicts => _hasConflicts;
 
   /// Total number of conflicts resolved over the lifetime.
-  Core<int> get totalResolved => _totalResolved;
+  ReadCore<int> get totalResolved => _totalResolved;
 
   // ─── Public API ──────────────────────────────────────────────
 

@@ -476,12 +476,10 @@ Titan tracks 17 metrics across every CI run:
 ```bash
 git clone git@github.com:Ikolvi/titan.git
 cd titan
-dart pub global activate fvm
-fvm install
 dart pub global activate melos
 melos bootstrap
-cd packages/titan && fvm flutter test
-cd packages/titan_bastion && fvm flutter test
+cd packages/titan && flutter test
+cd packages/titan_bastion && flutter test
 ```
 
 ### Code Style
@@ -493,8 +491,8 @@ cd packages/titan_bastion && fvm flutter test
 
 ### Pull Request Checklist
 
-- [ ] Tests pass (`fvm flutter test` in all packages)
-- [ ] No analysis issues (`fvm dart analyze`)
+- [ ] Tests pass (`flutter test` in all packages)
+- [ ] No analysis issues (`dart analyze`)
 - [ ] Public APIs documented
 - [ ] CHANGELOG.md updated
 - [ ] Breaking changes noted (if any)

@@ -39,11 +39,11 @@
 ///
 /// | Property       | Type                     | Description                      |
 /// |----------------|--------------------------|----------------------------------|
-/// | `eventCount`   | `Core<int>`              | Total events in store            |
-/// | `lastSequence` | `Core<int>`              | Latest sequence number           |
-/// | `status`       | `Core<TapestryStatus>`   | Store lifecycle                  |
-/// | `lastEventTime`| `Core<DateTime?>`        | Most recent event timestamp      |
-/// | `weaveCount`   | `Core<int>`              | Number of active projections     |
+/// | `eventCount`   | `ReadCore<int>`              | Total events in store            |
+/// | `lastSequence` | `ReadCore<int>`              | Latest sequence number           |
+/// | `status`       | `ReadCore<TapestryStatus>`   | Store lifecycle                  |
+/// | `lastEventTime`| `ReadCore<DateTime?>`        | Most recent event timestamp      |
+/// | `weaveCount`   | `ReadCore<int>`              | Number of active projections     |
 ///
 /// ## Per-Weave State
 ///
@@ -132,13 +132,13 @@ class TapestryWeave<E, S> {
   late final TitanState<DateTime?> _lastUpdated;
 
   /// Current projected state.
-  Core<S> get state => _state;
+  ReadCore<S> get state => _state;
 
   /// Number of events this weave has processed.
-  Core<int> get version => _version;
+  ReadCore<int> get version => _version;
 
   /// When the projection was last updated.
-  Core<DateTime?> get lastUpdated => _lastUpdated;
+  ReadCore<DateTime?> get lastUpdated => _lastUpdated;
 
   /// Apply a single event to this projection.
   void _apply(E event) {
@@ -241,19 +241,19 @@ class Tapestry<E> {
   // ── Public reactive state ──
 
   /// Total events currently in store.
-  Core<int> get eventCount => _eventCount;
+  ReadCore<int> get eventCount => _eventCount;
 
   /// Latest sequence number assigned.
-  Core<int> get lastSequence => _lastSequence;
+  ReadCore<int> get lastSequence => _lastSequence;
 
   /// Store lifecycle status.
-  Core<TapestryStatus> get status => _status;
+  ReadCore<TapestryStatus> get status => _status;
 
   /// Timestamp of the most recent event.
-  Core<DateTime?> get lastEventTime => _lastEventTime;
+  ReadCore<DateTime?> get lastEventTime => _lastEventTime;
 
   /// Number of active projections.
-  Core<int> get weaveCount => _weaveCount;
+  ReadCore<int> get weaveCount => _weaveCount;
 
   // ── Appending (write side) ──
 

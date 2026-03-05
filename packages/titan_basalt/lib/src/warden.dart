@@ -46,8 +46,8 @@
 /// | `overallHealth` | `Derived<ServiceStatus>`    | Aggregate health of all critical   |
 /// | `healthyCount`  | `Derived<int>`              | Number of healthy services         |
 /// | `degradedCount` | `Derived<int>`              | Number of unhealthy services       |
-/// | `isChecking`    | `Core<bool>`                | Whether any check is running       |
-/// | `totalChecks`   | `Core<int>`                 | Lifetime check count               |
+/// | `isChecking`    | `ReadCore<bool>`            | Whether any check is running       |
+/// | `totalChecks`   | `ReadCore<int>`             | Lifetime check count               |
 ///
 /// Per-service state is accessed via `status(name)`, `latency(name)`,
 /// `failures(name)`, and `lastChecked(name)`.
@@ -230,10 +230,10 @@ class Warden {
   Derived<int> get degradedCount => _degradedCount;
 
   /// Whether any check is currently running (reactive).
-  Core<bool> get isChecking => _isChecking;
+  ReadCore<bool> get isChecking => _isChecking;
 
   /// Lifetime count of completed checks (reactive).
-  Core<int> get totalChecks => _totalChecks;
+  ReadCore<int> get totalChecks => _totalChecks;
 
   /// Whether the Warden is actively polling.
   bool get isRunning => _running;
@@ -244,16 +244,16 @@ class Warden {
   // ── Per-service reactive state ─────────────────────────────────────────
 
   /// The health status of service [name] (reactive).
-  Core<ServiceStatus> status(String name) => _resolve(name).status;
+  ReadCore<ServiceStatus> status(String name) => _resolve(name).status;
 
   /// The last check latency in milliseconds of service [name] (reactive).
-  Core<int> latency(String name) => _resolve(name).latency;
+  ReadCore<int> latency(String name) => _resolve(name).latency;
 
   /// Consecutive failure count of service [name] (reactive).
-  Core<int> failures(String name) => _resolve(name).failures;
+  ReadCore<int> failures(String name) => _resolve(name).failures;
 
   /// Timestamp of the last completed check for service [name] (reactive).
-  Core<DateTime?> lastChecked(String name) => _resolve(name).lastChecked;
+  ReadCore<DateTime?> lastChecked(String name) => _resolve(name).lastChecked;
 
   // ── Primary API ────────────────────────────────────────────────────────
 

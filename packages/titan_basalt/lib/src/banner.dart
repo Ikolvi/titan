@@ -154,7 +154,7 @@ enum BannerReason {
 /// **Banner** manages a collection of feature flags with reactive state,
 /// percentage-based rollout, context-aware targeting rules, developer
 /// overrides, and expiration. Each flag's enabled state is a reactive
-/// [Core<bool>] that triggers UI rebuilds when updated.
+/// [ReadCore<bool>] that triggers UI rebuilds when updated.
 ///
 /// ## Quick start
 ///
@@ -360,7 +360,7 @@ class Banner {
     );
   }
 
-  /// Accesses the reactive [Core<bool>] for a flag by name.
+  /// Accesses the reactive [ReadCore<bool>] for a flag by name.
   ///
   /// Use this in [Derived] computations or Vestige builders:
   ///
@@ -369,7 +369,7 @@ class Banner {
   /// ```
   ///
   /// Throws [ArgumentError] if the flag is not registered.
-  Core<bool> operator [](String flagName) {
+  ReadCore<bool> operator [](String flagName) {
     final state = _states[flagName];
     if (state == null) {
       throw ArgumentError('Unknown banner flag: "$flagName"');

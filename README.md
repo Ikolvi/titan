@@ -464,10 +464,10 @@ Titan's reactive engine is built for speed. Benchmarks run automatically in CI o
 ## Development
 
 ```bash
-dart pub global activate fvm && dart pub global activate melos
-fvm install && melos bootstrap
-cd packages/titan && fvm flutter test
-cd packages/titan_bastion && fvm flutter test
+dart pub global activate melos
+melos bootstrap
+cd packages/titan && flutter test
+cd packages/titan_bastion && flutter test
 ```
 
 ## License

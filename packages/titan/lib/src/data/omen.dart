@@ -92,14 +92,23 @@ class Omen<T> extends ReactiveNode {
   /// The reactive AsyncValue state.
   final TitanState<AsyncValue<T>> _state;
 
+  /// Stored name for lazy initialization.
+  final String? _name;
+
+  /// Reactive execution count (lazy — avoids allocation if never read).
+  TitanState<int>? __executionCount;
+
   /// Reactive execution count.
-  final TitanState<int> _executionCount;
+  TitanState<int> get _executionCount => __executionCount ??= TitanState<int>(
+    0,
+    name: _name != null ? '${_name}_executions' : null,
+  );
 
   /// Currently tracked dependencies.
   Set<ReactiveNode> _dependencies = {};
 
-  /// In-flight computation (for cancellation).
-  _OmenExecution<T>? _currentExecution;
+  /// Monotonic version counter for execution cancellation.
+  int _executionVersion = 0;
 
   /// Debounce timer.
   Timer? _debounceTimer;
@@ -135,16 +144,13 @@ class Omen<T> extends ReactiveNode {
   }) : _compute = compute,
        _debounce = debounce,
        _keepPreviousData = keepPreviousData,
+       _name = name,
        _state = TitanState<AsyncValue<T>>(
          const AsyncLoading(),
-         name: '${name ?? 'omen'}_state',
-       ),
-       _executionCount = TitanState<int>(
-         0,
-         name: '${name ?? 'omen'}_executions',
+         name: name != null ? '${name}_state' : null,
        ) {
     if (eager) {
-      _execute();
+      _executeInitial();
     }
   }
 
@@ -170,7 +176,7 @@ class Omen<T> extends ReactiveNode {
   /// The underlying reactive state node.
   TitanState<AsyncValue<T>> get state => _state;
 
-  /// Reactive execution count.
+  /// Reactive execution count (lazy — allocated on first access).
   TitanState<int> get executionCount => _executionCount;
 
   /// The current data, if available.
@@ -189,7 +195,7 @@ class Omen<T> extends ReactiveNode {
   bool get isRefreshing => _state.value.isRefreshing;
 
   /// All managed reactive nodes (for Pillar disposal).
-  List<TitanState<dynamic>> get managedNodes => [_state, _executionCount];
+  List<TitanState<dynamic>> get managedNodes => [_state, ?__executionCount];
 
   /// Manually trigger a re-execution, regardless of dependency changes.
   ///
@@ -206,15 +212,15 @@ class Omen<T> extends ReactiveNode {
   /// The state remains at its current value. Call [refresh] to restart.
   void cancel() {
     _debounceTimer?.cancel();
-    _currentExecution?.cancel();
-    _currentExecution = null;
+    _executionVersion++;
   }
 
   /// Reset to initial loading state and re-execute.
   void reset() {
     cancel();
     _state.value = const AsyncLoading();
-    _executionCount.value = 0;
+    __executionCount?.value = 0;
+    _hasEverExecuted = false;
     _execute();
   }
 
@@ -223,7 +229,7 @@ class Omen<T> extends ReactiveNode {
     cancel();
     _clearDependencies();
     _state.dispose();
-    _executionCount.dispose();
+    __executionCount?.dispose();
     super.dispose();
   }
 
@@ -231,21 +237,58 @@ class Omen<T> extends ReactiveNode {
   // Dependency tracking + async execution
   // ---------------------------------------------------------------------------
 
+  /// Fast-path for the initial eager execution.
+  ///
+  /// Skips redundant work that only matters on re-execution:
+  /// - No previous execution to cancel
+  /// - State is already [AsyncLoading] from the constructor
+  /// - Dependencies set is already empty — no swap/diff needed
+  void _executeInitial() {
+    final previous = ReactiveScope.pushTracker(this);
+
+    late final Future<T> future;
+    try {
+      future = _compute();
+    } catch (e, s) {
+      ReactiveScope.popTracker(previous);
+      _state.value = AsyncError<T>(e, s);
+      _hasEverExecuted = true;
+      _executionCount.value++;
+      return;
+    }
+    ReactiveScope.popTracker(previous);
+
+    // Async resolution — capture version to detect stale callbacks
+    final version = _executionVersion;
+
+    future.then(
+      (result) {
+        if (version != _executionVersion || isDisposed) return;
+        _state.value = AsyncData<T>(result);
+        _executionCount.value++;
+      },
+      onError: (Object e, StackTrace s) {
+        if (version != _executionVersion || isDisposed) return;
+        _state.value = AsyncError<T>(e, s);
+        _executionCount.value++;
+      },
+    );
+
+    _hasEverExecuted = true;
+  }
+
   /// Execute the async computation with dependency tracking.
   void _execute() {
     if (isDisposed) return;
 
     // Cancel any previous in-flight computation
-    _currentExecution?.cancel();
+    _executionVersion++;
 
     // Phase 1: Prepare state (OUTSIDE tracker scope to avoid self-dependency)
-    // Reading _state.value inside a tracker scope would register the Omen
-    // as a dependent of its own state → infinite re-execution loop.
-    final existingData = _state.value.dataOrNull;
+    // Reading _state via peek() avoids the track() overhead.
+    final existingData = _state.peek().dataOrNull;
     if (_keepPreviousData && existingData != null) {
       _state.value = AsyncRefreshing<T>(existingData);
-    } else if (!_hasEverExecuted) {
-      _state.value = const AsyncLoading();
     }
 
     // Phase 2: Synchronous dependency tracking
@@ -270,18 +313,17 @@ class Omen<T> extends ReactiveNode {
     }
     ReactiveScope.popTracker(previous);
 
-    // Phase 3: Async resolution
-    final execution = _OmenExecution<T>(future);
-    _currentExecution = execution;
+    // Phase 3: Async resolution — capture version to detect stale callbacks
+    final version = _executionVersion;
 
-    execution.future.then(
+    future.then(
       (result) {
-        if (execution.isCancelled || isDisposed) return;
+        if (version != _executionVersion || isDisposed) return;
         _state.value = AsyncData<T>(result);
         _executionCount.value++;
       },
       onError: (Object e, StackTrace s) {
-        if (execution.isCancelled || isDisposed) return;
+        if (version != _executionVersion || isDisposed) return;
         _state.value = AsyncError<T>(e, s);
         _executionCount.value++;
       },
@@ -337,20 +379,7 @@ class Omen<T> extends ReactiveNode {
       AsyncRefreshing<T>(:final data) => 'refreshing (prev: $data)',
       AsyncError<T>(:final error) => 'error: $error',
     };
-    return 'Omen<$T>($stateStr, executions: ${_executionCount.value})';
-  }
-}
-
-/// Wraps an in-flight computation for cancellation support.
-class _OmenExecution<T> {
-  final Future<T> future;
-  bool _cancelled = false;
-
-  _OmenExecution(this.future);
-
-  bool get isCancelled => _cancelled;
-
-  void cancel() {
-    _cancelled = true;
+    final execCount = __executionCount?.peek() ?? 0;
+    return 'Omen<$T>($stateStr, executions: $execCount)';
   }
 }

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.6
+
+### Changed
+- **ReadCore pattern** — All public reactive getters across 11 infrastructure classes now return `ReadCore<T>` instead of `Core<T>`, enforcing read-only external access:
+  - `Embargo`: `activeCount`, `queueLength`, `totalAcquires`
+  - `Arbiter`: `conflictCount`, `lastResolution`, `totalResolved`
+  - `Tithe`: `consumed`, `breakdown`
+  - `Lode`: `available`, `inUse`, `size`, `waiters`
+  - `Census`: `count`, `sum`, `min`, `max`, `last`
+  - `Warden`: `isChecking`, `totalChecks`, per-service `status()`, `latency()`, `failures()`, `lastChecked()`
+  - `Banner`: `operator[]`
+  - `Lattice`: `status`, `completedCount`
+  - `Clarion`: per-job and scheduler-level state getters
+  - `Tapestry`: per-weave and store-level state getters
+  - `Sluice`: per-stage and pipeline-level state getters
+
 ## 1.12.5
 
 ### Performance

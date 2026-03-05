@@ -276,7 +276,7 @@ void main() {
 Pure Dart. Lightning fast. No `WidgetTester`, no `pumpWidget`, no async hell. Kael ran the tests:
 
 ```bash
-fvm dart test
+dart test
 ```
 
 All green. The foundation was solid.

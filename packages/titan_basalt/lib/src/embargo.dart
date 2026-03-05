@@ -42,9 +42,9 @@
 /// | Property       | Type              | Description                      |
 /// |----------------|-------------------|----------------------------------|
 /// | `isLocked`     | `Core<bool>`      | All permits currently acquired   |
-/// | `activeCount`  | `Core<int>`       | Number of currently held permits |
-/// | `queueLength`  | `Core<int>`       | Number of waiting acquirers      |
-/// | `totalAcquires`| `Core<int>`       | Lifetime acquire count           |
+/// | `activeCount`  | `ReadCore<int>`   | Number of currently held permits |
+/// | `queueLength`  | `ReadCore<int>`   | Number of waiting acquirers      |
+/// | `totalAcquires`| `ReadCore<int>`   | Lifetime acquire count           |
 /// | `status`       | `Derived<EmbargoStatus>` | available/busy/contended  |
 /// | `isAvailable`  | `Derived<bool>`   | Has a free permit now            |
 ///
@@ -191,13 +191,13 @@ class Embargo {
   Derived<bool> get isLocked => _isLocked;
 
   /// Number of currently held permits (reactive).
-  Core<int> get activeCount => _activeCount;
+  ReadCore<int> get activeCount => _activeCount;
 
   /// Number of tasks waiting for a permit (reactive).
-  Core<int> get queueLength => _queueLength;
+  ReadCore<int> get queueLength => _queueLength;
 
   /// Lifetime count of successful acquires (reactive).
-  Core<int> get totalAcquires => _totalAcquires;
+  ReadCore<int> get totalAcquires => _totalAcquires;
 
   /// Operational status: available, busy, or contended (reactive).
   Derived<EmbargoStatus> get status => _status;

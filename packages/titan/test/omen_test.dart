@@ -366,10 +366,15 @@ void main() {
       source.dispose();
     });
 
-    test('managedNodes returns state and executionCount', () {
+    test('managedNodes returns state and executionCount', () async {
       final o = Omen<int>(() async => 1);
-      expect(o.managedNodes, hasLength(2));
+      // executionCount is lazy — not included until accessed
+      expect(o.managedNodes, hasLength(1));
       expect(o.managedNodes, contains(o.state));
+      // Accessing executionCount forces allocation
+      await Future<void>.delayed(Duration.zero); // let async complete
+      expect(o.executionCount.value, 1);
+      expect(o.managedNodes, hasLength(2));
       expect(o.managedNodes, contains(o.executionCount));
       o.dispose();
     });

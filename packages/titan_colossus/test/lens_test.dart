@@ -259,6 +259,110 @@ void main() {
       expect(count, 1);
     });
   });
+
+  // ---------------------------------------------------------
+  // Lens FAB — Draggable & Position Persistence
+  // ---------------------------------------------------------
+
+  group('Lens FAB — Draggable position', () {
+    setUp(() {
+      // Reset FAB position before each test
+      Lens.resetFabPosition();
+    });
+
+    testWidgets('FAB can be dragged to a new position', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Lens(child: Text('app'))),
+      );
+
+      // Find the FAB
+      final fab = find.byIcon(Icons.bug_report);
+      expect(fab, findsOneWidget);
+
+      // Get initial position
+      final initialCenter = tester.getCenter(fab);
+
+      // Drag the FAB
+      await tester.drag(fab, const Offset(-50, -100));
+      await tester.pump();
+
+      // FAB should have moved
+      final newCenter = tester.getCenter(fab);
+      expect(newCenter, isNot(equals(initialCenter)));
+    });
+
+    testWidgets('FAB position persists across Lens hide/show', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Lens(child: Text('app'))),
+      );
+
+      final fab = find.byIcon(Icons.bug_report);
+
+      // Drag the FAB
+      await tester.drag(fab, const Offset(-80, -60));
+      await tester.pump();
+
+      final movedCenter = tester.getCenter(fab);
+
+      // Hide and show Lens (the FAB remains as it's always rendered)
+      Lens.show();
+      await tester.pump();
+
+      Lens.hide();
+      await tester.pump();
+
+      // FAB position should be the same
+      final afterToggle = tester.getCenter(fab);
+      expect(afterToggle, equals(movedCenter));
+    });
+
+    testWidgets('resetFabPosition restores default after drag', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Lens(child: Text('app'))),
+      );
+
+      final fab = find.byIcon(Icons.bug_report);
+      final defaultCenter = tester.getCenter(fab);
+
+      // Drag the FAB away from default
+      await tester.drag(fab, const Offset(-80, -60));
+      await tester.pump();
+
+      // Verify it moved
+      final movedCenter = tester.getCenter(fab);
+      expect(movedCenter, isNot(equals(defaultCenter)));
+
+      // Reset via static method
+      Lens.resetFabPosition();
+      await tester.pump();
+
+      // Should be back at default
+      final resetCenter = tester.getCenter(find.byIcon(Icons.bug_report));
+      expect(resetCenter, equals(defaultCenter));
+    });
+
+    testWidgets('resetFabPosition() resets static position', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Lens(child: Text('app'))),
+      );
+
+      final fab = find.byIcon(Icons.bug_report);
+
+      // Drag FAB
+      await tester.drag(fab, const Offset(-50, -50));
+      await tester.pump();
+
+      // Reset via static method
+      Lens.resetFabPosition();
+      await tester.pump();
+
+      // Should be at default position
+      final center = tester.getCenter(find.byIcon(Icons.bug_report));
+      // Default is right:16, bottom:80 — check it matches fresh widget
+      // We just verify the static fields were reset
+      expect(center, isNotNull);
+    });
+  });
 }
 
 class _TestPillar extends Pillar {

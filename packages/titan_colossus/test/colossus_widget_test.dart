@@ -247,6 +247,108 @@ void main() {
   });
 
   // ---------------------------------------------------------
+  // ShadeLensTab — Session survives Lens hide/show cycle
+  // ---------------------------------------------------------
+
+  group('ShadeLensTab — Session persistence across Lens cycles', () {
+    setUp(() {
+      Titan.reset();
+      Herald.reset();
+      Vigil.reset();
+      Chronicle.reset();
+    });
+
+    testWidgets('recorded session shows up after Lens hide/show cycle', (
+      tester,
+    ) async {
+      final colossus = Colossus.init(enableLensTab: true);
+
+      await tester.pumpWidget(
+        const MaterialApp(home: Lens(child: Text('app'))),
+      );
+
+      Lens.show();
+      await tester.pump();
+
+      // Navigate to Shade tab
+      await tester.tap(find.text('Shade'));
+      await tester.pump();
+
+      // Tap Record — hides Lens, starts recording
+      await tester.tap(find.text('Record'));
+      await tester.pump();
+      expect(Lens.isVisible, false);
+      expect(colossus.shade.isRecording, true);
+
+      // Simulate FAB stop (which is what the user taps while Lens
+      // is hidden). This calls the _stopAndSaveFromFab callback set
+      // by _activateFabRecording.
+      Lens.onStopRecording?.call();
+      await tester.pump();
+
+      expect(colossus.shade.isRecording, false);
+      // The session should be stored on Colossus
+      expect(colossus.lastRecordedSession, isNotNull);
+
+      // Lens should auto-show after FAB stop (via post-frame callback)
+      await tester.pump();
+      expect(Lens.isVisible, true);
+
+      await tester.tap(find.text('Shade'));
+      await tester.pump();
+
+      // The "Last Session" card should now appear
+      expect(find.text('Last Session'), findsOneWidget);
+
+      await cleanup(tester);
+    });
+
+    testWidgets('stopRecording via Stop button stores session on Colossus', (
+      tester,
+    ) async {
+      final colossus = Colossus.init(enableLensTab: true);
+
+      await tester.pumpWidget(
+        const MaterialApp(home: Lens(child: Text('app'))),
+      );
+
+      Lens.show();
+      await tester.pump();
+
+      await tester.tap(find.text('Shade'));
+      await tester.pump();
+
+      // Start recording (hides Lens)
+      await tester.tap(find.text('Record'));
+      await tester.pump();
+      expect(colossus.shade.isRecording, true);
+
+      // Re-open Lens while recording
+      Lens.show();
+      await tester.pump();
+
+      await tester.tap(find.text('Shade'));
+      await tester.pump();
+
+      // Should show Stop button since Shade is still recording
+      expect(find.text('Stop'), findsOneWidget);
+
+      // Tap Stop
+      await tester.tap(find.text('Stop'));
+      await tester.pump();
+
+      // Session should be on Colossus
+      expect(colossus.lastRecordedSession, isNotNull);
+      expect(colossus.lastRecordedSession!.name, contains('shade_'));
+
+      // Last Session card should appear
+      expect(find.text('Last Session'), findsOneWidget);
+
+      await cleanup(tester);
+    });
+  });
+
+  // ---------------------------------------------------------
   // ColossusLensTab — sub-tabs
   // ---------------------------------------------------------
 

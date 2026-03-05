@@ -122,6 +122,12 @@ class _ShadeLensPillar extends Pillar {
     _loadAutoReplayConfig();
     _loadSavedSessions();
 
+    // Restore the last recorded session from Colossus so it
+    // survives Lens hide/show cycles (which dispose this Pillar).
+    if (colossus.lastRecordedSession != null) {
+      lastSession.value = colossus.lastRecordedSession;
+    }
+
     // If Shade was recording when Lens opens, sync the FAB state
     if (colossus.shade.isRecording) {
       _activateFabRecording();
@@ -148,6 +154,7 @@ class _ShadeLensPillar extends Pillar {
   void stopRecording() {
     final session = colossus.shade.stopRecording();
     lastSession.value = session;
+    colossus.lastRecordedSession = session;
     _deactivateFabRecording();
     status.value =
         'Recorded ${session.eventCount} events in '
@@ -318,6 +325,7 @@ class _ShadeLensPillar extends Pillar {
     if (!colossus.shade.isRecording) return;
     final session = colossus.shade.stopRecording();
     lastSession.value = session;
+    colossus.lastRecordedSession = session;
     _deactivateFabRecording();
     status.value =
         'Recorded ${session.eventCount} events in '
@@ -326,6 +334,12 @@ class _ShadeLensPillar extends Pillar {
     if (colossus.vault != null) {
       _autoSave(session);
     }
+
+    // Re-open Lens so the user immediately sees the recorded session.
+    // Use addPostFrameCallback to ensure the FAB state settles first.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Lens.show();
+    });
   }
 
   Future<void> _autoSave(ShadeSession session) async {

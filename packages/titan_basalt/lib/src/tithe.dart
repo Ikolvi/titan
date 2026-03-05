@@ -41,11 +41,11 @@
 ///
 /// | Property    | Type              | Description                        |
 /// |-------------|-------------------|------------------------------------|
-/// | `consumed`  | `Core<int>`       | Total consumed in current period    |
+/// | `consumed`  | `ReadCore<int>`   | Total consumed in current period    |
 /// | `remaining` | `Derived<int>`    | Budget - consumed                   |
 /// | `exceeded`  | `Derived<bool>`   | Whether budget is exhausted         |
 /// | `ratio`     | `Derived<double>` | Consumed / budget (0.0–1.0+)        |
-/// | `breakdown` | `Core<Map<...>>`  | Per-resource consumption breakdown  |
+/// | `breakdown` | `ReadCore<Map<...>>` | Per-resource consumption breakdown  |
 ///
 /// ## Key Methods
 ///
@@ -144,7 +144,7 @@ class Tithe {
   // ─── Public reactive state ───────────────────────────────────
 
   /// Total consumed in the current period.
-  Core<int> get consumed => _consumed;
+  ReadCore<int> get consumed => _consumed;
 
   /// Remaining budget (budget - consumed). Can be negative.
   Derived<int> get remaining => _remaining;
@@ -158,7 +158,7 @@ class Tithe {
 
   /// Per-key consumption breakdown. Only includes keys passed
   /// via [consume]'s `key` parameter.
-  Core<Map<String, int>> get breakdown => _breakdown;
+  ReadCore<Map<String, int>> get breakdown => _breakdown;
 
   /// The configured budget.
   int get budget => _budget;

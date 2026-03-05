@@ -1,6 +1,6 @@
 name: titan_basalt
 description: "Basalt — Titan's infrastructure & resilience toolkit. Reactive caching, rate limiting, circuit breakers, retry queues, and priority task processing."
-version: 1.12.5
+version: 1.12.6
 homepage: https://ikolvi.com
 repository: https://github.com/Ikolvi/titan
 issue_tracker: https://github.com/Ikolvi/titan/issues
@@ -22,7 +22,7 @@ environment:
   sdk: ^3.10.3
 
 dependencies:
-  titan: ^1.1.0
+  titan: ^1.1.3
   meta: ^1.16.0
 
 dev_dependencies:

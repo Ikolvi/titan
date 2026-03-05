@@ -167,6 +167,34 @@ class Lens extends StatefulWidget {
   static VoidCallback? onStopRecording;
 
   // -------------------------------------------------------------------------
+  // FAB position — persists across open/close cycles
+  // -------------------------------------------------------------------------
+
+  /// Default right offset for the FAB.
+  static const double _defaultRight = 16;
+
+  /// Default bottom offset for the FAB.
+  static const double _defaultBottom = 80;
+
+  /// The persisted FAB position (right offset from edge).
+  ///
+  /// Stored as a static so the position survives Lens hide/show
+  /// cycles and remains until [resetFabPosition] is called.
+  static double _fabRight = _defaultRight;
+
+  /// The persisted FAB position (bottom offset from edge).
+  static double _fabBottom = _defaultBottom;
+
+  /// Reset the FAB to its default position (bottom-right corner).
+  static void resetFabPosition() {
+    _fabRight = _defaultRight;
+    _fabBottom = _defaultBottom;
+    // Force rebuild unconditionally — the FAB is always rendered
+    // regardless of panel visibility.
+    _activeInstance?._forceRebuild();
+  }
+
+  // -------------------------------------------------------------------------
   // Plugin API — allows external packages to add custom tabs
   // -------------------------------------------------------------------------
 
@@ -243,6 +271,12 @@ class _LensState extends State<Lens> {
     }
   }
 
+  /// Unconditional rebuild — used for FAB position changes
+  /// which must apply even when the panel is hidden.
+  void _forceRebuild() {
+    if (mounted) setState(() {});
+  }
+
   void _setVisible(bool visible) {
     if (_visible != visible) {
       setState(() => _visible = visible);
@@ -273,20 +307,33 @@ class _LensState extends State<Lens> {
       child: Stack(
         children: [
           widget.child,
-          // Floating action button — toggles Lens or stops recording
+          // Draggable floating action button — toggles Lens or stops recording.
+          // Position persists across Lens open/close cycles via static fields.
           Positioned(
-            right: 16,
-            bottom: 80,
-            child: _LensFab(
-              onPressed: () {
-                // If recording, stop recording instead of toggling
-                if (Lens.activeRecording.value) {
-                  Lens.onStopRecording?.call();
-                } else {
-                  _toggle();
-                }
+            right: Lens._fabRight,
+            bottom: Lens._fabBottom,
+            child: GestureDetector(
+              onPanUpdate: (details) {
+                setState(() {
+                  Lens._fabRight -= details.delta.dx;
+                  Lens._fabBottom -= details.delta.dy;
+                  // Clamp to screen bounds (account for FAB size of 48)
+                  final size = MediaQuery.sizeOf(context);
+                  Lens._fabRight = Lens._fabRight.clamp(0, size.width - 48);
+                  Lens._fabBottom = Lens._fabBottom.clamp(0, size.height - 48);
+                });
               },
-              isOpen: _visible,
+              child: _LensFab(
+                onPressed: () {
+                  // If recording, stop recording instead of toggling
+                  if (Lens.activeRecording.value) {
+                    Lens.onStopRecording?.call();
+                  } else {
+                    _toggle();
+                  }
+                },
+                isOpen: _visible,
+              ),
             ),
           ),
           // Debug panel
@@ -490,8 +537,10 @@ class _LensPanel extends StatelessWidget {
   }
 
   Widget _buildTabBar() {
+    final pluginTabs = plugins.map((p) => p.title).toList();
     final builtInTabs = ['Pillars', 'Herald', 'Vigil', 'Chronicle'];
-    final allTabs = [...builtInTabs, ...plugins.map((p) => p.title)];
+    final allTabs = [...pluginTabs, ...builtInTabs];
+    final pluginCount = pluginTabs.length;
     return Container(
       height: 40,
       color: const Color(0xFF2D2D3F),
@@ -510,7 +559,7 @@ class _LensPanel extends StatelessWidget {
                     border: Border(
                       bottom: BorderSide(
                         color: selectedTab == i
-                            ? (i >= builtInTabs.length
+                            ? (i < pluginCount
                                   ? Colors.tealAccent
                                   : Colors.deepPurpleAccent)
                             : Colors.transparent,
@@ -521,9 +570,9 @@ class _LensPanel extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (i >= builtInTabs.length) ...[
+                      if (i < pluginCount) ...[
                         Icon(
-                          plugins[i - builtInTabs.length].icon,
+                          plugins[i].icon,
                           color: selectedTab == i
                               ? Colors.tealAccent
                               : Colors.white54,
@@ -535,7 +584,7 @@ class _LensPanel extends StatelessWidget {
                         allTabs[i],
                         style: TextStyle(
                           color: selectedTab == i
-                              ? (i >= builtInTabs.length
+                              ? (i < pluginCount
                                     ? Colors.tealAccent
                                     : Colors.deepPurpleAccent)
                               : Colors.white54,
@@ -554,22 +603,18 @@ class _LensPanel extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context) {
-    const builtInCount = 4;
-    if (selectedTab < builtInCount) {
-      return switch (selectedTab) {
-        0 => _PillarsView(instances: instances),
-        1 => _HeraldView(events: heraldEvents, onClear: onClearHerald),
-        2 => _VigilView(errors: vigilErrors, onClear: onClearErrors),
-        3 => _ChronicleView(entries: logEntries, onClear: onClearLogs),
-        _ => const SizedBox.shrink(),
-      };
+    final pluginCount = plugins.length;
+    if (selectedTab < pluginCount) {
+      return plugins[selectedTab].build(context);
     }
-    // Plugin tab
-    final pluginIndex = selectedTab - builtInCount;
-    if (pluginIndex < plugins.length) {
-      return plugins[pluginIndex].build(context);
-    }
-    return const SizedBox.shrink();
+    final builtInIndex = selectedTab - pluginCount;
+    return switch (builtInIndex) {
+      0 => _PillarsView(instances: instances),
+      1 => _HeraldView(events: heraldEvents, onClear: onClearHerald),
+      2 => _VigilView(errors: vigilErrors, onClear: onClearErrors),
+      3 => _ChronicleView(entries: logEntries, onClear: onClearLogs),
+      _ => const SizedBox.shrink(),
+    };
   }
 }
 

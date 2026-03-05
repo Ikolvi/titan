@@ -37,13 +37,13 @@
 ///
 /// | Property       | Type                    | Description                     |
 /// |----------------|-------------------------|---------------------------------|
-/// | `status`       | `Core<ClarionStatus>`   | Scheduler lifecycle             |
-/// | `activeCount`  | `Core<int>`             | Jobs currently executing        |
-/// | `totalRuns`    | `Core<int>`             | Lifetime execution count        |
-/// | `totalErrors`  | `Core<int>`             | Lifetime failure count          |
-/// | `successRate`  | `Derived<double>`       | Success ratio (0.0–1.0)         |
-/// | `isIdle`       | `Derived<bool>`         | No jobs currently executing     |
-/// | `jobCount`     | `Core<int>`             | Number of registered jobs       |
+/// | `status`       | `ReadCore<ClarionStatus>`   | Scheduler lifecycle             |
+/// | `activeCount`  | `ReadCore<int>`             | Jobs currently executing        |
+/// | `totalRuns`    | `ReadCore<int>`             | Lifetime execution count        |
+/// | `totalErrors`  | `ReadCore<int>`             | Lifetime failure count          |
+/// | `successRate`  | `Derived<double>`           | Success ratio (0.0–1.0)         |
+/// | `isIdle`       | `Derived<bool>`             | No jobs currently executing     |
+/// | `jobCount`     | `ReadCore<int>`             | Number of registered jobs       |
 ///
 /// ## Per-Job State
 ///
@@ -125,19 +125,19 @@ class ClarionJobState {
   late final TitanState<DateTime?> _nextRun;
 
   /// Whether this job is currently executing.
-  Core<bool> get isRunning => _isRunning;
+  ReadCore<bool> get isRunning => _isRunning;
 
   /// Total times this job has been executed.
-  Core<int> get runCount => _runCount;
+  ReadCore<int> get runCount => _runCount;
 
   /// Total times this job has failed.
-  Core<int> get errorCount => _errorCount;
+  ReadCore<int> get errorCount => _errorCount;
 
   /// Most recent execution record.
-  Core<ClarionRun?> get lastRun => _lastRun;
+  ReadCore<ClarionRun?> get lastRun => _lastRun;
 
   /// Next scheduled execution time (null if one-shot completed or unscheduled).
-  Core<DateTime?> get nextRun => _nextRun;
+  ReadCore<DateTime?> get nextRun => _nextRun;
 
   /// All reactive nodes for lifecycle management.
   List<ReactiveNode> get _nodes => [
@@ -240,19 +240,19 @@ class Clarion {
   // ── Public reactive state ──
 
   /// Scheduler lifecycle status.
-  Core<ClarionStatus> get status => _status;
+  ReadCore<ClarionStatus> get status => _status;
 
   /// Number of jobs currently executing.
-  Core<int> get activeCount => _activeCount;
+  ReadCore<int> get activeCount => _activeCount;
 
   /// Total lifetime executions across all jobs.
-  Core<int> get totalRuns => _totalRuns;
+  ReadCore<int> get totalRuns => _totalRuns;
 
   /// Total lifetime failures across all jobs.
-  Core<int> get totalErrors => _totalErrors;
+  ReadCore<int> get totalErrors => _totalErrors;
 
   /// Number of registered jobs.
-  Core<int> get jobCount => _jobCount;
+  ReadCore<int> get jobCount => _jobCount;
 
   /// Success ratio (1.0 if no runs yet).
   Derived<double> get successRate => _successRate;

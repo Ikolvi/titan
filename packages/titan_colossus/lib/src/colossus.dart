@@ -167,8 +167,15 @@ class Colossus extends Pillar {
   void Function(List<String> paths)? onExport;
 
   // -----------------------------------------------------------------------
-  // Performance recording state (survives Lens close/reopen)
+  // Recording state (survives Lens close/reopen)
   // -----------------------------------------------------------------------
+
+  /// The most recently recorded [ShadeSession] (in-memory).
+  ///
+  /// Stored on the [Colossus] instance so the Lens Shade tab can
+  /// display it even after the overlay is hidden and re-opened
+  /// (which disposes and recreates the tab's internal Pillar).
+  ShadeSession? lastRecordedSession;
 
   /// Whether a standalone perf recording session is active.
   ///

@@ -52,12 +52,12 @@
 ///
 /// | Property  | Type           | Description                        |
 /// |-----------|----------------|------------------------------------|
-/// | `count`   | `Core<int>`    | Number of entries in the window    |
-/// | `sum`     | `Core<double>` | Sum of values in the window        |
-/// | `average` | `Derived<double>` | Mean of values (sum ÷ count)    |
-/// | `min`     | `Core<double>` | Minimum value in the window        |
-/// | `max`     | `Core<double>` | Maximum value in the window        |
-/// | `last`    | `Core<double>` | Most recently recorded value       |
+/// | `count`   | `ReadCore<int>`    | Number of entries in the window    |
+/// | `sum`     | `ReadCore<double>` | Sum of values in the window        |
+/// | `average` | `Derived<double>`  | Mean of values (sum ÷ count)       |
+/// | `min`     | `ReadCore<double>` | Minimum value in the window        |
+/// | `max`     | `ReadCore<double>` | Maximum value in the window        |
+/// | `last`    | `ReadCore<double>` | Most recently recorded value       |
 ///
 /// ## Pillar Integration
 ///
@@ -158,10 +158,10 @@ class Census<T extends num> {
   // ── Reactive properties ────────────────────────────────────────────────
 
   /// Number of entries currently in the window (reactive).
-  Core<int> get count => _count;
+  ReadCore<int> get count => _count;
 
   /// Sum of all values in the window (reactive).
-  Core<double> get sum => _sum;
+  ReadCore<double> get sum => _sum;
 
   /// Arithmetic mean of values in the window (reactive).
   /// Returns `0` when the window is empty.
@@ -169,14 +169,14 @@ class Census<T extends num> {
 
   /// Minimum value in the window (reactive).
   /// Returns `double.infinity` when the window is empty.
-  Core<double> get min => _min;
+  ReadCore<double> get min => _min;
 
   /// Maximum value in the window (reactive).
   /// Returns `double.negativeInfinity` when the window is empty.
-  Core<double> get max => _max;
+  ReadCore<double> get max => _max;
 
   /// Most recently recorded value (reactive).
-  Core<double> get last => _last;
+  ReadCore<double> get last => _last;
 
   /// All entries currently in the window (snapshot, not reactive).
   List<CensusEntry<T>> get entries => List.unmodifiable(_entries);

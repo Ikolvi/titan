@@ -91,7 +91,13 @@ class LogEntry {
   final StackTrace? stackTrace;
 
   /// When the entry was created.
-  final DateTime timestamp;
+  ///
+  /// The timestamp is captured lazily on first access rather than at
+  /// construction time, eliminating the [DateTime.now] syscall overhead
+  /// for log entries whose timestamp is never read (e.g. when sinks only
+  /// inspect level and message).
+  DateTime get timestamp => _timestamp ??= DateTime.now();
+  DateTime? _timestamp;
 
   /// Creates a [LogEntry].
   LogEntry({
@@ -102,7 +108,7 @@ class LogEntry {
     this.error,
     this.stackTrace,
     DateTime? timestamp,
-  }) : timestamp = timestamp ?? DateTime.now();
+  }) : _timestamp = timestamp;
 
   @override
   String toString() {

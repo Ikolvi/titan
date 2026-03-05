@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-03-05
+
+### Performance
+- **Omen** — Replaced per-execution `_OmenExecution` object allocation with monotonic version counter. Added `_executeInitial()` fast path skipping redundant state/dependency work on first eager run. Made `_executionCount` lazy. Used `peek()` to skip `track()` overhead (~49% faster eager creation).
+- **Chronicle** — Made `LogEntry.timestamp` lazy (`DateTime.now()` only called on first access). Eliminates syscall overhead when sinks don't read timestamps (~73% throughput improvement).
+
 ## [1.1.2] - 2026-03-05
 
 ### Performance

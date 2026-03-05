@@ -300,10 +300,10 @@ class Lattice {
   // ---------------------------------------------------------------------------
 
   /// Current execution status. Reactive — triggers UI rebuilds.
-  Core<LatticeStatus> get status => _status;
+  ReadCore<LatticeStatus> get status => _status;
 
   /// Number of completed tasks. Reactive.
-  Core<int> get completedCount => _completed;
+  ReadCore<int> get completedCount => _completed;
 
   /// Overall progress from 0.0 to 1.0. Reactive.
   Derived<double> get progress => _progress;
