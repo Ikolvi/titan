@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Titan vs BLoC — Architecture Diagrams</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 40px 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      font-size: 2.2rem;
+      background: linear-gradient(135deg, #4ecdc4, #6c5ce7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #8b949e;
+      font-size: 1.1rem;
+      margin-bottom: 50px;
+    }
+    .diagram-section {
+      background: #161b22;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 40px;
+      border: 1px solid #30363d;
+    }
+    .diagram-section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+      color: #e6edf3;
+    }
+    .diagram-section .problem-desc {
+      color: #8b949e;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .diagram-section .stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-bloc, .stat-titan {
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .stat-bloc {
+      background: rgba(231, 76, 60, 0.15);
+      color: #ff6b6b;
+      border: 1px solid rgba(231, 76, 60, 0.3);
+    }
+    .stat-titan {
+      background: rgba(0, 184, 148, 0.15);
+      color: #55efc4;
+      border: 1px solid rgba(0, 184, 148, 0.3);
+    }
+    .mermaid {
+      text-align: center;
+      background: #1c2128;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .mermaid svg {
+      max-width: 100%;
+    }
+    .legend {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #8b949e;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+    .final-score {
+      background: linear-gradient(135deg, #161b22, #1c2128);
+      border: 2px solid #4ecdc4;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #30363d;
+    }
+    th {
+      color: #e6edf3;
+      font-weight: 600;
+      background: rgba(0, 184, 148, 0.1);
+    }
+    td:nth-child(2) { color: #ff6b6b; }
+    td:nth-child(3) { color: #55efc4; }
+    a { color: #4ecdc4; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .cta {
+      text-align: center;
+      margin-top: 50px;
+      padding: 30px;
+    }
+    .cta a {
+      display: inline-block;
+      padding: 14px 32px;
+      background: linear-gradient(135deg, #4ecdc4, #00b894);
+      color: #fff;
+      font-weight: 700;
+      border-radius: 8px;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+
+<h1>5 Problems That Make BLoC Cry in the Shower</h1>
+<p class="subtitle">And how Titan solves them before breakfast &mdash; Architecture Diagrams</p>
+
+<!-- DIAGRAM 1: E-Commerce Checkout -->
+<div class="diagram-section">
+  <h2>Problem #1: The E-Commerce Checkout From Hell</h2>
+  <p class="problem-desc">Cart + reactive totals + form validation + async zip verification + persistence + undo + cross-feature events &mdash; all in one screen.</p>
+  <div class="stats">
+    <span class="stat-bloc">BLoC: 5 packages &bull; 250+ lines &bull; 4 files</span>
+    <span class="stat-titan">Titan: 0 packages &bull; ~60 lines &bull; 1 file</span>
+  </div>
+  <div class="mermaid">
+graph TB
+    subgraph BLOC[" "]
+        direction TB
+        BT["&lt;b&gt;BLoC Approach&lt;/b&gt;&lt;br/&gt;5 packages - 250+ lines - 4 files"]
+        CB[CartBloc] --> CE1["CartEvent x 5"]
+        CB --> CS["CartState + copyWith"]
+        CB --> FZ["formz - external pkg"]
+        CB --> HB["hydrated_bloc - external pkg"]
+        CB --> UndoCustom["Undo - DIY"]
+        CB --> EventBusCustom["Event Bus - DIY"]
+        FZ --> FI1["FormzInput x 4"]
+        HB --> JSON["fromJson / toJson"]
+        style BT fill:none,stroke:none,color:#e74c3c,font-size:16px
+        style CB fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px
+        style FZ fill:#e67e22,color:#fff
+        style HB fill:#e67e22,color:#fff
+        style CE1 fill:#ffcccc
+        style CS fill:#ffcccc
+        style UndoCustom fill:#ffcccc,stroke:#e74c3c,stroke-dasharray: 5
+        style EventBusCustom fill:#ffcccc,stroke:#e74c3c,stroke-dasharray: 5
+        style FI1 fill:#ffe0cc
+        style JSON fill:#ffe0cc
+    end
+
+    subgraph TITAN[" "]
+        direction TB
+        TT["&lt;b&gt;Titan Approach&lt;/b&gt;&lt;br/&gt;0 packages - ~60 lines - 1 file"]
+        CP["CheckoutPillar"] --> NL["nexusList - Cart"]
+        CP --> DR["derived - Totals"]
+        CP --> SC["scroll x 3 - Forms"]
+        CP --> SG["scrollGroup - Validity"]
+        CP --> RL["relic - Persistence"]
+        CP --> EP["epoch - Undo"]
+        CP --> HR["emit - Herald Events"]
+        style TT fill:none,stroke:none,color:#00b894,font-size:16px
+        style CP fill:#00b894,color:#fff,stroke:#00a381,stroke-width:2px
+        style NL fill:#dfe6e9,stroke:#00b894
+        style DR fill:#dfe6e9,stroke:#00b894
+        style SC fill:#dfe6e9,stroke:#00b894
+        style SG fill:#dfe6e9,stroke:#00b894
+        style RL fill:#dfe6e9,stroke:#00b894
+        style EP fill:#dfe6e9,stroke:#00b894
+        style HR fill:#dfe6e9,stroke:#00b894
+    end
+  </div>
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:#e74c3c"></span> BLoC core</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#e67e22"></span> External packages</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#ffcccc; border:1px dashed #e74c3c"></span> DIY / boilerplate</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#00b894"></span> Titan Pillar</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#dfe6e9; border:1px solid #00b894"></span> Built-in primitives</div>
+  </div>
+</div>
+
+<!-- DIAGRAM 2: Real-Time Dashboard -->
+<div class="diagram-section">
+  <h2>Problem #2: The Real-Time Dashboard That Melts Your Framework</h2>
+  <p class="problem-desc">Paginated table + WebSocket revenue + health monitoring for 5 services + rate limiting + circuit breaker + search/filter.</p>
+  <div class="stats">
+    <span class="stat-bloc">BLoC: 3-4 Blocs &bull; 3 custom services &bull; 2+ packages</span>
+    <span class="stat-titan">Titan: 1 Pillar &bull; 0 packages &bull; all declarative</span>
+  </div>
+  <div class="mermaid">
+graph TB
+    subgraph BLOC2[" "]
+        direction TB
+        BT2["&lt;b&gt;BLoC Dashboard&lt;/b&gt;&lt;br/&gt;3-4 Blocs + custom services"]
+        OLB[OrderListBloc] -.->|"external"| ISP["infinite_scroll_pagination"]
+        RB[RevenueBloc] -.->|"external"| WSC["web_socket_channel"]
+        HMS["Health Monitor"] -.->|"hand-rolled"| Timer1["Timer.periodic"]
+        RLS["Rate Limiter"] -.->|"hand-rolled"| Timer2["Token bucket DIY"]
+        CBX["Circuit Breaker"] -.-> X1["NOT AVAILABLE"]
+        SFS["Search/Filter"] -.->|"hand-rolled"| Stream1["Stream transforms"]
+        style BT2 fill:none,stroke:none,color:#e74c3c,font-size:16px
+        style OLB fill:#e74c3c,color:#fff
+        style RB fill:#e74c3c,color:#fff
+        style HMS fill:#ffcccc,stroke:#e74c3c,stroke-dasharray: 5
+        style RLS fill:#ffcccc,stroke:#e74c3c,stroke-dasharray: 5
+        style SFS fill:#ffcccc,stroke:#e74c3c,stroke-dasharray: 5
+        style CBX fill:#ffcccc,stroke:#e74c3c
+        style X1 fill:#e74c3c,color:#fff
+        style ISP fill:#e67e22,color:#fff
+        style WSC fill:#e67e22,color:#fff
+    end
+
+    subgraph TITAN2[" "]
+        direction TB
+        TT2["&lt;b&gt;Titan Dashboard&lt;/b&gt;&lt;br/&gt;1 Pillar - all built-in"]
+        DP["DashboardPillar"] --> CDX["codex - Pagination"]
+        DP --> WDN["warden - Health x 5"]
+        DP --> MT["moat - Rate Limit"]
+        DP --> PC["portcullis - Breaker"]
+        DP --> SV["sieve - Search"]
+        DP --> CV["core - Revenue"]
+        style TT2 fill:none,stroke:none,color:#00b894,font-size:16px
+        style DP fill:#00b894,color:#fff,stroke:#00a381,stroke-width:2px
+        style CDX fill:#dfe6e9,stroke:#00b894
+        style WDN fill:#dfe6e9,stroke:#00b894
+        style MT fill:#dfe6e9,stroke:#00b894
+        style PC fill:#dfe6e9,stroke:#00b894
+        style SV fill:#dfe6e9,stroke:#00b894
+        style CV fill:#dfe6e9,stroke:#00b894
+    end
+  </div>
+</div>
+
+<!-- DIAGRAM 3: Form From Mordor -->
+<div class="diagram-section">
+  <h2>Problem #3: The Form From Mordor</h2>
+  <p class="problem-desc">11 validated fields, 3 async validators, dirty/touch tracking per field, grouped validity per step, persistence, and undo.</p>
+  <div class="stats">
+    <span class="stat-bloc">BLoC + Formz: 400-500 lines</span>
+    <span class="stat-titan">Titan Scroll: ~80 lines (with undo &amp; persistence)</span>
+  </div>
+  <div class="mermaid">
+graph TB
+    subgraph BLOC3[" "]
+        direction TB
+        BT3["&lt;b&gt;BLoC + Formz&lt;/b&gt;&lt;br/&gt;400-500 lines"]
+        RB3[RegistrationBloc] --> EV["Events x 11+"]
+        RB3 --> RS["RegistrationState"]
+        RS --> CW["copyWith - 25 params"]
+        RS --> FI["FormzInput x 11"]
+        FI --> V1["EmailInput"]
+        FI --> V2["PasswordInput"]
+        FI --> V3["PhoneInput"]
+        FI --> VN["... 8 more"]
+        RS --> T["touched booleans x 11"]
+        RS --> D["dirty booleans x 11"]
+        RB3 -.-> UNDO["Undo - NOT AVAILABLE"]
+        RB3 -.-> PERSIST["Persist - NOT AVAILABLE"]
+        style BT3 fill:none,stroke:none,color:#e74c3c,font-size:16px
+        style RB3 fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px
+        style RS fill:#ffcccc
+        style CW fill:#ffcccc
+        style EV fill:#ffcccc
+        style FI fill:#ffcccc
+        style UNDO fill:#e74c3c,color:#fff
+        style PERSIST fill:#e74c3c,color:#fff
+    end
+
+    subgraph TITAN3[" "]
+        direction TB
+        TT3["&lt;b&gt;Titan Scroll&lt;/b&gt;&lt;br/&gt;~80 lines"]
+        RP["RegistrationPillar"] --> S1["scroll x 11"]
+        S1 --> AUTO1["Auto dirty tracking"]
+        S1 --> AUTO2["Auto touch tracking"]
+        S1 --> AUTO3["Async validators"]
+        RP --> G1["scrollGroup - Step 1"]
+        RP --> G2["scrollGroup - Step 2"]
+        RP --> G3["scrollGroup - Step 3"]
+        RP --> GA["scrollGroup - All Steps"]
+        RP --> EPO["epoch - Undo"]
+        RP --> REL["relic - Persistence"]
+        style TT3 fill:none,stroke:none,color:#00b894,font-size:16px
+        style RP fill:#00b894,color:#fff,stroke:#00a381,stroke-width:2px
+        style S1 fill:#dfe6e9,stroke:#00b894
+        style AUTO1 fill:#a8e6cf,stroke:#00b894
+        style AUTO2 fill:#a8e6cf,stroke:#00b894
+        style AUTO3 fill:#a8e6cf,stroke:#00b894
+        style G1 fill:#dfe6e9,stroke:#00b894
+        style G2 fill:#dfe6e9,stroke:#00b894
+        style G3 fill:#dfe6e9,stroke:#00b894
+        style GA fill:#dfe6e9,stroke:#00b894
+        style EPO fill:#dfe6e9,stroke:#00b894
+        style REL fill:#dfe6e9,stroke:#00b894
+    end
+  </div>
+</div>
+
+<!-- DIAGRAM 4: Cross-Feature Communication -->
+<div class="diagram-section">
+  <h2>Problem #4: Cross-Feature Communication</h2>
+  <p class="problem-desc">User likes a post &rarr; 6 features must react: post count, user list, notifications, analytics, feed ranking, achievements.</p>
+  <div class="stats">
+    <span class="stat-bloc">BLoC: God Object (5 constructor deps) or stream spaghetti</span>
+    <span class="stat-titan">Titan Herald: Zero coupling &bull; Zero imports &bull; Add features with 1 line</span>
+  </div>
+  <div class="mermaid">
+graph TB
+    subgraph BLOC4[" "]
+        direction TB
+        BT4["&lt;b&gt;BLoC - Tight Coupling&lt;/b&gt;&lt;br/&gt;Every feature knows every other feature"]
+        PB["PostBloc"] ==>|"imports"| UB["UserBloc"]
+        PB ==>|"imports"| NB["NotificationBloc"]
+        PB ==>|"imports"| AB["AnalyticsBloc"]
+        PB ==>|"imports"| FB["FeedBloc"]
+        PB ==>|"imports"| AchB["AchievementBloc"]
+        UB -.->|"subscribes"| PB
+        NB -.->|"subscribes"| PB
+        GOD["Result: God Object&lt;br/&gt;5 constructor deps&lt;br/&gt;Untestable in isolation"]
+        style BT4 fill:none,stroke:none,color:#e74c3c,font-size:16px
+        style PB fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:3px
+        style UB fill:#ffcccc,stroke:#e74c3c
+        style NB fill:#ffcccc,stroke:#e74c3c
+        style AB fill:#ffcccc,stroke:#e74c3c
+        style FB fill:#ffcccc,stroke:#e74c3c
+        style AchB fill:#ffcccc,stroke:#e74c3c
+        style GOD fill:#e74c3c,color:#fff,stroke-dasharray: 5
+    end
+
+    subgraph TITAN4[" "]
+        direction TB
+        TT4["&lt;b&gt;Titan - Zero Coupling&lt;/b&gt;&lt;br/&gt;Features communicate through Herald events"]
+        PP["PostPillar"] -->|"emit PostLiked"| HE{{"Herald Event Bus"}}
+        HE -->|"listen"| UP["UserPillar"]
+        HE -->|"listen"| NP["NotificationPillar"]
+        HE -->|"listen"| AP["AnalyticsPillar"]
+        HE -->|"listen"| FP["FeedPillar"]
+        HE -->|"listen"| AchP["AchievementPillar"]
+        HE -.->|"Just add listen"| NEW["NewPillar"]
+        style TT4 fill:none,stroke:none,color:#00b894,font-size:16px
+        style PP fill:#00b894,color:#fff,stroke:#00a381,stroke-width:2px
+        style HE fill:#ffd93d,color:#333,stroke:#f39c12,stroke-width:3px
+        style UP fill:#dfe6e9,stroke:#00b894
+        style NP fill:#dfe6e9,stroke:#00b894
+        style AP fill:#dfe6e9,stroke:#00b894
+        style FP fill:#dfe6e9,stroke:#00b894
+        style AchP fill:#dfe6e9,stroke:#00b894
+        style NEW fill:#a8e6cf,stroke:#00b894,stroke-dasharray: 5
+    end
+  </div>
+</div>
+
+<!-- DIAGRAM 5: Production Monitoring -->
+<div class="diagram-section">
+  <h2>Problem #5: Production Monitoring</h2>
+  <p class="problem-desc">Error tracking, frame monitoring, memory tracking, circuit breaking, rate limiting, retry queues, gesture replay, performance reports.</p>
+  <div class="stats">
+    <span class="stat-bloc">BLoC: BlocObserver (2 callbacks)</span>
+    <span class="stat-titan">Titan: 14 built-in production primitives</span>
+  </div>
+  <div class="mermaid">
+graph TB
+    subgraph BLOC5[" "]
+        direction TB
+        BT5["&lt;b&gt;BLoC Production Toolkit&lt;/b&gt;&lt;br/&gt;2 callbacks. That is the whole toolkit."]
+        BO["BlocObserver"] --> LOG1["onChange - print"]
+        BO --> LOG2["onError - print"]
+        BO -.-> WALL{" "}
+        WALL -.-> MISS1["Frame monitoring"]
+        WALL -.-> MISS2["Memory tracking"]
+        WALL -.-> MISS3["Circuit breaker"]
+        WALL -.-> MISS4["Rate limiting"]
+        WALL -.-> MISS5["Retry + backoff"]
+        WALL -.-> MISS6["Rebuild counting"]
+        WALL -.-> MISS7["Gesture replay"]
+        WALL -.-> MISS8["Perf reports"]
+        style BT5 fill:none,stroke:none,color:#e74c3c,font-size:16px
+        style BO fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px
+        style WALL fill:none,stroke:none
+        style MISS1 fill:#ffcccc,stroke:#e74c3c
+        style MISS2 fill:#ffcccc,stroke:#e74c3c
+        style MISS3 fill:#ffcccc,stroke:#e74c3c
+        style MISS4 fill:#ffcccc,stroke:#e74c3c
+        style MISS5 fill:#ffcccc,stroke:#e74c3c
+        style MISS6 fill:#ffcccc,stroke:#e74c3c
+        style MISS7 fill:#ffcccc,stroke:#e74c3c
+        style MISS8 fill:#ffcccc,stroke:#e74c3c
+    end
+
+    subgraph TITAN5[" "]
+        direction TB
+        TT5["&lt;b&gt;Titan Production Arsenal&lt;/b&gt;&lt;br/&gt;14 built-in production primitives"]
+        TP["Your Pillar"] --> VG["Vigil - Error Tracking"]
+        TP --> CH["Chronicle - Structured Logging"]
+        TP --> PC5["Portcullis - Circuit Breaker"]
+        TP --> MT5["Moat - Rate Limiting"]
+        TP --> AN5["Anvil - Retry with Backoff"]
+        CL["Colossus"] --> PL["Pulse - Frame Monitor"]
+        CL --> STR["Stride - Page Load Timing"]
+        CL --> VS["Vessel - Memory Monitor"]
+        CL --> EC["Echo - Rebuild Counter"]
+        CL --> SH["Shade - Gesture Record + Replay"]
+        CL --> DC["Decree + Inscribe - Reports"]
+        LN["Lens"] --> OV["4-Tab Live Debug Overlay"]
+        style TT5 fill:none,stroke:none,color:#00b894,font-size:16px
+        style TP fill:#00b894,color:#fff,stroke:#00a381,stroke-width:2px
+        style CL fill:#6c5ce7,color:#fff,stroke:#5b4fcf,stroke-width:2px
+        style LN fill:#fdcb6e,color:#333,stroke:#f39c12,stroke-width:2px
+        style VG fill:#dfe6e9,stroke:#00b894
+        style CH fill:#dfe6e9,stroke:#00b894
+        style PC5 fill:#dfe6e9,stroke:#00b894
+        style MT5 fill:#dfe6e9,stroke:#00b894
+        style AN5 fill:#dfe6e9,stroke:#00b894
+        style PL fill:#dfe6e9,stroke:#6c5ce7
+        style STR fill:#dfe6e9,stroke:#6c5ce7
+        style VS fill:#dfe6e9,stroke:#6c5ce7
+        style EC fill:#dfe6e9,stroke:#6c5ce7
+        style SH fill:#dfe6e9,stroke:#6c5ce7
+        style DC fill:#dfe6e9,stroke:#6c5ce7
+        style OV fill:#ffeaa7,stroke:#f39c12
+    end
+  </div>
+</div>
+
+<!-- DIAGRAM 6: Full Ecosystem -->
+<div class="diagram-section">
+  <h2>The Complete Titan Ecosystem</h2>
+  <p class="problem-desc">Every box is a built-in Titan primitive. No external packages. No glue code. All reactive. All auto-disposing.</p>
+  <div class="mermaid">
+graph TB
+    subgraph APP["The Complete Titan Ecosystem"]
+        direction TB
+
+        subgraph UI["UI Layer - titan_bastion"]
+            V["Vestige - Auto-tracked widgets"]
+            S["Spark - 28 hooks"]
+            C["Confluence - Multi-Pillar"]
+            AV["AnimatedVestige - Animated state"]
+            L["Lens - Debug overlay"]
+        end
+
+        subgraph STATE["Reactive State - titan"]
+            P["Pillar"] --> CO["Core - Reactive state"]
+            P --> DE["Derived - Computed"]
+            P --> NX["Nexus - Collections"]
+            P --> EP2["Epoch - Undo/Redo"]
+            P --> SC2["Scroll - Form validation"]
+            P --> CD["Conduit - Middleware"]
+            P --> PR["Prism - Selectors"]
+        end
+
+        subgraph DATA["Data Layer"]
+            CDX2["Codex - Pagination"]
+            QR["Quarry - SWR fetch"]
+            RL2["Relic - Persistence"]
+            TV["Trove - Reactive cache"]
+        end
+
+        subgraph INFRA["Infrastructure - titan_basalt"]
+            PC6["Portcullis - Circuit breaker"]
+            MT6["Moat - Rate limiter"]
+            AN6["Anvil - Retry queue"]
+            PY["Pyre - Priority queue"]
+            EM["Embargo - Async mutex"]
+            WD["Warden - Health monitor"]
+            BN["Banner - Feature flags"]
+            LT["Lattice - DAG executor"]
+            SG2["Saga - Workflows"]
+            CLR["Clarion - Scheduler"]
+            SLU["Sluice - Pipelines"]
+            TAP["Tapestry - Event store"]
+        end
+
+        subgraph COMMS["Communication - titan"]
+            HE2["Herald - Event bus"]
+            VG2["Vigil - Error tracking"]
+            CHR["Chronicle - Logging"]
+        end
+
+        subgraph ROUTING["Routing - titan_atlas"]
+            AT["Atlas - Router"]
+            PS["Passage - Routes"]
+            SN["Sentinel - Guards"]
+            SM["Sanctum - Shells"]
+        end
+
+        subgraph AUTH["Auth - titan_argus"]
+            AR["Argus - Auth base"]
+            GR["Garrison - Guard factory"]
+            CR["CoreRefresh - Token bridge"]
+        end
+
+        subgraph PERF["Performance - titan_colossus"]
+            CL2["Colossus"] --> PU2["Pulse - Frames"]
+            CL2 --> STR2["Stride - Page loads"]
+            CL2 --> VES2["Vessel - Memory"]
+            CL2 --> ECH2["Echo - Rebuilds"]
+            CL2 --> SHA2["Shade - Gesture replay"]
+            CL2 --> DEC2["Decree - Reports"]
+        end
+    end
+
+    style P fill:#00b894,color:#fff,stroke:#00a381,stroke-width:3px
+    style CO fill:#dfe6e9,stroke:#00b894
+    style DE fill:#dfe6e9,stroke:#00b894
+    style HE2 fill:#ffd93d,color:#333,stroke:#f39c12,stroke-width:2px
+    style CL2 fill:#6c5ce7,color:#fff,stroke:#5b4fcf,stroke-width:2px
+    style AT fill:#0984e3,color:#fff
+    style AR fill:#d63031,color:#fff
+    style L fill:#fdcb6e,color:#333
+  </div>
+</div>
+
+<!-- FINAL SCORE -->
+<div class="diagram-section final-score">
+  <h2>The Final Score</h2>
+  <table>
+    <tr><th>Metric</th><th>BLoC + Ecosystem</th><th>Titan</th></tr>
+    <tr><td>External packages needed</td><td>8-12</td><td>0</td></tr>
+    <tr><td>Lines of boilerplate</td><td>1,000+</td><td>~200</td></tr>
+    <tr><td>Hand-rolled features</td><td>15+</td><td>0</td></tr>
+    <tr><td>Declarative features</td><td>0</td><td>20+</td></tr>
+    <tr><td>Cross-feature debugging</td><td>Hours</td><td>Minutes</td></tr>
+    <tr><td>Production monitoring</td><td>print()</td><td>Full telemetry</td></tr>
+    <tr><td>Time writing copyWith</td><td>Incalculable</td><td>0</td></tr>
+    <tr><td>Developer happiness</td><td>"This is fine."</td><td>"Wait, that's it?"</td></tr>
+  </table>
+</div>
+
+<div class="cta">
+  <p style="margin-bottom: 15px; color: #8b949e;">2,277+ tests &bull; 30 benchmarks &bull; Zero code generation &bull; MIT License</p>
+  <a href="https://github.com/Ikolvi/titan">View on GitHub &rarr;</a>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '14px',
+      darkMode: true,
+      background: '#1c2128',
+      primaryColor: '#4ecdc4',
+      primaryTextColor: '#c9d1d9',
+      lineColor: '#30363d',
+    },
+  });
+</script>
+
+</body>
+</html>
