@@ -2330,8 +2330,11 @@ class Scry {
   );
 
   /// Regex patterns for snackbar / toast / banner widgets.
+  ///
+  /// Avoids matching `NotificationListener` or other Flutter framework
+  /// types that contain "Notification" — those are not visible notices.
   static final _noticeWidgetPattern = RegExp(
-    r'SnackBar|MaterialBanner|Toast|Notification',
+    r'SnackBar|MaterialBanner|Toast(?!Transition)',
     caseSensitive: false,
   );
 
@@ -2506,9 +2509,16 @@ class Scry {
   /// 1. **Inline** — "Class: Scout" is a single label with ": " separator.
   /// 2. **Proximity** — "Class" at (x1, y1) and "Scout" at (x2, y2) where
   ///    they share the same Y band (same row) and x2 > x1.
+  /// Pattern for icon codepoint labels (e.g., "IconData(U+0E596)").
+  static final _iconDataPattern = RegExp(r'^IconData\(U\+[0-9A-Fa-f]+\)$');
+
+  /// Pattern for raw Unicode private-use-area glyphs (single emoji-like chars).
+  static final _rawGlyphPattern = RegExp(r'^[\uE000-\uF8FF\uDB80-\uDBFF]');
+
   List<ScryKeyValue> _extractKeyValuePairs(List<dynamic> glyphs) {
     final pairs = <ScryKeyValue>[];
     final usedLabels = <String>{};
+    final seenPairs = <String>{};
 
     // --- Strategy 1: Inline "Key: Value" patterns ---
     for (final g in glyphs) {
@@ -2525,8 +2535,14 @@ class Scry {
         final value = match.group(2)!.trim();
         // Skip if key is too long (probably not a label:value pair)
         if (key.length <= 30 && value.isNotEmpty) {
-          pairs.add(ScryKeyValue(key: key, value: value));
-          usedLabels.add(label);
+          final pairKey = '$key\x00$value';
+          if (seenPairs.add(pairKey)) {
+            pairs.add(ScryKeyValue(key: key, value: value));
+          }
+          usedLabels
+            ..add(label)
+            ..add(key)
+            ..add(value);
         }
       }
     }
@@ -2540,6 +2556,10 @@ class Scry {
       if (label.isEmpty || label.length < 2) continue;
       if (glyph['ia'] == true) continue;
       if (usedLabels.contains(label)) continue;
+
+      // Skip icon codepoint labels — not useful as data
+      if (_iconDataPattern.hasMatch(label)) continue;
+      if (_rawGlyphPattern.hasMatch(label)) continue;
 
       final x = (glyph['x'] as num?)?.toDouble();
       final y = (glyph['y'] as num?)?.toDouble();
@@ -2578,7 +2598,10 @@ class Scry {
             ? keyLabel.substring(0, keyLabel.length - 1).trim()
             : keyLabel;
         if (cleanKey.isNotEmpty && valueLabel.isNotEmpty) {
-          pairs.add(ScryKeyValue(key: cleanKey, value: valueLabel));
+          final pairKey = '$cleanKey\x00$valueLabel';
+          if (seenPairs.add(pairKey)) {
+            pairs.add(ScryKeyValue(key: cleanKey, value: valueLabel));
+          }
           usedLabels
             ..add(keyLabel)
             ..add(valueLabel);

@@ -1631,6 +1631,29 @@ void main() {
       // Should only have 1 alert, not 2
       expect(gaze.alerts, hasLength(1));
     });
+
+    test('does not flag NotificationListener children as alerts', () {
+      // NotificationListener is a common Flutter wrapper — its children
+      // should not be treated as SnackBar/notice content.
+      final glyphs = [
+        glyph(
+          label: 'Complete Quest',
+          widgetType: 'Text',
+          ancestors: ['NotificationListener', 'Column', 'Scaffold'],
+        ),
+        glyph(
+          label: 'Sign Out',
+          widgetType: 'Text',
+          ancestors: ['NotificationListener'],
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      // These should NOT be flagged as alerts
+      final noticeAlerts = gaze.alerts
+          .where((a) => a.severity == ScryAlertSeverity.info)
+          .toList();
+      expect(noticeAlerts, isEmpty);
+    });
   });
 
   // ===================================================================
@@ -1735,6 +1758,80 @@ void main() {
       final json = kv.toJson();
       expect(json['key'], 'Role');
       expect(json['value'], 'Admin');
+    });
+
+    test('deduplicates identical key-value pairs', () {
+      // Two identical "Count: 0" labels on different sections
+      final glyphs = [
+        glyph(label: 'Count: 0'),
+        glyph(label: 'Count: 0'),
+        glyph(label: 'Hero: Kael'),
+        glyph(label: 'Hero: Kael'),
+      ];
+      final gaze = scry.observe(glyphs);
+      final countPairs = gaze.dataFields
+          .where((d) => d.key == 'Count')
+          .toList();
+      final heroPairs = gaze.dataFields.where((d) => d.key == 'Hero').toList();
+      expect(countPairs, hasLength(1));
+      expect(heroPairs, hasLength(1));
+    });
+
+    test('filters IconData codepoints from proximity pairs', () {
+      final glyphs = [
+        {
+          'wt': 'Icon',
+          'l': 'IconData(U+0E596)',
+          'x': 16.0,
+          'y': 100.0,
+          'w': 24.0,
+          'h': 24.0,
+        },
+        {
+          'wt': 'Icon',
+          'l': 'IconData(U+0E3B3)',
+          'x': 44.0,
+          'y': 100.0,
+          'w': 24.0,
+          'h': 24.0,
+        },
+        // Real data should still be extracted
+        glyph(label: 'Status: Active'),
+      ];
+      final gaze = scry.observe(glyphs);
+      // Icon pairs should be filtered out
+      final iconPairs = gaze.dataFields
+          .where((d) => d.key.contains('IconData'))
+          .toList();
+      expect(iconPairs, isEmpty);
+      // Real data should remain
+      final statusPairs = gaze.dataFields
+          .where((d) => d.key == 'Status')
+          .toList();
+      expect(statusPairs, hasLength(1));
+    });
+
+    test('filters raw Unicode glyph characters from proximity pairs', () {
+      final glyphs = [
+        {
+          'wt': 'Icon',
+          'l': '\uE596',
+          'x': 16.0,
+          'y': 100.0,
+          'w': 24.0,
+          'h': 24.0,
+        },
+        {
+          'wt': 'Icon',
+          'l': '\uE3B3',
+          'x': 44.0,
+          'y': 100.0,
+          'w': 24.0,
+          'h': 24.0,
+        },
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.dataFields, isEmpty);
     });
   });
 
@@ -5035,21 +5132,8 @@ void main() {
       // Simulate an overlay widget type present in raw glyphs but
       // filtered out during element creation (no label).
       // Strategy 3: raw glyph pre-scan should detect it.
-      final glyphs = [
-        // Background element (below overlay depth)
-        glyph(label: 'Home', widgetType: 'Text', y: 100, depth: 5),
-        // Content that happens to be at or above overlay depth
-        glyph(
-          label: 'OK',
-          widgetType: 'TextButton',
-          interactive: true,
-          interactionType: 'tap',
-          y: 300,
-          depth: 25,
-        ),
-      ];
 
-      // Add a raw glyph for the overlay widget (no label, would be filtered)
+      // Raw glyphs for the overlay widget (no label, would be filtered)
       final rawGlyphs = <Map<String, dynamic>>[
         {'wt': 'Text', 'l': 'Home', 'd': 5, 'ia': false, 'y': 100.0},
         {'wt': 'AlertDialog', 'l': '', 'd': 20, 'ia': false, 'y': 200.0},
