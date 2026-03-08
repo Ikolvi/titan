@@ -37,6 +37,7 @@ Titan's enterprise performance monitoring package provides frame tracking, page 
 | Screen Identifier | **Signet** | `Signet` |
 | Blueprint Overlay | **BlueprintLensTab** | `BlueprintLensTab` |
 | HTTP Bridge | **Relay** | `Relay`, `RelayConfig`, `RelayStatus`, `RelayHandler` |
+| AI Agent Interface | **Scry** | `Scry`, `ScryGaze`, `ScryElement`, `ScryElementKind` |
 
 ## Installation
 
@@ -1215,10 +1216,82 @@ Colossus provides a built-in handler that delegates to `executeCampaignJson`, `t
 
 ---
 
+## Scry — Real-Time AI Agent Interface
+
+Scry gives AI assistants (via MCP) live vision of the running app. Instead of executing pre-written Campaigns, the AI observes the screen, decides what to do, acts, and observes the result.
+
+### The Agent Loop
+
+```
+scry (observe) → AI decides → scry_act (act) → new screen state → repeat
+```
+
+### Observing
+
+```dart
+const scry = Scry();
+final gaze = scry.observe(glyphs, route: '/login');
+
+gaze.buttons;    // Tappable elements
+gaze.fields;     // Text inputs (with current values)
+gaze.navigation; // Nav items
+gaze.content;    // Display-only text
+gaze.gated;      // ⚠️ Destructive actions
+```
+
+### Acting (Single)
+
+```json
+{"action": "tap", "label": "Sign Out"}
+{"action": "enterText", "label": "Hero Name", "value": "Arcturus"}
+```
+
+Text actions automatically include `waitForElement` (pre-step) and `dismissKeyboard` (post-step).
+
+### Acting (Multi-Action)
+
+Combine multiple actions in one call:
+
+```json
+{
+  "actions": [
+    {"action": "enterText", "label": "Hero Name", "value": "Arcturus"},
+    {"action": "tap", "label": "Enter the Questboard"}
+  ]
+}
+```
+
+### MCP Tools
+
+| Tool | Purpose |
+|------|---------|
+| `scry` | Observe the current screen |
+| `scry_act` | Perform action(s) and observe result |
+
+### Element Classification
+
+| Kind | Description |
+|------|-------------|
+| `button` | Tappable interactive elements |
+| `field` | Text input fields (TextField, TextFormField) |
+| `navigation` | Tab bar, nav bar, drawer items |
+| `content` | Display-only text and images |
+| `structural` | AppBar titles, toolbar labels |
+
+### Text Injection Strategies
+
+When entering text, three strategies are tried in order:
+
+1. **FocusManager polling** — poll primary focus 5×100ms, walk ancestors for EditableText
+2. **Position-based lookup** — walk element tree, find EditableText at tap coordinates
+3. **ShadeTextController registry** — use single registered controller as fallback
+
+---
+
 ## Testing
 
 ```bash
-cd packages/titan_colossus && fvm flutter test  # 1247+ tests
+cd packages/titan_colossus && fvm flutter test  # 1466+ tests
 ```
 
 ---

@@ -319,7 +319,7 @@ The first four bridges carried intelligence *outward* — from the app to the AI
 
 ---
 
-*Next: [Chapter LVIII — ???](chapter-58-todo.md)*
+*Next: [Chapter LVIII — The Scry Pierces](chapter-58-the-scry-pierces.md)*
 
 ---
 
