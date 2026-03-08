@@ -44,6 +44,7 @@ void main() {
     _runExportBenchmarks();
     _runOverheadBenchmarks();
     _runBlueprintBenchmarks();
+    _runScryBenchmarks();
     _isWarmup = false;
     _results.clear();
     warmupSw.stop();
@@ -61,6 +62,7 @@ void main() {
       _runExportBenchmarks();
       _runOverheadBenchmarks();
       _runBlueprintBenchmarks();
+      _runScryBenchmarks();
       for (final entry in _results.entries) {
         allSamples.putIfAbsent(entry.key, () => []).add(entry.value);
       }
@@ -727,10 +729,7 @@ void _runBlueprintBenchmarks() {
 
     final sw = Stopwatch()..start();
     for (var i = 0; i < sessions; i++) {
-      scout.analyzeSession(_blueprintSession(
-        id: 's_$i',
-        routes: routes,
-      ));
+      scout.analyzeSession(_blueprintSession(id: 's_$i', routes: routes));
     }
     sw.stop();
     Scout.reset();
@@ -749,10 +748,12 @@ void _runBlueprintBenchmarks() {
     final terrain = Terrain();
     final scout = Scout.withTerrain(terrain);
     for (var i = 0; i < 10; i++) {
-      scout.analyzeSession(_blueprintSession(
-        id: 'tj_$i',
-        routes: [for (var j = 0; j < 25; j++) '/screen_$j'],
-      ));
+      scout.analyzeSession(
+        _blueprintSession(
+          id: 'tj_$i',
+          routes: [for (var j = 0; j < 25; j++) '/screen_$j'],
+        ),
+      );
     }
     Scout.reset();
 
@@ -777,10 +778,12 @@ void _runBlueprintBenchmarks() {
     final terrain = Terrain();
     final scout = Scout.withTerrain(terrain);
     for (var i = 0; i < 10; i++) {
-      scout.analyzeSession(_blueprintSession(
-        id: 'tf_$i',
-        routes: [for (var j = 0; j < 25; j++) '/screen_$j'],
-      ));
+      scout.analyzeSession(
+        _blueprintSession(
+          id: 'tf_$i',
+          routes: [for (var j = 0; j < 25; j++) '/screen_$j'],
+        ),
+      );
     }
     Scout.reset();
 
@@ -806,10 +809,12 @@ void _runBlueprintBenchmarks() {
     final terrain = Terrain();
     final scout = Scout.withTerrain(terrain);
     for (var i = 0; i < 10; i++) {
-      scout.analyzeSession(_blueprintSession(
-        id: 'gq_$i',
-        routes: [for (var j = 0; j < 30; j++) '/screen_$j'],
-      ));
+      scout.analyzeSession(
+        _blueprintSession(
+          id: 'gq_$i',
+          routes: [for (var j = 0; j < 30; j++) '/screen_$j'],
+        ),
+      );
     }
     Scout.reset();
 
@@ -852,10 +857,12 @@ void _runBlueprintBenchmarks() {
     final terrain = Terrain();
     final scout = Scout.withTerrain(terrain);
     for (var i = 0; i < 5; i++) {
-      scout.analyzeSession(_blueprintSession(
-        id: 'g_$i',
-        routes: [for (var j = 0; j < 10; j++) '/screen_$j'],
-      ));
+      scout.analyzeSession(
+        _blueprintSession(
+          id: 'g_$i',
+          routes: [for (var j = 0; j < 10; j++) '/screen_$j'],
+        ),
+      );
     }
     Scout.reset();
 
@@ -881,10 +888,12 @@ void _runBlueprintBenchmarks() {
     final terrain = Terrain();
     final scout = Scout.withTerrain(terrain);
     for (var i = 0; i < 10; i++) {
-      scout.analyzeSession(_blueprintSession(
-        id: 'bj_$i',
-        routes: [for (var j = 0; j < 20; j++) '/screen_$j'],
-      ));
+      scout.analyzeSession(
+        _blueprintSession(
+          id: 'bj_$i',
+          routes: [for (var j = 0; j < 20; j++) '/screen_$j'],
+        ),
+      );
     }
 
     final export = BlueprintExport.fromScout(scout: scout);
@@ -911,10 +920,12 @@ void _runBlueprintBenchmarks() {
     final terrain = Terrain();
     final scout = Scout.withTerrain(terrain);
     for (var i = 0; i < 10; i++) {
-      scout.analyzeSession(_blueprintSession(
-        id: 'bc_$i',
-        routes: [for (var j = 0; j < 20; j++) '/screen_$j'],
-      ));
+      scout.analyzeSession(
+        _blueprintSession(
+          id: 'bc_$i',
+          routes: [for (var j = 0; j < 20; j++) '/screen_$j'],
+        ),
+      );
     }
 
     final export = BlueprintExport.fromScout(scout: scout);
@@ -962,10 +973,7 @@ void _runBlueprintBenchmarks() {
     final terrain = Terrain();
     final scout = Scout.withTerrain(terrain);
     for (var i = 0; i < sessionCount; i++) {
-      scout.analyzeSession(_blueprintSession(
-        id: 'pipe_$i',
-        routes: routes,
-      ));
+      scout.analyzeSession(_blueprintSession(id: 'pipe_$i', routes: routes));
     }
     final export = BlueprintExport.fromScout(scout: scout);
     export.toCompactJsonString();
@@ -977,6 +985,346 @@ void _runBlueprintBenchmarks() {
       sw.elapsedMilliseconds.toDouble(),
       'ms',
       'blueprint',
+    );
+  }
+}
+
+// =============================================================================
+// Scry Benchmarks (35–42)
+// =============================================================================
+
+/// Build a raw glyph map for Scry benchmarks.
+Map<String, dynamic> _scryGlyph({
+  required String label,
+  String widgetType = 'Text',
+  double x = 0,
+  double y = 0,
+  bool interactive = false,
+  String? interactionType,
+  String? fieldId,
+  String? currentValue,
+  int depth = 5,
+  List<String>? ancestors,
+}) {
+  return {
+    'l': label,
+    'wt': widgetType,
+    'x': x,
+    'y': y,
+    'w': 100.0,
+    'h': 48.0,
+    'ia': interactive,
+    if (interactionType != null) 'it': interactionType,
+    if (fieldId != null) 'fid': fieldId,
+    if (currentValue != null) 'cv': currentValue,
+    'd': depth,
+    if (ancestors != null) 'anc': ancestors,
+    'en': true,
+  };
+}
+
+/// Small screen: 10 mixed glyphs.
+List<Map<String, dynamic>> _scrySmallScreen() {
+  return [
+    _scryGlyph(label: 'Home', y: 50, depth: 3),
+    _scryGlyph(
+      label: 'Submit',
+      widgetType: 'ElevatedButton',
+      y: 200,
+      interactive: true,
+      interactionType: 'tap',
+    ),
+    _scryGlyph(label: 'Welcome back', y: 100),
+    _scryGlyph(
+      label: 'Cancel',
+      widgetType: 'TextButton',
+      y: 200,
+      x: 150,
+      interactive: true,
+      interactionType: 'tap',
+    ),
+    _scryGlyph(label: 'Status: Active', y: 150),
+    _scryGlyph(
+      label: 'Settings',
+      widgetType: 'NavigationDestination',
+      y: 750,
+      interactive: true,
+      interactionType: 'tap',
+      ancestors: ['NavigationBar'],
+    ),
+    _scryGlyph(
+      label: 'Profile',
+      widgetType: 'NavigationDestination',
+      y: 750,
+      x: 100,
+      interactive: true,
+      interactionType: 'tap',
+      ancestors: ['NavigationBar'],
+    ),
+    _scryGlyph(label: 'Version 2.1.0', y: 700),
+    _scryGlyph(
+      label: 'Help',
+      widgetType: 'IconButton',
+      y: 50,
+      x: 350,
+      interactive: true,
+      interactionType: 'tap',
+    ),
+    _scryGlyph(label: 'Last synced: 5m ago', y: 160),
+  ];
+}
+
+/// Medium screen: 50 mixed glyphs.
+List<Map<String, dynamic>> _scryMediumScreen() {
+  final glyphs = <Map<String, dynamic>>[];
+  glyphs.add(
+    _scryGlyph(label: 'Dashboard', y: 50, depth: 3, ancestors: ['AppBar']),
+  );
+  for (var i = 0; i < 5; i++) {
+    glyphs.add(
+      _scryGlyph(
+        label: 'Tab ${i + 1}',
+        widgetType: 'NavigationDestination',
+        y: 750,
+        x: i * 80.0,
+        interactive: true,
+        interactionType: 'tap',
+        ancestors: ['NavigationBar'],
+      ),
+    );
+  }
+  for (var i = 0; i < 10; i++) {
+    glyphs.add(_scryGlyph(label: 'Field $i: Value $i', y: 100.0 + i * 30));
+  }
+  for (var i = 0; i < 8; i++) {
+    glyphs.add(
+      _scryGlyph(
+        label: 'Action $i',
+        widgetType: 'ElevatedButton',
+        y: 400.0 + i * 40,
+        interactive: true,
+        interactionType: 'tap',
+      ),
+    );
+  }
+  for (var i = 0; i < 22; i++) {
+    glyphs.add(_scryGlyph(label: 'Content line $i text', y: 100.0 + i * 25));
+  }
+  glyphs.add(
+    _scryGlyph(
+      label: 'Delete',
+      widgetType: 'TextButton',
+      y: 600,
+      interactive: true,
+      interactionType: 'tap',
+    ),
+  );
+  glyphs.add(
+    _scryGlyph(
+      label: 'Reset',
+      widgetType: 'TextButton',
+      y: 630,
+      interactive: true,
+      interactionType: 'tap',
+    ),
+  );
+  glyphs.add(
+    _scryGlyph(
+      label: 'Sign Out',
+      widgetType: 'TextButton',
+      y: 660,
+      interactive: true,
+      interactionType: 'tap',
+    ),
+  );
+  return glyphs;
+}
+
+/// Large screen: N mixed glyphs.
+List<Map<String, dynamic>> _scryLargeScreen(int count) {
+  return [
+    for (var i = 0; i < count; i++)
+      _scryGlyph(
+        label: i % 7 == 0
+            ? 'Field $i: Data $i'
+            : i % 5 == 0
+            ? 'Button $i'
+            : 'Item $i text',
+        widgetType: i % 5 == 0 ? 'ElevatedButton' : 'Text',
+        y: (i * 30.0) % 800,
+        x: (i * 50.0) % 400,
+        interactive: i % 5 == 0,
+        interactionType: i % 5 == 0 ? 'tap' : null,
+        depth: (i % 20) + 1,
+      ),
+  ];
+}
+
+void _runScryBenchmarks() {
+  const scry = Scry();
+
+  // 35. observe() — small screen (10 glyphs)
+  {
+    final screen = _scrySmallScreen();
+    const count = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      scry.observe(screen, route: '/home');
+    }
+    sw.stop();
+    _record(
+      'Scry Small (10 glyphs)',
+      sw.elapsedMicroseconds / count,
+      'µs/op',
+      'scry',
+    );
+  }
+
+  // 36. observe() — medium screen (50 glyphs)
+  {
+    final screen = _scryMediumScreen();
+    const count = 5000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      scry.observe(screen, route: '/dashboard');
+    }
+    sw.stop();
+    _record(
+      'Scry Medium (50 glyphs)',
+      sw.elapsedMicroseconds / count,
+      'µs/op',
+      'scry',
+    );
+  }
+
+  // 37. observe() — large screen (200 glyphs)
+  {
+    final screen = _scryLargeScreen(200);
+    const count = 1000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      scry.observe(screen, route: '/complex');
+    }
+    sw.stop();
+    _record(
+      'Scry Large (200 glyphs)',
+      sw.elapsedMicroseconds / count,
+      'µs/op',
+      'scry',
+    );
+  }
+
+  // 38. observe() — stress test (500 glyphs)
+  {
+    final screen = _scryLargeScreen(500);
+    const count = 200;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      scry.observe(screen, route: '/stress');
+    }
+    sw.stop();
+    _record(
+      'Scry Stress (500 glyphs)',
+      sw.elapsedMicroseconds / count,
+      'µs/op',
+      'scry',
+    );
+  }
+
+  // 39. observe() — form screen (20 fields)
+  {
+    final screen = <Map<String, dynamic>>[
+      _scryGlyph(label: 'Form', y: 50, ancestors: ['AppBar']),
+      for (var i = 0; i < 20; i++)
+        _scryGlyph(
+          label: 'Field $i',
+          widgetType: 'TextField',
+          y: 100.0 + i * 60,
+          interactive: true,
+          interactionType: 'tap',
+          fieldId: 'field_$i',
+          currentValue: i % 3 == 0 ? 'value $i' : '',
+        ),
+      _scryGlyph(
+        label: 'Submit',
+        widgetType: 'ElevatedButton',
+        y: 1300,
+        interactive: true,
+        interactionType: 'tap',
+      ),
+    ];
+    const count = 5000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      scry.observe(screen, route: '/register');
+    }
+    sw.stop();
+    _record(
+      'Scry Form (20 fields)',
+      sw.elapsedMicroseconds / count,
+      'µs/op',
+      'scry',
+    );
+  }
+
+  // 40. observe() — data-rich screen (30 KV pairs)
+  {
+    final screen = <Map<String, dynamic>>[
+      _scryGlyph(label: 'Details', y: 50, ancestors: ['AppBar']),
+      for (var i = 0; i < 15; i++)
+        _scryGlyph(label: 'Metric $i: ${1000 + i * 42}', y: 100.0 + i * 30),
+      for (var i = 0; i < 15; i++) ...[
+        _scryGlyph(label: 'Stat $i', y: 560.0 + i * 30, x: 20),
+        _scryGlyph(label: '${2000 + i}', y: 560.0 + i * 30, x: 300),
+      ],
+    ];
+    const count = 5000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      scry.observe(screen, route: '/details');
+    }
+    sw.stop();
+    _record(
+      'Scry DataRich (30 KV)',
+      sw.elapsedMicroseconds / count,
+      'µs/op',
+      'scry',
+    );
+  }
+
+  // 41. formatGaze() throughput
+  {
+    final gaze = scry.observe(_scryMediumScreen(), route: '/dashboard');
+    const count = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      scry.formatGaze(gaze);
+    }
+    sw.stop();
+    _record(
+      'Scry formatGaze (50 glyphs)',
+      sw.elapsedMicroseconds / count,
+      'µs/op',
+      'scry',
+    );
+  }
+
+  // 42. Full observe+format pipeline
+  {
+    final screens = [_scrySmallScreen(), _scryMediumScreen()];
+    const count = 5000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      final screen = screens[i % screens.length];
+      final gaze = scry.observe(screen, route: '/bench');
+      scry.formatGaze(gaze);
+    }
+    sw.stop();
+    _record(
+      'Scry Full Pipeline (5K)',
+      sw.elapsedMicroseconds / count,
+      'µs/cycle',
+      'scry',
     );
   }
 }
