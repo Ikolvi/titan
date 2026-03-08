@@ -1272,6 +1272,21 @@ class Scry {
     // representations and should be deduplicated.
     final interactiveLabelCounts = <String, int>{};
 
+    // --- Early overlay detection from raw glyphs ---
+    // Scan before label filtering since dialog widgets (AboutDialog,
+    // AlertDialog) often have no text label and would be filtered out.
+    String? rawOverlayType;
+    int rawOverlayDepth = 0;
+    for (final g in glyphs) {
+      final glyph = g as Map<String, dynamic>;
+      final wt = glyph['wt'] as String? ?? '';
+      if (_overlayTypes.contains(wt)) {
+        rawOverlayType = wt;
+        rawOverlayDepth = glyph['d'] as int? ?? 0;
+        break;
+      }
+    }
+
     // --- Pass 1: Classify labels ---
     for (final g in glyphs) {
       final glyph = g as Map<String, dynamic>;
@@ -1465,7 +1480,11 @@ class Scry {
     final scrollInfo = _analyzeScroll(elementList);
     final groups = _groupElements(elementList, glyphs);
     final landmarks = _detectLandmarks(elementList, screenType);
-    final overlay = _analyzeOverlay(elementList);
+    final overlay = _analyzeOverlay(
+      elementList,
+      rawOverlayType: rawOverlayType,
+      rawOverlayDepth: rawOverlayDepth,
+    );
     final layoutPattern = _detectLayoutPattern(elementList);
     final toggleSummary = _buildToggleSummary(elementList);
     final tabOrder = _computeTabOrder(elementList);
@@ -2705,6 +2724,7 @@ class Scry {
 
   /// Known container widgets that provide useful context.
   static const _contextContainers = [
+    'AboutDialog',
     'AlertDialog',
     'SimpleDialog',
     'Dialog',
@@ -3376,6 +3396,7 @@ class Scry {
 
   /// Overlay container types to detect.
   static const _overlayTypes = [
+    'AboutDialog',
     'AlertDialog',
     'Dialog',
     'SimpleDialog',
@@ -3387,15 +3408,52 @@ class Scry {
   ];
 
   /// Analyze overlay structure when elements are obscured.
-  ScryOverlayInfo? _analyzeOverlay(List<ScryElement> elements) {
-    // Check if any elements have overlay context
-    final overlayElements = elements
+  ///
+  /// Detects overlays in three ways:
+  /// 1. Elements whose ancestor context matches an overlay type
+  /// 2. Elements whose widgetType is itself an overlay type
+  /// 3. Raw glyph pre-scan (catches overlay widgets with no label
+  ///    that were filtered out during element creation)
+  ScryOverlayInfo? _analyzeOverlay(
+    List<ScryElement> elements, {
+    String? rawOverlayType,
+    int rawOverlayDepth = 0,
+  }) {
+    // Strategy 1: elements with overlay ancestor context
+    var overlayElements = elements
         .where((e) => _overlayTypes.contains(e.context))
         .toList();
+
+    // Strategy 2: check for captured overlay widgets directly.
+    String? detectedType;
+    if (overlayElements.isEmpty) {
+      for (final typeName in _overlayTypes) {
+        final match = elements.where((e) => e.widgetType == typeName).toList();
+        if (match.isNotEmpty) {
+          detectedType = typeName;
+          final overlayDepth = match.first.depth ?? 0;
+          overlayElements = elements
+              .where((e) => (e.depth ?? 0) >= overlayDepth)
+              .toList();
+          break;
+        }
+      }
+    }
+
+    // Strategy 3: raw glyph pre-scan detected an overlay widget that
+    // was filtered out (no label). Use depth to identify overlay content.
+    if (overlayElements.isEmpty && rawOverlayType != null) {
+      detectedType = rawOverlayType;
+      overlayElements = elements
+          .where((e) => (e.depth ?? 0) >= rawOverlayDepth)
+          .toList();
+    }
     if (overlayElements.isEmpty) return null;
 
-    // Determine the overlay type from context
-    final type = overlayElements.first.context!;
+    // Determine the overlay type
+    final type =
+        detectedType ??
+        overlayElements.firstWhere((e) => e.context != null).context!;
 
     // Find title: first structural or content element in the overlay
     String? title;

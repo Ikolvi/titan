@@ -4970,6 +4970,76 @@ void main() {
       final json = gaze.toJson();
       expect(json.containsKey('overlay'), isTrue);
     });
+
+    test('detects AboutDialog overlay via ancestor context', () {
+      final glyphs = [
+        glyph(
+          label: 'About My App',
+          widgetType: 'Text',
+          ancestors: ['AboutDialog', 'Scaffold'],
+          y: 200,
+        ),
+        glyph(
+          label: '1.0.0',
+          widgetType: 'Text',
+          ancestors: ['AboutDialog', 'Scaffold'],
+          y: 250,
+        ),
+        glyph(
+          label: 'Close',
+          widgetType: 'TextButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['AboutDialog', 'Scaffold'],
+          y: 400,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+
+      expect(gaze.overlay, isNotNull);
+      expect(gaze.overlay!.type, 'AboutDialog');
+      expect(gaze.overlay!.actions, isNotEmpty);
+    });
+
+    test('raw glyph pre-scan detects overlay widget with no label', () {
+      // Simulate an overlay widget type present in raw glyphs but
+      // filtered out during element creation (no label).
+      // Strategy 3: raw glyph pre-scan should detect it.
+      final glyphs = [
+        // Background element (below overlay depth)
+        glyph(label: 'Home', widgetType: 'Text', y: 100, depth: 5),
+        // Content that happens to be at or above overlay depth
+        glyph(
+          label: 'OK',
+          widgetType: 'TextButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 300,
+          depth: 25,
+        ),
+      ];
+
+      // Add a raw glyph for the overlay widget (no label, would be filtered)
+      final rawGlyphs = <Map<String, dynamic>>[
+        {'wt': 'Text', 'l': 'Home', 'd': 5, 'ia': false, 'y': 100.0},
+        {'wt': 'AlertDialog', 'l': '', 'd': 20, 'ia': false, 'y': 200.0},
+        {
+          'wt': 'TextButton',
+          'l': 'OK',
+          'd': 25,
+          'ia': true,
+          'it': 'tap',
+          'y': 300.0,
+        },
+      ];
+
+      // The raw pre-scan happens inside observe() with raw glyphs.
+      // Test directly with elements that have no overlay context/widgetType
+      // but rawOverlayType is set — this tests strategy 3.
+      final gaze = scry.observe(rawGlyphs);
+      expect(gaze.overlay, isNotNull);
+      expect(gaze.overlay!.type, 'AlertDialog');
+    });
   });
 
   // ===================================================================

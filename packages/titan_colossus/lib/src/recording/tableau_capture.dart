@@ -117,11 +117,17 @@ class TableauCapture {
   // -----------------------------------------------------------------------
 
   /// Recursively walk the [Element] tree and extract [Glyph]s.
+  ///
+  /// When [suppressInteractiveLabel] is non-null, any child interactive widget
+  /// that resolves to the same label is skipped. This prevents nested widget
+  /// layers (e.g. FilledButton → InkWell → GestureDetector) from producing
+  /// multiple glyphs for a single logical button.
   static void _walkElement({
     required Element element,
     required List<Glyph> glyphs,
     required int depth,
     required List<String> ancestors,
+    String? suppressInteractiveLabel,
   }) {
     if (depth > maxDepth || glyphs.length >= maxGlyphs) return;
 
@@ -131,7 +137,33 @@ class TableauCapture {
     // Check if this widget should be captured
     final classification = _classify(widget);
 
+    // Track whether this node captured an interactive glyph so children
+    // with the same label can be suppressed.
+    String? childSuppressLabel = suppressInteractiveLabel;
+
     if (classification != _WidgetClassification.skip) {
+      final isInteractive = classification == _WidgetClassification.interactive;
+
+      // If a parent interactive glyph already captured this label, skip.
+      if (isInteractive && suppressInteractiveLabel != null) {
+        final label = _extractLabel(element, widget);
+        if (label == suppressInteractiveLabel) {
+          // Skip this glyph but continue walking children — they may
+          // contain content (Text, Icon) that should still be captured.
+          final childAncestors = [widgetType, ...ancestors.take(7)];
+          element.visitChildren((child) {
+            _walkElement(
+              element: child,
+              glyphs: glyphs,
+              depth: depth + 1,
+              ancestors: childAncestors,
+              suppressInteractiveLabel: suppressInteractiveLabel,
+            );
+          });
+          return;
+        }
+      }
+
       // Try to extract a Glyph from this element
       final glyph = _extractGlyph(
         element: element,
@@ -144,11 +176,17 @@ class TableauCapture {
 
       if (glyph != null) {
         glyphs.add(glyph);
+
+        // If we just captured an interactive glyph with a label, suppress
+        // duplicate interactive children with the same label.
+        if (isInteractive && glyph.label != null) {
+          childSuppressLabel = glyph.label;
+        }
       }
     }
 
-    // Build ancestor list for children (max 5)
-    final childAncestors = [widgetType, ...ancestors.take(4)];
+    // Build ancestor list for children (max 8)
+    final childAncestors = [widgetType, ...ancestors.take(7)];
 
     // Recurse into children
     element.visitChildren((child) {
@@ -157,6 +195,7 @@ class TableauCapture {
         glyphs: glyphs,
         depth: depth + 1,
         ancestors: childAncestors,
+        suppressInteractiveLabel: childSuppressLabel,
       );
     });
   }
@@ -269,6 +308,7 @@ class TableauCapture {
         widget is Icon ||
         widget is AppBar ||
         widget is Card ||
+        widget is AboutDialog ||
         widget is Dialog ||
         widget is AlertDialog ||
         widget is SimpleDialog ||
