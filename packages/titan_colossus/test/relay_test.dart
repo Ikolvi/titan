@@ -696,4 +696,35 @@ class _MockRelayHandler implements RelayHandler {
       'aiSummary': 'No verdicts to analyze.',
     };
   }
+
+  @override
+  Map<String, dynamic> getPerformanceReport() {
+    return {
+      'health': 'good',
+      'durationSeconds': 0,
+      'pulse': {
+        'totalFrames': 0,
+        'jankFrames': 0,
+        'jankRate': 0.0,
+        'avgFps': 60.0,
+        'avgBuildTimeUs': 0,
+        'avgRasterTimeUs': 0,
+      },
+      'stride': {
+        'totalPageLoads': 0,
+        'avgPageLoadMs': 0,
+        'pageLoads': <Map<String, dynamic>>[],
+      },
+      'vessel': {
+        'pillarCount': 0,
+        'totalInstances': 0,
+        'leakSuspects': <Map<String, dynamic>>[],
+      },
+      'echo': {
+        'totalRebuilds': 0,
+        'rebuildsPerWidget': <String, int>{},
+        'topRebuilders': <String, int>{},
+      },
+    };
+  }
 }

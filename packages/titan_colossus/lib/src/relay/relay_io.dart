@@ -155,6 +155,9 @@ class RelayPlatform {
         case ('POST', '/debrief'):
           await _handlePostDebrief(request);
 
+        case ('GET', '/performance'):
+          _handleGetPerformance(request);
+
         case ('GET', '/debug/tree'):
           await _handleDebugTree(request);
 
@@ -281,6 +284,21 @@ class RelayPlatform {
 
     final verdicts = (body['verdicts'] as List).cast<Map<String, dynamic>>();
     final report = handler.debriefVerdicts(verdicts);
+    _sendJson(request.response, report);
+  }
+
+  void _handleGetPerformance(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    final report = handler.getPerformanceReport();
     _sendJson(request.response, report);
   }
 

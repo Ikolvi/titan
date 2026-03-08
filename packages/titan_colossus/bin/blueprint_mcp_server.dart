@@ -48,6 +48,8 @@
 ///   human interaction)
 /// - `relay_status` — Check if the Relay bridge is running
 /// - `relay_terrain` — Get live Terrain from the running app
+/// - `get_performance` — Get live performance report (Pulse, Stride,
+///   Vessel, Echo metrics and health verdict)
 /// - `generate_auth_stratagem` — Auto-generate authStratagem from the
 ///   current screen (detects text fields and login buttons)
 /// - `generate_campaign` — Auto-generate a complete Campaign JSON from
@@ -361,6 +363,17 @@ class _BlueprintMcpServer {
             'inputSchema': {'type': 'object', 'properties': {}},
           },
           {
+            'name': 'get_performance',
+            'description':
+                'Get a live performance report (Decree) from Colossus '
+                'monitors in the running app. Includes: Pulse (FPS, '
+                'jank rate, frame times), Stride (page load times), '
+                'Vessel (memory, Pillar count, leak suspects), and '
+                'Echo (widget rebuild counts). Returns a health '
+                'verdict (good/fair/poor) and detailed metrics.',
+            'inputSchema': {'type': 'object', 'properties': {}},
+          },
+          {
             'name': 'generate_auth_stratagem',
             'description':
                 'Auto-generate an authStratagem JSON from the live '
@@ -669,6 +682,7 @@ class _BlueprintMcpServer {
       'execute_campaign',
       'relay_status',
       'relay_terrain',
+      'get_performance',
       'generate_auth_stratagem',
       'generate_campaign',
       'audit_screen',
@@ -681,6 +695,7 @@ class _BlueprintMcpServer {
         'execute_campaign' => await _executeCampaign(toolArgs),
         'relay_status' => await _relayStatus(),
         'relay_terrain' => await _relayTerrain(),
+        'get_performance' => await _getPerformance(),
         'generate_auth_stratagem' => await _generateAuthStratagem(toolArgs),
         'generate_campaign' => await _generateCampaign(toolArgs),
         'audit_screen' => await _auditScreen(toolArgs),
@@ -1647,6 +1662,165 @@ class _BlueprintMcpServer {
     } finally {
       client.close();
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Performance report
+  // -----------------------------------------------------------------------
+
+  /// Fetch a live performance Decree from the running app.
+  Future<String> _getPerformance() async {
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 5);
+
+      final request = await client.getUrl(_relayUri('/performance'));
+      _relayHeaders.forEach(request.headers.set);
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
+
+      final body = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        return 'Relay returned ${response.statusCode}: $body';
+      }
+
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      return _formatPerformanceReport(data);
+    } on SocketException {
+      return '# Performance Report Unavailable\n\n'
+          'Relay is not running at '
+          'http://$_relayHost:$_relayPort\n\n'
+          'Start your app with `ColossusPlugin(enableRelay: true)` '
+          'first.';
+    } on TimeoutException {
+      return '# Performance Report Unavailable\n\n'
+          'Relay did not respond (timeout).';
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Format the raw Decree JSON into readable Markdown.
+  String _formatPerformanceReport(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+    final health = (data['health'] as String? ?? 'unknown').toUpperCase();
+    final durationSec = data['durationSeconds'] as int? ?? 0;
+
+    buf.writeln('# Performance Report');
+    buf.writeln();
+    buf.writeln(
+      '**Health:** $health | '
+      '**Session Duration:** ${durationSec}s',
+    );
+    buf.writeln();
+
+    // --- Pulse (Frames) ---
+    final pulse = data['pulse'] as Map<String, dynamic>? ?? {};
+    final fps = pulse['avgFps'] ?? 0;
+    final totalFrames = pulse['totalFrames'] ?? 0;
+    final jankFrames = pulse['jankFrames'] ?? 0;
+    final jankRate = pulse['jankRate'] ?? 0;
+    final avgBuildUs = pulse['avgBuildTimeUs'] ?? 0;
+    final avgRasterUs = pulse['avgRasterTimeUs'] ?? 0;
+
+    buf.writeln('## Pulse (Frames)');
+    buf.writeln();
+    buf.writeln('| Metric | Value |');
+    buf.writeln('|--------|-------|');
+    buf.writeln('| FPS | $fps |');
+    buf.writeln('| Total Frames | $totalFrames |');
+    buf.writeln('| Jank Frames | $jankFrames |');
+    buf.writeln('| Jank Rate | $jankRate% |');
+    buf.writeln('| Avg Build Time | $avgBuildUsµs |');
+    buf.writeln('| Avg Raster Time | $avgRasterUsµs |');
+    buf.writeln();
+
+    // --- Stride (Page Loads) ---
+    final stride = data['stride'] as Map<String, dynamic>? ?? {};
+    final totalPageLoads = stride['totalPageLoads'] ?? 0;
+    final avgPageLoadMs = stride['avgPageLoadMs'] ?? 0;
+    final pageLoads = stride['pageLoads'] as List<dynamic>? ?? [];
+    final slowest = stride['slowestPageLoad'] as Map<String, dynamic>?;
+
+    buf.writeln('## Stride (Page Loads)');
+    buf.writeln();
+    buf.writeln('| Metric | Value |');
+    buf.writeln('|--------|-------|');
+    buf.writeln('| Total | $totalPageLoads |');
+    buf.writeln('| Avg Load Time | ${avgPageLoadMs}ms |');
+    if (slowest != null) {
+      buf.writeln(
+        '| Slowest | ${slowest['path']} (${slowest['durationMs'] ?? slowest['duration'] ?? '?'}ms) |',
+      );
+    }
+    buf.writeln();
+
+    if (pageLoads.isNotEmpty) {
+      buf.writeln('**Recent Page Loads:**');
+      buf.writeln();
+      for (final pl in pageLoads.take(10)) {
+        final p = pl as Map<String, dynamic>;
+        buf.writeln(
+          '- ${p['path'] ?? p['name'] ?? '?'}: '
+          '${p['durationMs'] ?? p['duration'] ?? '?'}ms',
+        );
+      }
+      buf.writeln();
+    }
+
+    // --- Vessel (Memory) ---
+    final vessel = data['vessel'] as Map<String, dynamic>? ?? {};
+    final pillarCount = vessel['pillarCount'] ?? 0;
+    final totalInstances = vessel['totalInstances'] ?? 0;
+    final leakSuspects = vessel['leakSuspects'] as List<dynamic>? ?? [];
+
+    buf.writeln('## Vessel (Memory)');
+    buf.writeln();
+    buf.writeln('| Metric | Value |');
+    buf.writeln('|--------|-------|');
+    buf.writeln('| Pillar Count | $pillarCount |');
+    buf.writeln('| Total DI Instances | $totalInstances |');
+    buf.writeln('| Leak Suspects | ${leakSuspects.length} |');
+    buf.writeln();
+
+    if (leakSuspects.isNotEmpty) {
+      buf.writeln('**Leak Suspects:**');
+      buf.writeln();
+      for (final s in leakSuspects) {
+        final suspect = s as Map<String, dynamic>;
+        buf.writeln(
+          '- ${suspect['typeName'] ?? '?'} '
+          '(age: ${suspect['ageSeconds'] ?? suspect['age'] ?? '?'}s)',
+        );
+      }
+      buf.writeln();
+    }
+
+    // --- Echo (Rebuilds) ---
+    final echo = data['echo'] as Map<String, dynamic>? ?? {};
+    final totalRebuilds = echo['totalRebuilds'] ?? 0;
+    final topRebuilders = echo['topRebuilders'] as Map<String, dynamic>? ?? {};
+
+    buf.writeln('## Echo (Rebuilds)');
+    buf.writeln();
+    buf.writeln('| Metric | Value |');
+    buf.writeln('|--------|-------|');
+    buf.writeln('| Total Rebuilds | $totalRebuilds |');
+    buf.writeln();
+
+    if (topRebuilders.isNotEmpty) {
+      buf.writeln('**Top Rebuilders:**');
+      buf.writeln();
+      for (final entry in topRebuilders.entries) {
+        buf.writeln('- **${entry.key}**: ${entry.value} rebuilds');
+      }
+      buf.writeln();
+    }
+
+    return buf.toString();
   }
 
   // -----------------------------------------------------------------------

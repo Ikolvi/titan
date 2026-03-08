@@ -1438,4 +1438,7 @@ class _ColossusRelayHandler implements RelayHandler {
       'aiSummary': report.toAiSummary(),
     };
   }
+
+  @override
+  Map<String, dynamic> getPerformanceReport() => _colossus.decree().toMap();
 }

@@ -136,6 +136,12 @@ abstract interface class RelayHandler {
 
   /// Analyze verdicts and produce a debrief report.
   Map<String, dynamic> debriefVerdicts(List<Map<String, dynamic>> verdicts);
+
+  /// Get a live performance report (Decree) as JSON.
+  ///
+  /// Returns the serialized [Decree] including Pulse, Stride,
+  /// Vessel, and Echo metrics.
+  Map<String, dynamic> getPerformanceReport();
 }
 
 // ---------------------------------------------------------------------------
