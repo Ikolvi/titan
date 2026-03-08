@@ -386,6 +386,175 @@ enum ScryScreenRegion {
 }
 
 // =========================================================================
+// ScryTargetStrategy — Recommended targeting approach
+// =========================================================================
+
+/// How an AI agent should target this element for interaction.
+///
+/// Higher-priority strategies are more resilient to i18n changes,
+/// text updates, and dynamic content.
+///
+/// ```dart
+/// if (element.targetStrategy == ScryTargetStrategy.key) {
+///   // Use key for stable targeting
+///   scryAct(action: 'tap', key: element.key!);
+/// }
+/// ```
+enum ScryTargetStrategy {
+  /// Target by developer-assigned widget Key — most stable.
+  key,
+
+  /// Target by field ID — stable for text fields.
+  fieldId,
+
+  /// Target by unique label — reliable when no duplicates.
+  uniqueLabel,
+
+  /// Target by label + occurrence index — least stable.
+  indexedLabel,
+}
+
+// =========================================================================
+// ScryScrollInfo — Viewport / scrollability analysis
+// =========================================================================
+
+/// Viewport and scroll analysis from element positions.
+///
+/// Helps the AI know whether more content exists offscreen
+/// and whether scrolling is needed to reach certain elements.
+///
+/// ```dart
+/// if (gaze.scrollInfo != null && gaze.scrollInfo!.canScrollDown) {
+///   // There's more content below — scroll to see it
+///   scryAct(action: 'scroll', value: 'down');
+/// }
+/// ```
+class ScryScrollInfo {
+  /// Creates a [ScryScrollInfo].
+  const ScryScrollInfo({
+    required this.viewportHeight,
+    required this.contentMaxY,
+    required this.visibleCount,
+    required this.belowFoldCount,
+  });
+
+  /// Estimated viewport height in logical pixels.
+  final double viewportHeight;
+
+  /// The maximum Y + H of all elements (content extent).
+  final double contentMaxY;
+
+  /// Elements fully within the viewport.
+  final int visibleCount;
+
+  /// Elements partially or fully below the fold.
+  final int belowFoldCount;
+
+  /// Whether scrolling down would reveal more content.
+  bool get canScrollDown => contentMaxY > viewportHeight;
+
+  /// Estimated number of screens of content.
+  double get contentScreens =>
+      viewportHeight > 0 ? contentMaxY / viewportHeight : 1.0;
+
+  /// Serialize to JSON.
+  Map<String, dynamic> toJson() => {
+    'viewportHeight': viewportHeight,
+    'contentMaxY': contentMaxY,
+    'visibleCount': visibleCount,
+    'belowFoldCount': belowFoldCount,
+    'canScrollDown': canScrollDown,
+    'contentScreens': double.parse(contentScreens.toStringAsFixed(1)),
+  };
+}
+
+// =========================================================================
+// ScryElementGroup — Logical element clusters
+// =========================================================================
+
+/// A group of elements sharing a common ancestor container.
+///
+/// Instead of listing 35 flat elements, groups collapse related
+/// items into logical clusters like "7 Cards with [title, subtitle,
+/// Delete button]".
+///
+/// ```dart
+/// for (final group in gaze.groups) {
+///   print('${group.containerType}: ${group.elements.length} items');
+/// }
+/// ```
+class ScryElementGroup {
+  /// Creates a [ScryElementGroup].
+  const ScryElementGroup({
+    required this.containerType,
+    required this.elements,
+    this.containerLabel,
+  });
+
+  /// The ancestor container type (e.g., `'Card'`, `'ListTile'`).
+  final String containerType;
+
+  /// Optional container label (e.g., card title).
+  final String? containerLabel;
+
+  /// Elements within this group.
+  final List<ScryElement> elements;
+
+  /// Serialize to JSON.
+  Map<String, dynamic> toJson() => {
+    'containerType': containerType,
+    if (containerLabel != null) 'containerLabel': containerLabel,
+    'elementCount': elements.length,
+    'elements': elements.map((e) => e.toJson()).toList(),
+  };
+}
+
+// =========================================================================
+// ScryLandmarks — Semantic page summary
+// =========================================================================
+
+/// Key semantic landmarks on the current screen.
+///
+/// Gives the AI a concise "page overview" before the detailed
+/// element list: what page this is, what the main action is,
+/// and how to navigate away.
+///
+/// ```dart
+/// if (gaze.landmarks?.primaryAction != null) {
+///   print('Main action: ${gaze.landmarks!.primaryAction!.label}');
+/// }
+/// ```
+class ScryLandmarks {
+  /// Creates [ScryLandmarks].
+  const ScryLandmarks({
+    this.pageTitle,
+    this.primaryAction,
+    this.backAvailable = false,
+    this.searchAvailable = false,
+  });
+
+  /// The detected page title (from topBar structural elements).
+  final String? pageTitle;
+
+  /// The most prominent interactive action on screen.
+  final ScryElement? primaryAction;
+
+  /// Whether a back/close navigation action is available.
+  final bool backAvailable;
+
+  /// Whether a search field or search button is visible.
+  final bool searchAvailable;
+
+  /// Serialize to JSON.
+  Map<String, dynamic> toJson() => {
+    if (pageTitle != null) 'pageTitle': pageTitle,
+    if (primaryAction != null) 'primaryAction': primaryAction!.label,
+    'backAvailable': backAvailable,
+    'searchAvailable': searchAvailable,
+  };
+}
+
+// =========================================================================
 // ScryElementKind — Element classification
 // =========================================================================
 
@@ -462,6 +631,10 @@ class ScryElement {
     this.occurrenceIndex,
     this.totalOccurrences,
     this.region = ScryScreenRegion.unknown,
+    this.targetScore = 0,
+    this.targetStrategy = ScryTargetStrategy.uniqueLabel,
+    this.reachable = true,
+    this.prominence = 0.0,
   });
 
   /// The categorized kind of this element.
@@ -546,6 +719,30 @@ class ScryElement {
   /// The inferred screen region where this element is located.
   final ScryScreenRegion region;
 
+  /// Targeting reliability score (0–100).
+  ///
+  /// Higher scores mean more stable targeting:
+  /// - 100: widget Key → survives i18n, text changes
+  /// - 90: field ID → stable for text inputs
+  /// - 70: unique label → reliable when no duplicates
+  /// - 40: indexed label → fragile, depends on list order
+  final int targetScore;
+
+  /// Recommended targeting strategy for this element.
+  final ScryTargetStrategy targetStrategy;
+
+  /// Whether this element can actually be interacted with.
+  ///
+  /// `false` when the element is disabled, obscured by an overlay,
+  /// or positioned offscreen (below the fold).
+  final bool reachable;
+
+  /// Visual prominence score (0.0–1.0).
+  ///
+  /// Based on bounding box area, screen region, and depth.
+  /// Higher values indicate more visually prominent elements.
+  final double prominence;
+
   /// Serialize to JSON.
   Map<String, dynamic> toJson() => {
     'kind': kind.name,
@@ -569,6 +766,11 @@ class ScryElement {
     if (occurrenceIndex != null) 'occurrenceIndex': occurrenceIndex,
     if (totalOccurrences != null) 'totalOccurrences': totalOccurrences,
     if (region != ScryScreenRegion.unknown) 'region': region.name,
+    if (isInteractive) 'targetScore': targetScore,
+    if (isInteractive) 'targetStrategy': targetStrategy.name,
+    if (!reachable) 'reachable': false,
+    if (prominence > 0)
+      'prominence': double.parse(prominence.toStringAsFixed(2)),
   };
 }
 
@@ -602,6 +804,9 @@ class ScryGaze {
     this.dataFields = const [],
     this.suggestions = const [],
     this.formStatus,
+    this.scrollInfo,
+    this.groups = const [],
+    this.landmarks,
   });
 
   /// All detected elements.
@@ -628,6 +833,15 @@ class ScryGaze {
   /// Form status (non-null when text fields are present).
   final ScryFormStatus? formStatus;
 
+  /// Scroll / viewport analysis (non-null when spatial data is available).
+  final ScryScrollInfo? scrollInfo;
+
+  /// Logical element groups by ancestor container.
+  final List<ScryElementGroup> groups;
+
+  /// Key semantic landmarks on this page.
+  final ScryLandmarks? landmarks;
+
   /// Interactive buttons (tappable, non-navigation).
   List<ScryElement> get buttons =>
       elements.where((e) => e.kind == ScryElementKind.button).toList();
@@ -653,6 +867,10 @@ class ScryGaze {
 
   /// Elements obscured by an overlay (dialog, modal, etc.).
   List<ScryElement> get obscured => elements.where((e) => e.obscured).toList();
+
+  /// Elements that are actually reachable for interaction.
+  List<ScryElement> get reachable =>
+      elements.where((e) => e.isInteractive && e.reachable).toList();
 
   /// Whether this looks like an authentication/login screen.
   bool get isAuthScreen => screenType == ScryScreenType.login;
@@ -684,6 +902,9 @@ class ScryGaze {
       'dataFields': dataFields.map((d) => d.toJson()).toList(),
     if (suggestions.isNotEmpty) 'suggestions': suggestions,
     if (formStatus != null) 'formStatus': formStatus!.toJson(),
+    if (scrollInfo != null) 'scrollInfo': scrollInfo!.toJson(),
+    if (groups.isNotEmpty) 'groups': groups.map((g) => g.toJson()).toList(),
+    if (landmarks != null) 'landmarks': landmarks!.toJson(),
     'elements': elements.map((e) => e.toJson()).toList(),
   };
 }
@@ -967,6 +1188,14 @@ class Scry {
     final suggestions = _generateSuggestions(elementList, screenType, alerts);
     final formStatus = _analyzeFormStatus(elementList, glyphs);
 
+    // --- Pass 5: Scoring & analysis ---
+    _applyTargetScoring(elementList);
+    _applyReachability(elementList);
+    _applyProminence(elementList);
+    final scrollInfo = _analyzeScroll(elementList);
+    final groups = _groupElements(elementList, glyphs);
+    final landmarks = _detectLandmarks(elementList, screenType);
+
     return ScryGaze(
       elements: elementList,
       route: route,
@@ -976,6 +1205,9 @@ class Scry {
       dataFields: dataFields,
       suggestions: suggestions,
       formStatus: formStatus,
+      scrollInfo: scrollInfo,
+      groups: groups,
+      landmarks: landmarks,
     );
   }
 
@@ -1005,6 +1237,33 @@ class Scry {
     parts.add('**Type**: ${gaze.screenType.name}');
     parts.add('${gaze.glyphCount} glyphs');
     buf.writeln(parts.join(' | '));
+
+    // --- Landmarks (concise page summary) ---
+    if (gaze.landmarks != null) {
+      final lm = gaze.landmarks!;
+      buf.writeln();
+      final lmParts = <String>[];
+      if (lm.pageTitle != null) lmParts.add('**Page**: ${lm.pageTitle}');
+      if (lm.primaryAction != null) {
+        lmParts.add('**Primary action**: ${lm.primaryAction!.label}');
+      }
+      if (lm.backAvailable) lmParts.add('← Back');
+      if (lm.searchAvailable) lmParts.add('🔍 Search');
+      if (lmParts.isNotEmpty) buf.writeln(lmParts.join(' | '));
+    }
+
+    // --- Scroll Info ---
+    if (gaze.scrollInfo != null && gaze.scrollInfo!.canScrollDown) {
+      buf.writeln();
+      final si = gaze.scrollInfo!;
+      buf.writeln(
+        '> 📜 **Scrollable** — content extends to '
+        '${si.contentMaxY.toStringAsFixed(0)}px '
+        '(viewport: ${si.viewportHeight.toStringAsFixed(0)}px). '
+        '${si.belowFoldCount} element(s) below fold. '
+        'Scroll down for more.',
+      );
+    }
 
     if (gaze.isAuthScreen) {
       buf.writeln();
@@ -1059,6 +1318,20 @@ class Scry {
       buf.writeln();
       for (final kv in gaze.dataFields) {
         buf.writeln('- **${kv.key}**: ${kv.value}');
+      }
+      buf.writeln();
+    }
+
+    // --- Element Groups ---
+    if (gaze.groups.isNotEmpty) {
+      buf.writeln('## 🗂️ Groups (${gaze.groups.length})');
+      buf.writeln();
+      for (final group in gaze.groups) {
+        final title = group.containerLabel != null
+            ? '${group.containerType} "${group.containerLabel}"'
+            : group.containerType;
+        final labels = group.elements.map((e) => e.label).join(', ');
+        buf.writeln('- **$title** (${group.elements.length}): $labels');
       }
       buf.writeln();
     }
@@ -2280,29 +2553,7 @@ class Scry {
 
         if (overlaps) {
           // Replace with an obscured copy
-          elements[i] = ScryElement(
-            kind: e.kind,
-            label: e.label,
-            widgetType: e.widgetType,
-            isInteractive: e.isInteractive,
-            fieldId: e.fieldId,
-            currentValue: e.currentValue,
-            semanticRole: e.semanticRole,
-            interactionType: e.interactionType,
-            isEnabled: e.isEnabled,
-            gated: e.gated,
-            x: e.x,
-            y: e.y,
-            w: e.w,
-            h: e.h,
-            depth: e.depth,
-            key: e.key,
-            context: e.context,
-            obscured: true,
-            occurrenceIndex: e.occurrenceIndex,
-            totalOccurrences: e.totalOccurrences,
-            region: e.region,
-          );
+          elements[i] = _copyWith(e, obscured: true);
         }
       }
     }
@@ -2388,4 +2639,282 @@ class Scry {
       disabledFields: disabledFields,
     );
   }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Target stability scoring
+  // -----------------------------------------------------------------------
+
+  /// Score each element's targeting reliability and recommend strategy.
+  ///
+  /// Mutates [elements] in place by replacing each with a scored copy.
+  void _applyTargetScoring(List<ScryElement> elements) {
+    for (var i = 0; i < elements.length; i++) {
+      final e = elements[i];
+      if (!e.isInteractive) continue;
+
+      final (score, strategy) = _scoreTarget(e);
+      elements[i] = _copyWith(e, targetScore: score, targetStrategy: strategy);
+    }
+  }
+
+  /// Compute targeting score and strategy for a single element.
+  (int, ScryTargetStrategy) _scoreTarget(ScryElement e) {
+    if (e.key != null) return (100, ScryTargetStrategy.key);
+    if (e.fieldId != null) return (90, ScryTargetStrategy.fieldId);
+    if (e.totalOccurrences == null) return (70, ScryTargetStrategy.uniqueLabel);
+    return (40, ScryTargetStrategy.indexedLabel);
+  }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Reachability analysis
+  // -----------------------------------------------------------------------
+
+  /// Typical viewport height for reachability checks.
+  static const _defaultViewportHeight = 800.0;
+
+  /// Assess whether each interactive element can actually be reached.
+  ///
+  /// An element is unreachable if it is disabled, obscured, or
+  /// positioned offscreen (Y > viewport height).
+  void _applyReachability(List<ScryElement> elements) {
+    for (var i = 0; i < elements.length; i++) {
+      final e = elements[i];
+      if (!e.isInteractive) continue;
+
+      final reachable =
+          e.isEnabled &&
+          !e.obscured &&
+          (e.y == null || e.y! < _defaultViewportHeight);
+
+      if (!reachable) {
+        elements[i] = _copyWith(e, reachable: false);
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Visual prominence scoring
+  // -----------------------------------------------------------------------
+
+  /// Region weight multipliers for prominence scoring.
+  static const _regionWeights = <ScryScreenRegion, double>{
+    ScryScreenRegion.floating: 1.5,
+    ScryScreenRegion.topBar: 1.2,
+    ScryScreenRegion.mainContent: 1.0,
+    ScryScreenRegion.bottomNav: 0.8,
+    ScryScreenRegion.unknown: 0.5,
+  };
+
+  /// Score each element's visual prominence (0.0–1.0).
+  ///
+  /// Based on bounding box area relative to the largest element,
+  /// screen region, and depth.
+  void _applyProminence(List<ScryElement> elements) {
+    // Find max area for normalization
+    var maxArea = 1.0;
+    for (final e in elements) {
+      final area = (e.w ?? 0) * (e.h ?? 0);
+      if (area > maxArea) maxArea = area;
+    }
+
+    for (var i = 0; i < elements.length; i++) {
+      final e = elements[i];
+      final area = (e.w ?? 0) * (e.h ?? 0);
+      final normalized = area / maxArea; // 0.0-1.0
+      final regionWeight = _regionWeights[e.region] ?? 1.0;
+      final prominence = (normalized * regionWeight).clamp(0.0, 1.0);
+
+      if (prominence > 0) {
+        elements[i] = _copyWith(e, prominence: prominence);
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Scroll / viewport analysis
+  // -----------------------------------------------------------------------
+
+  /// Analyze viewport and scrollability from element positions.
+  ScryScrollInfo? _analyzeScroll(List<ScryElement> elements) {
+    // Need spatial data
+    final withY = elements.where((e) => e.y != null).toList();
+    if (withY.isEmpty) return null;
+
+    var contentMaxY = 0.0;
+    var belowFold = 0;
+    var visible = 0;
+
+    for (final e in withY) {
+      final bottom = e.y! + (e.h ?? 0);
+      if (bottom > contentMaxY) contentMaxY = bottom;
+
+      if (e.y! >= _defaultViewportHeight) {
+        belowFold++;
+      } else {
+        visible++;
+      }
+    }
+
+    return ScryScrollInfo(
+      viewportHeight: _defaultViewportHeight,
+      contentMaxY: contentMaxY,
+      visibleCount: visible,
+      belowFoldCount: belowFold,
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Element grouping by container
+  // -----------------------------------------------------------------------
+
+  /// Known container types for grouping.
+  static const _groupContainers = [
+    'Card',
+    'ListTile',
+    'ExpansionTile',
+    'Dismissible',
+  ];
+
+  /// Group elements by shared ancestor container.
+  List<ScryElementGroup> _groupElements(
+    List<ScryElement> elements,
+    List<dynamic> glyphs,
+  ) {
+    // Build a mapping from element label to its ancestors
+    final labelAncestors = <String, List<dynamic>>{};
+    for (final g in glyphs) {
+      final glyph = g as Map<String, dynamic>;
+      final label = (glyph['l'] as String? ?? '').trim();
+      if (label.isEmpty) continue;
+      final anc = glyph['anc'] as List<dynamic>? ?? [];
+      // Keep first (most interactive) for dedup
+      labelAncestors.putIfAbsent(label, () => anc);
+    }
+
+    // Group: find elements whose ancestors contain a group container
+    final groups = <String, List<ScryElement>>{};
+    for (final e in elements) {
+      final ancestors = labelAncestors[e.label] ?? [];
+      final ancestorStr = ancestors.join(' ');
+      for (final container in _groupContainers) {
+        if (ancestorStr.contains(container)) {
+          groups.putIfAbsent(container, () => []).add(e);
+          break; // Only first match
+        }
+      }
+    }
+
+    return groups.entries
+        .where((e) => e.value.length >= 2) // Only groups with 2+ elements
+        .map((e) => ScryElementGroup(containerType: e.key, elements: e.value))
+        .toList();
+  }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Semantic landmark detection
+  // -----------------------------------------------------------------------
+
+  /// Back/close button patterns.
+  static final _backPattern = RegExp(
+    r'\b(back|close|cancel|return|arrow_back|chevron_left)\b',
+    caseSensitive: false,
+  );
+
+  /// Search patterns.
+  static final _searchPattern = RegExp(
+    r'\b(search|find|filter|lookup)\b',
+    caseSensitive: false,
+  );
+
+  /// Detect key semantic landmarks on the screen.
+  ScryLandmarks _detectLandmarks(
+    List<ScryElement> elements,
+    ScryScreenType screenType,
+  ) {
+    // Page title: structural element in topBar region
+    String? pageTitle;
+    for (final e in elements) {
+      if (e.kind == ScryElementKind.structural &&
+          e.region == ScryScreenRegion.topBar) {
+        pageTitle = e.label;
+        break;
+      }
+    }
+
+    // Primary action: the most prominent interactive element.
+    // Prefer FABs, then the largest (highest prominence) button.
+    ScryElement? primaryAction;
+    for (final e in elements) {
+      if (e.kind == ScryElementKind.button && e.reachable) {
+        if (e.region == ScryScreenRegion.floating) {
+          primaryAction = e;
+          break;
+        }
+        if (primaryAction == null || e.prominence > primaryAction.prominence) {
+          primaryAction = e;
+        }
+      }
+    }
+
+    // Back / close availability
+    final backAvailable = elements.any(
+      (e) =>
+          e.isInteractive &&
+          (_backPattern.hasMatch(e.label) ||
+              e.semanticRole == 'button' &&
+                  _backPattern.hasMatch(e.label.toLowerCase())),
+    );
+
+    // Search availability
+    final searchAvailable = elements.any(
+      (e) => _searchPattern.hasMatch(e.label),
+    );
+
+    return ScryLandmarks(
+      pageTitle: pageTitle,
+      primaryAction: primaryAction,
+      backAvailable: backAvailable,
+      searchAvailable: searchAvailable,
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Helper: copy ScryElement with overridden fields
+  // -----------------------------------------------------------------------
+
+  /// Create a copy of [e] with specified fields overridden.
+  ScryElement _copyWith(
+    ScryElement e, {
+    bool? obscured,
+    int? targetScore,
+    ScryTargetStrategy? targetStrategy,
+    bool? reachable,
+    double? prominence,
+  }) => ScryElement(
+    kind: e.kind,
+    label: e.label,
+    widgetType: e.widgetType,
+    isInteractive: e.isInteractive,
+    fieldId: e.fieldId,
+    currentValue: e.currentValue,
+    semanticRole: e.semanticRole,
+    interactionType: e.interactionType,
+    isEnabled: e.isEnabled,
+    gated: e.gated,
+    x: e.x,
+    y: e.y,
+    w: e.w,
+    h: e.h,
+    depth: e.depth,
+    key: e.key,
+    context: e.context,
+    obscured: obscured ?? e.obscured,
+    occurrenceIndex: e.occurrenceIndex,
+    totalOccurrences: e.totalOccurrences,
+    region: e.region,
+    targetScore: targetScore ?? e.targetScore,
+    targetStrategy: targetStrategy ?? e.targetStrategy,
+    reachable: reachable ?? e.reachable,
+    prominence: prominence ?? e.prominence,
+  );
 }

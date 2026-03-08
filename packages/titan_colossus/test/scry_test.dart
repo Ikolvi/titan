@@ -3068,4 +3068,1385 @@ void main() {
       expect(save.context, 'Dialog');
     });
   });
+
+  // ===================================================================
+  // ScryTargetStrategy enum
+  // ===================================================================
+  group('ScryTargetStrategy', () {
+    test('has all expected values', () {
+      expect(ScryTargetStrategy.values, hasLength(4));
+      expect(
+        ScryTargetStrategy.values,
+        containsAll([
+          ScryTargetStrategy.key,
+          ScryTargetStrategy.fieldId,
+          ScryTargetStrategy.uniqueLabel,
+          ScryTargetStrategy.indexedLabel,
+        ]),
+      );
+    });
+  });
+
+  // ===================================================================
+  // ScryScrollInfo
+  // ===================================================================
+  group('ScryScrollInfo', () {
+    test('canScrollDown true when content exceeds viewport', () {
+      const info = ScryScrollInfo(
+        viewportHeight: 800,
+        contentMaxY: 1600,
+        visibleCount: 10,
+        belowFoldCount: 5,
+      );
+      expect(info.canScrollDown, isTrue);
+    });
+
+    test('canScrollDown false when content within viewport', () {
+      const info = ScryScrollInfo(
+        viewportHeight: 800,
+        contentMaxY: 400,
+        visibleCount: 5,
+        belowFoldCount: 0,
+      );
+      expect(info.canScrollDown, isFalse);
+    });
+
+    test('contentScreens computes screen count', () {
+      const info = ScryScrollInfo(
+        viewportHeight: 800,
+        contentMaxY: 2400,
+        visibleCount: 10,
+        belowFoldCount: 20,
+      );
+      expect(info.contentScreens, 3.0);
+    });
+
+    test('contentScreens returns 1.0 when viewportHeight is 0', () {
+      const info = ScryScrollInfo(
+        viewportHeight: 0,
+        contentMaxY: 400,
+        visibleCount: 5,
+        belowFoldCount: 0,
+      );
+      expect(info.contentScreens, 1.0);
+    });
+
+    test('toJson includes all fields', () {
+      const info = ScryScrollInfo(
+        viewportHeight: 800,
+        contentMaxY: 1200,
+        visibleCount: 8,
+        belowFoldCount: 3,
+      );
+      final json = info.toJson();
+      expect(json['viewportHeight'], 800.0);
+      expect(json['contentMaxY'], 1200.0);
+      expect(json['visibleCount'], 8);
+      expect(json['belowFoldCount'], 3);
+      expect(json['canScrollDown'], isTrue);
+      expect(json['contentScreens'], 1.5);
+    });
+  });
+
+  // ===================================================================
+  // ScryElementGroup
+  // ===================================================================
+  group('ScryElementGroup', () {
+    test('toJson serializes container info', () {
+      const group = ScryElementGroup(
+        containerType: 'Card',
+        containerLabel: 'Quest Card',
+        elements: [
+          ScryElement(
+            kind: ScryElementKind.content,
+            label: 'Title',
+            widgetType: 'Text',
+          ),
+          ScryElement(
+            kind: ScryElementKind.button,
+            label: 'Delete',
+            widgetType: 'IconButton',
+            isInteractive: true,
+          ),
+        ],
+      );
+      final json = group.toJson();
+      expect(json['containerType'], 'Card');
+      expect(json['containerLabel'], 'Quest Card');
+      expect(json['elementCount'], 2);
+      expect(json['elements'], isList);
+      expect((json['elements'] as List), hasLength(2));
+    });
+
+    test('toJson omits null containerLabel', () {
+      const group = ScryElementGroup(
+        containerType: 'ListTile',
+        elements: [
+          ScryElement(
+            kind: ScryElementKind.content,
+            label: 'A',
+            widgetType: 'Text',
+          ),
+          ScryElement(
+            kind: ScryElementKind.content,
+            label: 'B',
+            widgetType: 'Text',
+          ),
+        ],
+      );
+      final json = group.toJson();
+      expect(json.containsKey('containerLabel'), isFalse);
+    });
+  });
+
+  // ===================================================================
+  // ScryLandmarks
+  // ===================================================================
+  group('ScryLandmarks', () {
+    test('toJson includes available landmarks', () {
+      const landmarks = ScryLandmarks(
+        pageTitle: 'Quest Log',
+        backAvailable: true,
+        searchAvailable: true,
+      );
+      final json = landmarks.toJson();
+      expect(json['pageTitle'], 'Quest Log');
+      expect(json['backAvailable'], isTrue);
+      expect(json['searchAvailable'], isTrue);
+    });
+
+    test('toJson includes primaryAction label', () {
+      const landmarks = ScryLandmarks(
+        primaryAction: ScryElement(
+          kind: ScryElementKind.button,
+          label: 'Add Quest',
+          widgetType: 'FloatingActionButton',
+          isInteractive: true,
+        ),
+      );
+      final json = landmarks.toJson();
+      expect(json['primaryAction'], 'Add Quest');
+    });
+
+    test('toJson omits null fields', () {
+      const landmarks = ScryLandmarks();
+      final json = landmarks.toJson();
+      expect(json.containsKey('pageTitle'), isFalse);
+      expect(json.containsKey('primaryAction'), isFalse);
+      expect(json['backAvailable'], isFalse);
+      expect(json['searchAvailable'], isFalse);
+    });
+  });
+
+  // ===================================================================
+  // Target stability scoring
+  // ===================================================================
+  group('Target stability scoring', () {
+    test('key gives score 100', () {
+      final glyphs = [
+        glyph(
+          label: 'Submit',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          key: 'submit_btn',
+          x: 100,
+          y: 200,
+          w: 120,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final submit = gaze.elements.firstWhere((e) => e.label == 'Submit');
+      expect(submit.targetScore, 100);
+      expect(submit.targetStrategy, ScryTargetStrategy.key);
+    });
+
+    test('fieldId gives score 90', () {
+      final glyphs = [
+        glyph(
+          label: 'Email',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'type',
+          fieldId: 'email_field',
+          x: 10,
+          y: 100,
+          w: 300,
+          h: 56,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final email = gaze.elements.firstWhere((e) => e.label == 'Email');
+      expect(email.targetScore, 90);
+      expect(email.targetStrategy, ScryTargetStrategy.fieldId);
+    });
+
+    test('unique label gives score 70', () {
+      final glyphs = [
+        glyph(
+          label: 'Save Settings',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 100,
+          y: 200,
+          w: 150,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final save = gaze.elements.firstWhere((e) => e.label == 'Save Settings');
+      expect(save.targetScore, 70);
+      expect(save.targetStrategy, ScryTargetStrategy.uniqueLabel);
+    });
+
+    test('duplicate label gives score 40', () {
+      final glyphs = [
+        glyph(
+          label: 'Delete',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 100,
+          w: 48,
+          h: 48,
+        ),
+        glyph(
+          label: 'Delete',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 200,
+          w: 48,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final deletes = gaze.elements.where((e) => e.label == 'Delete').toList();
+      for (final d in deletes) {
+        expect(d.targetScore, 40);
+        expect(d.targetStrategy, ScryTargetStrategy.indexedLabel);
+      }
+    });
+
+    test('key takes priority over fieldId', () {
+      final glyphs = [
+        glyph(
+          label: 'Username',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'type',
+          fieldId: 'username_field',
+          key: 'username_key',
+          x: 10,
+          y: 100,
+          w: 300,
+          h: 56,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final field = gaze.elements.firstWhere((e) => e.label == 'Username');
+      expect(field.targetScore, 100); // key wins over fieldId
+      expect(field.targetStrategy, ScryTargetStrategy.key);
+    });
+
+    test('non-interactive elements keep default score 0', () {
+      final glyphs = [
+        glyph(label: 'Welcome', widgetType: 'Text', x: 10, y: 50),
+      ];
+      final gaze = scry.observe(glyphs);
+      final text = gaze.elements.firstWhere((e) => e.label == 'Welcome');
+      expect(text.targetScore, 0);
+      expect(text.targetStrategy, ScryTargetStrategy.uniqueLabel);
+    });
+  });
+
+  // ===================================================================
+  // Reachability analysis
+  // ===================================================================
+  group('Reachability analysis', () {
+    test('enabled, visible element is reachable', () {
+      final glyphs = [
+        glyph(
+          label: 'OK',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 100,
+          y: 200,
+          w: 100,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final ok = gaze.elements.firstWhere((e) => e.label == 'OK');
+      expect(ok.reachable, isTrue);
+    });
+
+    test('disabled element is unreachable', () {
+      final glyphs = [
+        glyph(
+          label: 'Submit',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          enabled: false,
+          x: 100,
+          y: 200,
+          w: 100,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final submit = gaze.elements.firstWhere((e) => e.label == 'Submit');
+      expect(submit.reachable, isFalse);
+    });
+
+    test('obscured element is unreachable', () {
+      // Create an element obscured by a dialog overlay
+      final glyphs = [
+        glyph(
+          label: 'Background Button',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['MaterialApp', 'Scaffold', 'Column', 'ElevatedButton'],
+          depth: 10,
+          x: 100,
+          y: 300,
+          w: 150,
+          h: 48,
+        ),
+        // Dialog overlay element at higher depth
+        glyph(
+          label: 'Dialog Action',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: [
+            'MaterialApp',
+            'Scaffold',
+            'Overlay',
+            'Dialog',
+            'ElevatedButton',
+          ],
+          depth: 30,
+          x: 50,
+          y: 250,
+          w: 300,
+          h: 200,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final bg = gaze.elements.firstWhere(
+        (e) => e.label == 'Background Button',
+      );
+      // Obscured by the dialog, hence unreachable
+      expect(bg.obscured, isTrue);
+      expect(bg.reachable, isFalse);
+    });
+
+    test('offscreen element (y >= 800) is unreachable', () {
+      final glyphs = [
+        glyph(
+          label: 'Far Below',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 100,
+          y: 900,
+          w: 100,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final far = gaze.elements.firstWhere((e) => e.label == 'Far Below');
+      expect(far.reachable, isFalse);
+    });
+
+    test('element at y=799 is still reachable', () {
+      final glyphs = [
+        glyph(
+          label: 'Near Bottom',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 100,
+          y: 799,
+          w: 100,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final near = gaze.elements.firstWhere((e) => e.label == 'Near Bottom');
+      expect(near.reachable, isTrue);
+    });
+
+    test('non-interactive elements not assessed for reachability', () {
+      final glyphs = [
+        glyph(
+          label: 'Text Below Fold',
+          widgetType: 'Text',
+          x: 100,
+          y: 900,
+          w: 200,
+          h: 20,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final text = gaze.elements.firstWhere(
+        (e) => e.label == 'Text Below Fold',
+      );
+      // Non-interactive keeps default reachable = true
+      expect(text.reachable, isTrue);
+    });
+
+    test('gaze.reachable getter filters correctly', () {
+      final glyphs = [
+        glyph(
+          label: 'In Viewport',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 100,
+          y: 200,
+          w: 100,
+          h: 48,
+        ),
+        glyph(
+          label: 'Offscreen',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 100,
+          y: 900,
+          w: 100,
+          h: 48,
+        ),
+        glyph(label: 'Not Interactive', widgetType: 'Text', x: 100, y: 50),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.reachable, hasLength(1));
+      expect(gaze.reachable.first.label, 'In Viewport');
+    });
+  });
+
+  // ===================================================================
+  // Visual prominence scoring
+  // ===================================================================
+  group('Visual prominence scoring', () {
+    test('larger element gets higher prominence', () {
+      final glyphs = [
+        glyph(
+          label: 'Big Button',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 100,
+          w: 300,
+          h: 80,
+        ),
+        glyph(
+          label: 'Small Button',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 200,
+          w: 48,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final big = gaze.elements.firstWhere((e) => e.label == 'Big Button');
+      final small = gaze.elements.firstWhere((e) => e.label == 'Small Button');
+      expect(big.prominence, greaterThan(small.prominence));
+    });
+
+    test('floating region gets 1.5x weight', () {
+      // A floating element (FAB-like) at same size as mainContent element
+      final glyphs = [
+        glyph(
+          label: 'Add',
+          widgetType: 'FloatingActionButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: [
+            'MaterialApp',
+            'Scaffold',
+            'Overlay',
+            'FloatingActionButton',
+          ],
+          depth: 20,
+          x: 300,
+          y: 700,
+          w: 56,
+          h: 56,
+        ),
+        glyph(
+          label: 'Normal',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['MaterialApp', 'Scaffold', 'Column', 'ElevatedButton'],
+          depth: 10,
+          x: 100,
+          y: 300,
+          w: 48,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final fab = gaze.elements.firstWhere((e) => e.label == 'Add');
+      final normal = gaze.elements.firstWhere((e) => e.label == 'Normal');
+      // Same size but floating gets 1.5x vs mainContent 1.0x
+      expect(fab.prominence, greaterThan(normal.prominence));
+    });
+
+    test('prominence is between 0.0 and 1.0', () {
+      final glyphs = [
+        glyph(
+          label: 'A',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 100,
+          w: 400,
+          h: 100,
+        ),
+        glyph(
+          label: 'B',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 200,
+          w: 24,
+          h: 24,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      for (final e in gaze.elements) {
+        expect(e.prominence, greaterThanOrEqualTo(0.0));
+        expect(e.prominence, lessThanOrEqualTo(1.0));
+      }
+    });
+
+    test('zero-area element gets prominence 0', () {
+      final glyphs = [
+        glyph(
+          label: 'Zero Area',
+          widgetType: 'Text',
+          x: 10,
+          y: 100,
+          w: 0,
+          h: 0,
+        ),
+        // Need a non-zero element for normalization
+        glyph(
+          label: 'Normal Size',
+          widgetType: 'Text',
+          x: 10,
+          y: 200,
+          w: 100,
+          h: 40,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final zero = gaze.elements.firstWhere((e) => e.label == 'Zero Area');
+      expect(zero.prominence, 0.0);
+    });
+
+    test('prominence serialized in toJson when > 0', () {
+      final glyphs = [
+        glyph(
+          label: 'Visible',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 100,
+          w: 200,
+          h: 60,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final e = gaze.elements.firstWhere((e) => e.label == 'Visible');
+      final json = e.toJson();
+      expect(json.containsKey('prominence'), isTrue);
+      expect((json['prominence'] as double), greaterThan(0));
+    });
+  });
+
+  // ===================================================================
+  // Scroll inventory
+  // ===================================================================
+  group('Scroll inventory', () {
+    test('detects scrollable content when elements below fold', () {
+      final glyphs = [
+        glyph(label: 'Item 1', widgetType: 'Text', x: 10, y: 100),
+        glyph(label: 'Item 2', widgetType: 'Text', x: 10, y: 300),
+        glyph(label: 'Item 3', widgetType: 'Text', x: 10, y: 600),
+        glyph(label: 'Item 4', widgetType: 'Text', x: 10, y: 850),
+        glyph(label: 'Item 5', widgetType: 'Text', x: 10, y: 1100),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.scrollInfo, isNotNull);
+      expect(gaze.scrollInfo!.canScrollDown, isTrue);
+      expect(gaze.scrollInfo!.belowFoldCount, greaterThan(0));
+    });
+
+    test('no scroll when all within viewport', () {
+      final glyphs = [
+        glyph(label: 'Alpha', widgetType: 'Text', x: 10, y: 100),
+        glyph(label: 'Bravo', widgetType: 'Text', x: 10, y: 200),
+        glyph(label: 'Charlie', widgetType: 'Text', x: 10, y: 300),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.scrollInfo, isNotNull);
+      expect(gaze.scrollInfo!.canScrollDown, isFalse);
+      expect(gaze.scrollInfo!.belowFoldCount, 0);
+    });
+
+    test('visibleCount counts elements within viewport', () {
+      final glyphs = [
+        glyph(label: 'Visible1', widgetType: 'Text', x: 10, y: 100),
+        glyph(label: 'Visible2', widgetType: 'Text', x: 10, y: 400),
+        glyph(label: 'Visible3', widgetType: 'Text', x: 10, y: 700),
+        glyph(label: 'Hidden', widgetType: 'Text', x: 10, y: 900),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.scrollInfo!.visibleCount, 3);
+      expect(gaze.scrollInfo!.belowFoldCount, 1);
+    });
+
+    test('contentMaxY reflects actual content extent', () {
+      final glyphs = [
+        glyph(label: 'Top', widgetType: 'Text', x: 10, y: 50, h: 20),
+        glyph(label: 'Bottom', widgetType: 'Text', x: 10, y: 1500, h: 20),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.scrollInfo!.contentMaxY, 1520.0); // 1500 + 20
+    });
+
+    test('scrollInfo toJson in gaze', () {
+      final glyphs = [
+        glyph(label: 'Top Item', widgetType: 'Text', x: 10, y: 100),
+        glyph(label: 'Bottom Item', widgetType: 'Text', x: 10, y: 900),
+      ];
+      final gaze = scry.observe(glyphs);
+      final json = gaze.toJson();
+      expect(json.containsKey('scrollInfo'), isTrue);
+      final si = json['scrollInfo'] as Map<String, dynamic>;
+      expect(si['canScrollDown'], isTrue);
+    });
+  });
+
+  // ===================================================================
+  // Element grouping
+  // ===================================================================
+  group('Element grouping', () {
+    test('groups elements with Card ancestor', () {
+      final glyphs = [
+        glyph(
+          label: 'Title 1',
+          widgetType: 'Text',
+          ancestors: ['MaterialApp', 'Scaffold', 'ListView', 'Card', 'Text'],
+          x: 10,
+          y: 100,
+        ),
+        glyph(
+          label: 'Action 1',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: [
+            'MaterialApp',
+            'Scaffold',
+            'ListView',
+            'Card',
+            'IconButton',
+          ],
+          x: 300,
+          y: 100,
+        ),
+        glyph(
+          label: 'Title 2',
+          widgetType: 'Text',
+          ancestors: ['MaterialApp', 'Scaffold', 'ListView', 'Card', 'Text'],
+          x: 10,
+          y: 200,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.groups, hasLength(1));
+      expect(gaze.groups.first.containerType, 'Card');
+      expect(gaze.groups.first.elements, hasLength(3));
+    });
+
+    test('groups elements with ListTile ancestor', () {
+      final glyphs = [
+        glyph(
+          label: 'Item A',
+          widgetType: 'Text',
+          ancestors: [
+            'MaterialApp',
+            'Scaffold',
+            'ListView',
+            'ListTile',
+            'Text',
+          ],
+          x: 10,
+          y: 100,
+        ),
+        glyph(
+          label: 'Item B',
+          widgetType: 'Text',
+          ancestors: [
+            'MaterialApp',
+            'Scaffold',
+            'ListView',
+            'ListTile',
+            'Text',
+          ],
+          x: 10,
+          y: 200,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final listTileGroups = gaze.groups.where(
+        (g) => g.containerType == 'ListTile',
+      );
+      expect(listTileGroups, hasLength(1));
+    });
+
+    test('does not create group with fewer than 2 elements', () {
+      final glyphs = [
+        glyph(
+          label: 'Single Card Item',
+          widgetType: 'Text',
+          ancestors: ['MaterialApp', 'Scaffold', 'Card', 'Text'],
+          x: 10,
+          y: 100,
+        ),
+        glyph(
+          label: 'Other Item',
+          widgetType: 'Text',
+          ancestors: ['MaterialApp', 'Scaffold', 'Column', 'Text'],
+          x: 10,
+          y: 200,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final cardGroups = gaze.groups.where((g) => g.containerType == 'Card');
+      expect(cardGroups, isEmpty);
+    });
+
+    test('groups toJson in gaze', () {
+      final glyphs = [
+        glyph(
+          label: 'Alpha Item',
+          widgetType: 'Text',
+          ancestors: ['MaterialApp', 'Card', 'Text'],
+          x: 10,
+          y: 100,
+        ),
+        glyph(
+          label: 'Bravo Item',
+          widgetType: 'Text',
+          ancestors: ['MaterialApp', 'Card', 'Text'],
+          x: 10,
+          y: 200,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final json = gaze.toJson();
+      if (gaze.groups.isNotEmpty) {
+        expect(json.containsKey('groups'), isTrue);
+        final groups = json['groups'] as List;
+        expect(groups.first, isA<Map<String, dynamic>>());
+      }
+    });
+  });
+
+  // ===================================================================
+  // Semantic landmark detection
+  // ===================================================================
+  group('Semantic landmark detection', () {
+    test('detects page title from structural element in topBar', () {
+      final glyphs = [
+        glyph(
+          label: 'Quest Log',
+          widgetType: 'Text',
+          semanticRole: 'header',
+          ancestors: ['MaterialApp', 'Scaffold', 'AppBar', 'Text'],
+          depth: 5,
+          x: 100,
+          y: 30,
+          w: 200,
+          h: 24,
+        ),
+        glyph(label: 'Item 1', widgetType: 'Text', x: 10, y: 200),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.landmarks, isNotNull);
+      expect(gaze.landmarks!.pageTitle, 'Quest Log');
+    });
+
+    test('detects FAB as primary action', () {
+      final glyphs = [
+        glyph(
+          label: 'Add Quest',
+          widgetType: 'FloatingActionButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: [
+            'MaterialApp',
+            'Scaffold',
+            'Overlay',
+            'FloatingActionButton',
+          ],
+          depth: 20,
+          x: 300,
+          y: 700,
+          w: 56,
+          h: 56,
+        ),
+        glyph(
+          label: 'Save',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 100,
+          y: 400,
+          w: 100,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.landmarks, isNotNull);
+      expect(gaze.landmarks!.primaryAction, isNotNull);
+      expect(gaze.landmarks!.primaryAction!.label, 'Add Quest');
+    });
+
+    test('detects back button availability', () {
+      final glyphs = [
+        glyph(
+          label: 'Back',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 20,
+          w: 48,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.landmarks!.backAvailable, isTrue);
+    });
+
+    test('detects search availability', () {
+      final glyphs = [
+        glyph(
+          label: 'Search',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'type',
+          fieldId: 'search_field',
+          x: 10,
+          y: 80,
+          w: 350,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.landmarks!.searchAvailable, isTrue);
+    });
+
+    test('no landmarks when screen is empty', () {
+      final glyphs = <Map<String, dynamic>>[];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.landmarks, isNotNull);
+      expect(gaze.landmarks!.pageTitle, isNull);
+      expect(gaze.landmarks!.primaryAction, isNull);
+      expect(gaze.landmarks!.backAvailable, isFalse);
+      expect(gaze.landmarks!.searchAvailable, isFalse);
+    });
+
+    test('primary action falls back to highest prominence button', () {
+      final glyphs = [
+        glyph(
+          label: 'Small',
+          widgetType: 'TextButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 200,
+          w: 60,
+          h: 36,
+        ),
+        glyph(
+          label: 'Big CTA',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 400,
+          w: 300,
+          h: 56,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.landmarks!.primaryAction, isNotNull);
+      expect(gaze.landmarks!.primaryAction!.label, 'Big CTA');
+    });
+
+    test('landmarks toJson in gaze', () {
+      final glyphs = [
+        glyph(
+          label: 'Settings',
+          widgetType: 'Text',
+          semanticRole: 'header',
+          ancestors: ['MaterialApp', 'Scaffold', 'AppBar', 'Text'],
+          depth: 5,
+          x: 100,
+          y: 30,
+          w: 150,
+          h: 24,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final json = gaze.toJson();
+      expect(json.containsKey('landmarks'), isTrue);
+      final lm = json['landmarks'] as Map<String, dynamic>;
+      expect(lm['pageTitle'], 'Settings');
+    });
+  });
+
+  // ===================================================================
+  // ScryElement new fields serialization
+  // ===================================================================
+  group('ScryElement new fields', () {
+    test('toJson includes targetScore and strategy for interactive', () {
+      const element = ScryElement(
+        kind: ScryElementKind.button,
+        label: 'Test',
+        widgetType: 'ElevatedButton',
+        isInteractive: true,
+        targetScore: 100,
+        targetStrategy: ScryTargetStrategy.key,
+      );
+      final json = element.toJson();
+      expect(json['targetScore'], 100);
+      expect(json['targetStrategy'], 'key');
+    });
+
+    test('toJson omits targetScore/strategy for non-interactive', () {
+      const element = ScryElement(
+        kind: ScryElementKind.content,
+        label: 'Label',
+        widgetType: 'Text',
+      );
+      final json = element.toJson();
+      expect(json.containsKey('targetScore'), isFalse);
+      expect(json.containsKey('targetStrategy'), isFalse);
+    });
+
+    test('toJson includes reachable only when false', () {
+      const reachable = ScryElement(
+        kind: ScryElementKind.button,
+        label: 'OK',
+        widgetType: 'ElevatedButton',
+        isInteractive: true,
+      );
+      const unreachable = ScryElement(
+        kind: ScryElementKind.button,
+        label: 'Nope',
+        widgetType: 'ElevatedButton',
+        isInteractive: true,
+        reachable: false,
+      );
+      expect(reachable.toJson().containsKey('reachable'), isFalse);
+      expect(unreachable.toJson()['reachable'], isFalse);
+    });
+
+    test('toJson includes prominence when > 0', () {
+      const withProminence = ScryElement(
+        kind: ScryElementKind.button,
+        label: 'A',
+        widgetType: 'ElevatedButton',
+        prominence: 0.75,
+      );
+      const noProminence = ScryElement(
+        kind: ScryElementKind.button,
+        label: 'B',
+        widgetType: 'ElevatedButton',
+      );
+      expect(withProminence.toJson()['prominence'], 0.75);
+      expect(noProminence.toJson().containsKey('prominence'), isFalse);
+    });
+  });
+
+  // ===================================================================
+  // formatGaze — new sections
+  // ===================================================================
+  group('formatGaze new sections', () {
+    test('includes landmarks section with page title', () {
+      final glyphs = [
+        glyph(
+          label: 'Dashboard',
+          widgetType: 'Text',
+          semanticRole: 'header',
+          ancestors: ['MaterialApp', 'Scaffold', 'AppBar', 'Text'],
+          depth: 5,
+          x: 100,
+          y: 30,
+          w: 200,
+          h: 24,
+        ),
+        glyph(label: 'Content', widgetType: 'Text', x: 10, y: 200),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('**Page**: Dashboard'));
+    });
+
+    test('includes scroll info banner when scrollable', () {
+      final glyphs = [
+        glyph(label: 'Top', widgetType: 'Text', x: 10, y: 100),
+        glyph(label: 'Bottom', widgetType: 'Text', x: 10, y: 1500),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('📜 **Scrollable**'));
+      expect(md, contains('Scroll down for more'));
+    });
+
+    test('no scroll banner when not scrollable', () {
+      final glyphs = [
+        glyph(label: 'Top', widgetType: 'Text', x: 10, y: 100),
+        glyph(label: 'Mid', widgetType: 'Text', x: 10, y: 300),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, isNot(contains('📜 **Scrollable**')));
+    });
+
+    test('includes groups section', () {
+      final glyphs = [
+        glyph(
+          label: 'Card Title',
+          widgetType: 'Text',
+          ancestors: ['MaterialApp', 'Card', 'Text'],
+          x: 10,
+          y: 100,
+        ),
+        glyph(
+          label: 'Card Action',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['MaterialApp', 'Card', 'IconButton'],
+          x: 300,
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      if (gaze.groups.isNotEmpty) {
+        final md = scry.formatGaze(gaze);
+        expect(md, contains('🗂️ Groups'));
+        expect(md, contains('Card'));
+      }
+    });
+
+    test('includes back indicator in landmarks', () {
+      final glyphs = [
+        glyph(
+          label: 'Back',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          x: 10,
+          y: 20,
+          w: 48,
+          h: 48,
+        ),
+        glyph(label: 'Content', widgetType: 'Text', x: 10, y: 200),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('← Back'));
+    });
+
+    test('includes search indicator in landmarks', () {
+      final glyphs = [
+        glyph(
+          label: 'Search',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'type',
+          fieldId: 'search',
+          x: 10,
+          y: 80,
+          w: 300,
+          h: 48,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('🔍 Search'));
+    });
+
+    test('includes primary action in landmarks', () {
+      final glyphs = [
+        glyph(
+          label: 'Create',
+          widgetType: 'FloatingActionButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: [
+            'MaterialApp',
+            'Scaffold',
+            'Overlay',
+            'FloatingActionButton',
+          ],
+          depth: 20,
+          x: 300,
+          y: 700,
+          w: 56,
+          h: 56,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('**Primary action**: Create'));
+    });
+  });
+
+  // ===================================================================
+  // Combined integration — second batch capabilities
+  // ===================================================================
+  group('Second batch integration', () {
+    test('realistic list screen with all capabilities', () {
+      final glyphs = [
+        // AppBar title
+        glyph(
+          label: 'My Quests',
+          widgetType: 'Text',
+          semanticRole: 'header',
+          ancestors: ['MaterialApp', 'Scaffold', 'AppBar', 'Text'],
+          depth: 5,
+          x: 100,
+          y: 30,
+          w: 160,
+          h: 24,
+        ),
+        // Back button
+        glyph(
+          label: 'Back',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['MaterialApp', 'Scaffold', 'AppBar', 'IconButton'],
+          depth: 5,
+          x: 10,
+          y: 20,
+          w: 48,
+          h: 48,
+        ),
+        // Search button
+        glyph(
+          label: 'Search',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['MaterialApp', 'Scaffold', 'AppBar', 'IconButton'],
+          depth: 5,
+          x: 300,
+          y: 20,
+          w: 48,
+          h: 48,
+        ),
+        // Card items
+        glyph(
+          label: 'Quest 1',
+          widgetType: 'Text',
+          ancestors: ['MaterialApp', 'Scaffold', 'ListView', 'Card', 'Text'],
+          x: 20,
+          y: 100,
+          w: 300,
+          h: 20,
+        ),
+        glyph(
+          label: 'Delete',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          key: 'delete_1',
+          ancestors: [
+            'MaterialApp',
+            'Scaffold',
+            'ListView',
+            'Card',
+            'IconButton',
+          ],
+          x: 340,
+          y: 100,
+          w: 48,
+          h: 48,
+        ),
+        glyph(
+          label: 'Quest 2',
+          widgetType: 'Text',
+          ancestors: ['MaterialApp', 'Scaffold', 'ListView', 'Card', 'Text'],
+          x: 20,
+          y: 200,
+          w: 300,
+          h: 20,
+        ),
+        glyph(
+          label: 'Delete',
+          widgetType: 'IconButton',
+          interactive: true,
+          interactionType: 'tap',
+          key: 'delete_2',
+          ancestors: [
+            'MaterialApp',
+            'Scaffold',
+            'ListView',
+            'Card',
+            'IconButton',
+          ],
+          x: 340,
+          y: 200,
+          w: 48,
+          h: 48,
+        ),
+        // Far below fold
+        glyph(
+          label: 'Quest 10',
+          widgetType: 'Text',
+          ancestors: ['MaterialApp', 'Scaffold', 'ListView', 'Card', 'Text'],
+          x: 20,
+          y: 1000,
+          w: 300,
+          h: 20,
+        ),
+        // FAB
+        glyph(
+          label: 'Add Quest',
+          widgetType: 'FloatingActionButton',
+          interactive: true,
+          interactionType: 'tap',
+          key: 'fab_add',
+          ancestors: [
+            'MaterialApp',
+            'Scaffold',
+            'Overlay',
+            'FloatingActionButton',
+          ],
+          depth: 20,
+          x: 320,
+          y: 720,
+          w: 56,
+          h: 56,
+        ),
+      ];
+
+      final gaze = scry.observe(glyphs);
+
+      // Landmarks
+      expect(gaze.landmarks, isNotNull);
+      expect(gaze.landmarks!.pageTitle, 'My Quests');
+      expect(gaze.landmarks!.primaryAction!.label, 'Add Quest');
+      expect(gaze.landmarks!.backAvailable, isTrue);
+      expect(gaze.landmarks!.searchAvailable, isTrue);
+
+      // Scroll
+      expect(gaze.scrollInfo, isNotNull);
+      expect(gaze.scrollInfo!.canScrollDown, isTrue);
+      expect(gaze.scrollInfo!.belowFoldCount, greaterThan(0));
+
+      // Groups
+      final cardGroup = gaze.groups.where((g) => g.containerType == 'Card');
+      expect(cardGroup, isNotEmpty);
+
+      // Target scoring — keyed elements get 100
+      final fab = gaze.elements.firstWhere((e) => e.label == 'Add Quest');
+      expect(fab.targetScore, 100);
+      expect(fab.targetStrategy, ScryTargetStrategy.key);
+
+      // Reachability — offscreen Quest 10 items are still "reachable"
+      // (only interactive elements below fold are unreachable)
+
+      // Prominence — FAB should have prominence
+      expect(fab.prominence, greaterThan(0));
+
+      // formatGaze includes new sections
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('**Page**: My Quests'));
+      expect(md, contains('**Primary action**: Add Quest'));
+      expect(md, contains('← Back'));
+      expect(md, contains('🔍 Search'));
+      expect(md, contains('📜 **Scrollable**'));
+    });
+
+    test('settings screen with no scroll', () {
+      final glyphs = [
+        glyph(
+          label: 'Settings',
+          widgetType: 'Text',
+          semanticRole: 'header',
+          ancestors: ['MaterialApp', 'Scaffold', 'AppBar', 'Text'],
+          depth: 5,
+          x: 100,
+          y: 30,
+          w: 130,
+          h: 24,
+        ),
+        glyph(
+          label: 'Dark Mode',
+          widgetType: 'Switch',
+          interactive: true,
+          interactionType: 'toggle',
+          x: 300,
+          y: 200,
+          w: 60,
+          h: 36,
+        ),
+        glyph(
+          label: 'Notifications',
+          widgetType: 'Switch',
+          interactive: true,
+          interactionType: 'toggle',
+          x: 300,
+          y: 300,
+          w: 60,
+          h: 36,
+        ),
+      ];
+
+      final gaze = scry.observe(glyphs);
+
+      // Not scrollable
+      expect(gaze.scrollInfo!.canScrollDown, isFalse);
+
+      // Page title detected
+      expect(gaze.landmarks!.pageTitle, 'Settings');
+
+      // No back button or search
+      expect(gaze.landmarks!.backAvailable, isFalse);
+      expect(gaze.landmarks!.searchAvailable, isFalse);
+
+      // formatGaze should NOT have scroll banner
+      final md = scry.formatGaze(gaze);
+      expect(md, isNot(contains('📜 **Scrollable**')));
+    });
+  });
 }
