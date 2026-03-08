@@ -50,6 +50,10 @@
 /// - `relay_terrain` — Get live Terrain from the running app
 /// - `generate_auth_stratagem` — Auto-generate authStratagem from the
 ///   current screen (detects text fields and login buttons)
+/// - `generate_campaign` — Auto-generate a complete Campaign JSON from
+///   the live app's current screen
+/// - `audit_screen` — Automatically detect data-binding bugs via a
+///   sign-out/re-login cycle with a unique probe value
 library;
 
 import 'dart:async';
@@ -57,12 +61,16 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:titan_colossus/src/testing/auth_stratagem_generator.dart';
+import 'package:titan_colossus/src/testing/screen_auditor.dart';
 
 /// MCP Server for Titan Blueprint data.
 ///
 /// Implements the Model Context Protocol (MCP) over stdio, exposing
 /// Blueprint data as tools that AI assistants can invoke.
 Future<void> main(List<String> args) async {
+  // Ensure stdout handles UTF-8 (em-dash etc. in generated content)
+  stdout.encoding = utf8;
+
   final server = _BlueprintMcpServer();
 
   // Support CLI arguments for configuration
@@ -416,6 +424,46 @@ class _BlueprintMcpServer {
               },
             },
           },
+          {
+            'name': 'audit_screen',
+            'description':
+                'Automatically detect data-binding bugs by performing '
+                'a full sign-out → re-login cycle with a unique probe '
+                'value, then comparing screen state before and after. '
+                'Detects hardcoded values, missing input bindings, and '
+                'stale data that persists across login cycles. Requires '
+                'zero human input — auto-detects sign-out buttons, text '
+                'fields, and login buttons. Returns a detailed audit '
+                'report with categorized findings (bug/warning/info).',
+            'inputSchema': {
+              'type': 'object',
+              'properties': {
+                'testValue': {
+                  'type': 'string',
+                  'description':
+                      'Value to enter at login for the audit. '
+                      'Defaults to an auto-generated unique probe '
+                      'value (e.g., "Probe_a7k3m9") that is unlikely '
+                      'to appear naturally in the UI.',
+                },
+                'signOutLabel': {
+                  'type': 'string',
+                  'description':
+                      'Label of the sign-out button. If omitted, '
+                      'auto-detected by scanning for common logout '
+                      'indicators (Sign Out, Log Out, etc.).',
+                },
+                'restore': {
+                  'type': 'boolean',
+                  'description':
+                      'If true, attempt to restore the original '
+                      'login state after the audit by signing out '
+                      'and re-entering the original name. '
+                      'Defaults to true.',
+                },
+              },
+            },
+          },
         ],
       },
       'id': id,
@@ -439,6 +487,7 @@ class _BlueprintMcpServer {
       'relay_terrain',
       'generate_auth_stratagem',
       'generate_campaign',
+      'audit_screen',
     };
 
     if (relayOnlyTools.contains(toolName)) {
@@ -448,6 +497,7 @@ class _BlueprintMcpServer {
         'relay_terrain' => await _relayTerrain(),
         'generate_auth_stratagem' => await _generateAuthStratagem(toolArgs),
         'generate_campaign' => await _generateCampaign(toolArgs),
+        'audit_screen' => await _auditScreen(toolArgs),
         _ => 'Unknown tool: $toolName',
       };
 
@@ -1264,7 +1314,7 @@ class _BlueprintMcpServer {
 
       final request = await client.postUrl(_relayUri('/campaign'));
       _relayHeaders.forEach(request.headers.set);
-      request.write(jsonEncode(campaign));
+      request.add(utf8.encode(jsonEncode(campaign)));
 
       final response = await request.close().timeout(
         const Duration(minutes: 10),
@@ -1707,6 +1757,432 @@ class _BlueprintMcpServer {
     } finally {
       client.close();
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Screen Audit — automatic data-binding bug detection
+  // -----------------------------------------------------------------------
+
+  /// Instance of the screen auditor for snapshot comparison.
+  static const _screenAuditor = ScreenAuditor();
+
+  /// Automatically detect data-binding bugs via a full
+  /// sign-out → re-login cycle.
+  ///
+  /// 1. Fetches current screen (snapshot A)
+  /// 2. Detects sign-out button & original displayed name
+  /// 3. Signs out via a mini Campaign
+  /// 4. Detects auth fields on login screen
+  /// 5. Logs in with a unique probe value
+  /// 6. Fetches screen again (snapshot B)
+  /// 7. Runs [ScreenAuditor.compareScreens] to find anomalies
+  /// 8. Optionally restores original state
+  /// 9. Returns formatted audit report
+  Future<String> _auditScreen(Map<String, dynamic> args) async {
+    final testValue =
+        args['testValue'] as String? ?? ScreenAuditor.generateProbeValue();
+    final signOutLabelArg = args['signOutLabel'] as String?;
+    final restore = args['restore'] as bool? ?? true;
+
+    try {
+      // Step 1: Fetch current screen (snapshot A)
+      final glyphsBefore = await _fetchGlyphs();
+      if (glyphsBefore == null) {
+        return '# Audit Failed\n\n'
+            'Could not fetch screen data from Relay. '
+            'Is the app running with ColossusPlugin(enableRelay: true)?';
+      }
+      // Step 2: Detect sign-out button
+      final signOutLabel =
+          signOutLabelArg ??
+          _screenAuditor.detectSignOutButtons(glyphsBefore).firstOrNull;
+
+      if (signOutLabel == null) {
+        return '# Audit Failed\n\n'
+            'No sign-out button detected on the current screen. '
+            'Navigate to a screen with a Sign Out / Log Out button, '
+            'or specify the `signOutLabel` parameter.';
+      }
+
+      // Note: extract display labels before sign-out for comparison
+      final labelsBefore = _screenAuditor.extractDisplayLabels(glyphsBefore);
+
+      // Step 3: Sign out via mini Campaign.
+      // Use waitForElementGone to ensure the sign-out navigation
+      // completes before the campaign returns (more reliable than
+      // a fixed delay, since it watches the actual widget tree).
+      final signOutCampaign = {
+        'name': '_audit_signout',
+        'entries': [
+          {
+            'stratagem': {
+              'name': '_signout',
+              'startRoute': '/',
+              'steps': [
+                {
+                  'id': 1,
+                  'action': 'tap',
+                  'target': {'label': signOutLabel},
+                },
+                {
+                  'id': 2,
+                  'action': 'waitForElementGone',
+                  'target': {'label': signOutLabel},
+                  'timeout': 5000,
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      final signOutResult = await _executeRawCampaign(signOutCampaign);
+      if (signOutResult == null || signOutResult['passRate'] != 1.0) {
+        return '# Audit Failed\n\n'
+            'Sign-out step failed. The button "$signOutLabel" '
+            'could not be tapped successfully.\n\n'
+            'Result: ${signOutResult ?? "no response"}';
+      }
+
+      // Step 4: Poll for login screen (Tableau may lag behind navigation)
+      List<dynamic>? loginGlyphs;
+      AuthStratagemResult? authResult;
+      for (var attempt = 0; attempt < 10; attempt++) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        loginGlyphs = await _fetchGlyphs();
+        if (loginGlyphs != null) {
+          authResult = _authGenerator.generate(
+            loginGlyphs,
+            defaultValue: testValue,
+          );
+          if (authResult.isAuthScreen) {
+            break;
+          }
+        }
+      }
+
+      if (loginGlyphs == null) {
+        return '# Audit Failed\n\n'
+            'Could not fetch login screen after sign-out.';
+      }
+
+      if (authResult == null || !authResult.isAuthScreen) {
+        return '# Audit Failed\n\n'
+            'After signing out, the screen does not appear to be '
+            'a login screen (no text fields or login buttons found). '
+            'The app may not have navigated to the login screen.';
+      }
+
+      // Step 5: Login with probe value via mini Campaign
+      // Verify login success by waiting for the sign-out button
+      // to reappear (it only exists on authenticated screens).
+      final loginCampaign = {
+        'name': '_audit_login',
+        'authStratagem': authResult.authStratagem,
+        'entries': [
+          {
+            'stratagem': {
+              'name': '_post_login_check',
+              'startRoute': '/',
+              'steps': [
+                {
+                  'id': 1,
+                  'action': 'waitForElement',
+                  'target': {'label': signOutLabel},
+                  'timeout': 5000,
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      final loginResult = await _executeRawCampaign(loginCampaign);
+      if (loginResult == null || loginResult['passRate'] != 1.0) {
+        return '# Audit Failed\n\n'
+            'Login step failed. Could not log in with probe value '
+            '"$testValue".\n\n'
+            'Result: ${loginResult ?? "no response"}';
+      }
+
+      // Step 6: Fetch post-login screen (snapshot B)
+      // Brief settle delay to let the screen fully render
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      final glyphsAfter = await _fetchGlyphs();
+      if (glyphsAfter == null) {
+        return '# Audit Failed\n\n'
+            'Could not fetch screen after re-login.';
+      }
+
+      // Step 7: Run the audit comparison
+      final report = _screenAuditor.compareScreens(
+        glyphsBefore: glyphsBefore,
+        glyphsAfter: glyphsAfter,
+        testInput: testValue,
+      );
+
+      // Step 8: Restore original state (if requested)
+      String? restorationNote;
+      if (restore) {
+        // Try to find the original name from labels that disappeared
+        // (the old name should be in labelsBefore but not labelsAfter)
+        final disappeared = labelsBefore.difference(
+          _screenAuditor.extractDisplayLabels(glyphsAfter),
+        );
+
+        // Pick the most name-like disappeared label as the original
+        String? originalName;
+        for (final label in disappeared) {
+          // Use a simple heuristic: short, alphabetic label
+          if (label.length >= 2 &&
+              label.length <= 25 &&
+              !label.contains('•') &&
+              !label.contains(':')) {
+            originalName = label;
+            break;
+          }
+        }
+
+        if (originalName != null) {
+          // Sign out current probe user, then re-login with original name
+          final signOutFirst = {
+            'name': '_audit_restore_signout',
+            'entries': [
+              {
+                'stratagem': {
+                  'name': '_restore_signout',
+                  'startRoute': '/',
+                  'steps': [
+                    {
+                      'id': 1,
+                      'action': 'tap',
+                      'target': {'label': signOutLabel},
+                    },
+                    {
+                      'id': 2,
+                      'action': 'waitForElementGone',
+                      'target': {'label': signOutLabel},
+                      'timeout': 5000,
+                    },
+                  ],
+                },
+              },
+            ],
+          };
+          await _executeRawCampaign(signOutFirst);
+
+          // Wait for login screen, then build restore auth steps
+          await Future<void>.delayed(const Duration(seconds: 1));
+
+          // Build sequential step IDs for restore auth
+          final restoreSteps = <Map<String, dynamic>>[];
+          var restoreStepId = 1;
+          for (final field in authResult.textFields) {
+            restoreSteps.add({
+              'id': restoreStepId++,
+              'action': 'enterText',
+              'target': {'label': field['l']},
+              'value': originalName,
+            });
+          }
+          for (final button in authResult.loginButtons) {
+            restoreSteps.add({
+              'id': restoreStepId++,
+              'action': 'tap',
+              'target': {'label': button['l']},
+            });
+          }
+
+          final restoreCampaign = {
+            'name': '_audit_restore_login',
+            'authStratagem': {
+              'name': '_restore_auth',
+              'startRoute': '',
+              'steps': restoreSteps,
+            },
+            'entries': [
+              {
+                'stratagem': {
+                  'name': '_restore_verify',
+                  'startRoute': '/',
+                  'steps': [
+                    {
+                      'id': 1,
+                      'action': 'waitForElement',
+                      'target': {'label': signOutLabel},
+                      'timeout': 5000,
+                    },
+                  ],
+                },
+              },
+            ],
+          };
+
+          final restoreResult = await _executeRawCampaign(restoreCampaign);
+          restorationNote = restoreResult?['passRate'] == 1.0
+              ? 'Original state restored (logged back in as '
+                  '"$originalName").'
+              : 'Could not restore original state. Currently '
+                  'logged in as "$testValue".';
+        } else {
+          restorationNote =
+              'Could not determine original name for restoration. '
+              'Currently logged in as "$testValue".';
+        }
+      }
+
+      // Step 9: Format and return the report
+      return _formatAuditReport(report, restorationNote);
+    } on SocketException {
+      return 'Cannot connect to Relay — is the app running '
+          'with ColossusPlugin(enableRelay: true)?';
+    } on TimeoutException {
+      return 'Relay did not respond (timeout)';
+    }
+  }
+
+  /// Fetch current screen glyphs from Relay.
+  Future<List<dynamic>?> _fetchGlyphs() async {
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 5);
+
+      final request = await client.getUrl(_relayUri('/blueprint'));
+      _relayHeaders.forEach(request.headers.set);
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
+
+      if (response.statusCode != 200) {
+        await response.drain<void>();
+        return null;
+      }
+
+      final body = await response.transform(utf8.decoder).join();
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      final tableau =
+          data['currentTableau'] as Map<String, dynamic>? ?? const {};
+      return tableau['glyphs'] as List<dynamic>? ?? [];
+    } on SocketException {
+      return null;
+    } on TimeoutException {
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Execute a campaign via Relay and return the parsed result.
+  Future<Map<String, dynamic>?> _executeRawCampaign(
+    Map<String, dynamic> campaign,
+  ) async {
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 10);
+
+      final request = await client.postUrl(_relayUri('/campaign'));
+      _relayHeaders.forEach(request.headers.set);
+      request.add(utf8.encode(jsonEncode(campaign)));
+
+      final response = await request.close().timeout(
+        const Duration(minutes: 5),
+      );
+
+      final body = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode == 200) {
+        return jsonDecode(body) as Map<String, dynamic>;
+      }
+      return null;
+    } on SocketException {
+      return null;
+    } on TimeoutException {
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Format an [AuditReport] as Markdown for AI consumption.
+  String _formatAuditReport(AuditReport report, String? restorationNote) {
+    final buf = StringBuffer();
+
+    buf.writeln('# Screen Audit Report');
+    buf.writeln();
+
+    if (report.hasBugs) {
+      buf.writeln(
+        '\u274c **BUGS DETECTED** — '
+        '${report.bugs.length} data-binding issue(s) found',
+      );
+    } else {
+      buf.writeln('\u2705 **NO BUGS DETECTED** — screen audit passed');
+    }
+    buf.writeln();
+
+    buf.writeln('**Probe Value**: `${report.testInput}`');
+    buf.writeln('**Labels Before**: ${report.labelsBefore.length}');
+    buf.writeln('**Labels After**: ${report.labelsAfter.length}');
+    buf.writeln(
+      '**Findings**: ${report.bugs.length} bugs, '
+      '${report.warnings.length} warnings, '
+      '${report.infos.length} info',
+    );
+    buf.writeln();
+
+    if (report.bugs.isNotEmpty) {
+      buf.writeln('## \u274c Bugs');
+      buf.writeln();
+      for (final bug in report.bugs) {
+        buf.writeln('- **${bug.category}**: ${bug.message}');
+        if (bug.expected != null) {
+          buf.writeln('  - Expected: `${bug.expected}`');
+        }
+        if (bug.actual != null) {
+          buf.writeln('  - Actual: `${bug.actual}`');
+        }
+      }
+      buf.writeln();
+    }
+
+    if (report.warnings.isNotEmpty) {
+      buf.writeln('## \u26a0\ufe0f Warnings');
+      buf.writeln();
+      for (final w in report.warnings) {
+        buf.writeln('- **${w.category}**: ${w.message}');
+      }
+      buf.writeln();
+    }
+
+    if (report.infos.isNotEmpty) {
+      buf.writeln('## \u2139\ufe0f Info');
+      buf.writeln();
+      for (final info in report.infos) {
+        buf.writeln('- **${info.category}**: ${info.message}');
+      }
+      buf.writeln();
+    }
+
+    if (report.disappeared.isNotEmpty) {
+      buf.writeln('## Labels That Disappeared');
+      buf.writeln();
+      for (final label in report.disappeared.take(10)) {
+        buf.writeln('- `$label`');
+      }
+      if (report.disappeared.length > 10) {
+        buf.writeln('- (+${report.disappeared.length - 10} more)');
+      }
+      buf.writeln();
+    }
+
+    if (restorationNote != null) {
+      buf.writeln('---');
+      buf.writeln();
+      buf.writeln('**Restoration**: $restorationNote');
+    }
+
+    return buf.toString();
   }
 
   /// Convert a label to a URL-safe slug for stratagem names.
