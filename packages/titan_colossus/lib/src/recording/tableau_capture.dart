@@ -288,9 +288,7 @@ class TableauCapture {
         widget is Slider ||
         widget is DropdownButton ||
         widget is PopupMenuButton ||
-        widget is BottomNavigationBar ||
-        widget is NavigationBar ||
-        widget is NavigationRail ||
+        widget is NavigationDestination ||
         widget is TabBar ||
         widget is ListTile ||
         widget is ExpansionTile ||
@@ -378,6 +376,11 @@ class TableauCapture {
       return widget.semanticLabel ?? widget.icon?.toString();
     }
 
+    // NavigationDestination — use label property
+    if (widget is NavigationDestination) {
+      return widget.label;
+    }
+
     // Image — semanticLabel
     if (widget is Image) {
       return widget.semanticLabel;
@@ -407,8 +410,7 @@ class TableauCapture {
         widget is Chip ||
         widget is Card ||
         widget is ExpansionTile ||
-        widget is SegmentedButton ||
-        widget is NavigationBar) {
+        widget is SegmentedButton) {
       return _findChildLabel(element);
     }
 

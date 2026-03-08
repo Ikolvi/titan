@@ -338,6 +338,36 @@ void main() {
       expect(gaze.navigation, hasLength(1));
     });
 
+    test('classifies NavigationDestination as navigation', () {
+      final glyphs = [
+        glyph(
+          label: 'Quests',
+          interactive: true,
+          widgetType: 'NavigationDestination',
+        ),
+        glyph(
+          label: 'Hero',
+          interactive: true,
+          widgetType: 'NavigationDestination',
+        ),
+        glyph(
+          label: 'Enterprise',
+          interactive: true,
+          widgetType: 'NavigationDestination',
+        ),
+      ];
+
+      final gaze = scry.observe(glyphs);
+
+      // Each NavigationDestination gets its own navigation entry
+      expect(gaze.navigation, hasLength(3));
+      expect(gaze.navigation.map((e) => e.label).toList(), [
+        'Quests',
+        'Hero',
+        'Enterprise',
+      ]);
+    });
+
     test('classifies AppBar children as structural', () {
       final glyphs = [
         glyph(

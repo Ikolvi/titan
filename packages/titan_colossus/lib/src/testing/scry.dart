@@ -2262,6 +2262,7 @@ class Scry {
   bool _isNavigationWidget(String wtLower, List<dynamic> ancestors) {
     if (wtLower == 'navigationbar' ||
         wtLower == 'bottomnavigationbar' ||
+        wtLower == 'navigationdestination' ||
         wtLower == 'tabbar' ||
         wtLower == 'navigationrail') {
       return true;
