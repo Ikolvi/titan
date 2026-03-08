@@ -48,11 +48,15 @@
 ///   human interaction)
 /// - `relay_status` — Check if the Relay bridge is running
 /// - `relay_terrain` — Get live Terrain from the running app
+/// - `generate_auth_stratagem` — Auto-generate authStratagem from the
+///   current screen (detects text fields and login buttons)
 library;
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:titan_colossus/src/testing/auth_stratagem_generator.dart';
 
 /// MCP Server for Titan Blueprint data.
 ///
@@ -347,6 +351,29 @@ class _BlueprintMcpServer {
                 'including in-session recordings.',
             'inputSchema': {'type': 'object', 'properties': {}},
           },
+          {
+            'name': 'generate_auth_stratagem',
+            'description':
+                'Auto-generate an authStratagem JSON from the live '
+                'app\'s current screen via Relay. Captures the '
+                'current Tableau, detects text fields and login '
+                'buttons, and returns a ready-to-use authStratagem '
+                'that can be embedded in Campaign JSON for '
+                'automatic login handling. Works with any auth '
+                'screen — Argus, Firebase, custom OAuth, etc.',
+            'inputSchema': {
+              'type': 'object',
+              'properties': {
+                'defaultValue': {
+                  'type': 'string',
+                  'description':
+                      'Default text to fill in detected text fields '
+                      '(e.g., "Kael"). If omitted, uses '
+                      '"<fill_in_value>".',
+                },
+              },
+            },
+          },
         ],
       },
       'id': id,
@@ -361,7 +388,37 @@ class _BlueprintMcpServer {
     final toolName = params?['name'] as String?;
     final toolArgs = params?['arguments'] as Map<String, dynamic>? ?? const {};
 
-    // Load/refresh Blueprint data
+    // Relay-based tools don't need the static blueprint file.
+    // Handle them before the blueprint load so they work even
+    // when .titan/blueprint.json doesn't exist.
+    const relayOnlyTools = {
+      'execute_campaign',
+      'relay_status',
+      'relay_terrain',
+      'generate_auth_stratagem',
+    };
+
+    if (relayOnlyTools.contains(toolName)) {
+      final result = switch (toolName) {
+        'execute_campaign' => await _executeCampaign(toolArgs),
+        'relay_status' => await _relayStatus(),
+        'relay_terrain' => await _relayTerrain(),
+        'generate_auth_stratagem' => await _generateAuthStratagem(toolArgs),
+        _ => 'Unknown tool: $toolName',
+      };
+
+      return {
+        'jsonrpc': '2.0',
+        'result': {
+          'content': [
+            {'type': 'text', 'text': result},
+          ],
+        },
+        'id': id,
+      };
+    }
+
+    // Load/refresh Blueprint data for file-based tools.
     final blueprint = await _loadBlueprint();
     if (blueprint == null) {
       return {
@@ -395,9 +452,6 @@ class _BlueprintMcpServer {
       'save_campaign' => await _saveCampaign(toolArgs),
       'get_debrief' => _getDebrief(blueprint),
       'get_full_context' => _getFullContext(blueprint),
-      'execute_campaign' => await _executeCampaign(toolArgs),
-      'relay_status' => await _relayStatus(),
-      'relay_terrain' => await _relayTerrain(),
       _ => 'Unknown tool: $toolName',
     };
 
@@ -1216,6 +1270,110 @@ class _BlueprintMcpServer {
     } on TimeoutException {
       return 'Relay at http://$_relayHost:$_relayPort '
           'did not respond (timeout)';
+    } finally {
+      client.close();
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Auth Stratagem auto-generation
+  // -----------------------------------------------------------------------
+
+  /// Instance of the generator for glyph analysis.
+  static const _authGenerator = AuthStratagemGenerator();
+
+  /// Auto-generate an `authStratagem` from the current screen.
+  ///
+  /// Connects to the Relay `/blueprint` endpoint, captures the
+  /// current Tableau, and delegates to [AuthStratagemGenerator]
+  /// for glyph analysis. Returns formatted Markdown with the
+  /// generated JSON.
+  Future<String> _generateAuthStratagem(Map<String, dynamic> args) async {
+    final defaultValue = args['defaultValue'] as String? ?? '<fill_in_value>';
+
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 5);
+
+      final request = await client.getUrl(_relayUri('/blueprint'));
+      _relayHeaders.forEach(request.headers.set);
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
+
+      final body = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        return 'Relay returned ${response.statusCode}: $body';
+      }
+
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      final tableau =
+          data['currentTableau'] as Map<String, dynamic>? ?? const {};
+      final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
+
+      final result = _authGenerator.generate(
+        glyphs,
+        defaultValue: defaultValue,
+      );
+
+      if (!result.isAuthScreen) {
+        return '# No Auth Screen Detected\n\n'
+            'The current screen does not appear to be a login/auth '
+            'screen. No text fields or login buttons were found.\n\n'
+            'Navigate to your login screen first, then call this '
+            'tool again.';
+      }
+
+      // Format output
+      final buf = StringBuffer();
+      buf.writeln('# Auto-Generated authStratagem');
+      buf.writeln();
+      buf.writeln(
+        'Detected **${result.textFields.length}** text field(s) '
+        'and **${result.loginButtons.length}** login button(s) on the '
+        'current screen.',
+      );
+      buf.writeln();
+      buf.writeln('## Detected Elements');
+      buf.writeln();
+      for (final f in result.textFields) {
+        buf.writeln(
+          '- \u270f\ufe0f Text field: **${f['l']}** '
+          '(${f['wt']})',
+        );
+      }
+      for (final b in result.loginButtons) {
+        buf.writeln(
+          '- \ud83d\udd18 Login button: **${b['l']}** '
+          '(${b['wt']})',
+        );
+      }
+      buf.writeln();
+      buf.writeln('## authStratagem JSON');
+      buf.writeln();
+      buf.writeln('Add this to your Campaign JSON:');
+      buf.writeln();
+      buf.writeln('```json');
+      buf.writeln(
+        const JsonEncoder.withIndent(
+          '  ',
+        ).convert({'authStratagem': result.authStratagem}),
+      );
+      buf.writeln('```');
+      buf.writeln();
+      buf.writeln(
+        '> **Note**: Replace `$defaultValue` with the '
+        'actual login value for each field.',
+      );
+
+      return buf.toString();
+    } on SocketException {
+      return 'Cannot connect to Relay — is the app running '
+          'with ColossusPlugin(enableRelay: true)?';
+    } on TimeoutException {
+      return 'Relay did not respond (timeout)';
     } finally {
       client.close();
     }

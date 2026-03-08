@@ -65,6 +65,7 @@ export 'src/recording/tableau.dart';
 export 'src/recording/tableau_capture.dart';
 
 // Testing — Stratagem Engine
+export 'src/testing/auth_stratagem_generator.dart';
 export 'src/testing/campaign.dart';
 export 'src/testing/debrief.dart';
 export 'src/testing/stratagem.dart';
