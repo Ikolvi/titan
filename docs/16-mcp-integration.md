@@ -26,6 +26,8 @@ Titan provides a Model Context Protocol (MCP) server that gives AI assistants re
   - [Screen Observation (Scry)](#screen-observation-scry)
   - [Blueprint Analysis](#blueprint-analysis)
   - [Campaign Management](#campaign-management)
+  - [Performance Monitoring](#performance-monitoring)
+  - [Session & Recording](#session--recording)
   - [Relay Bridge](#relay-bridge)
 - [Usage Examples](#usage-examples)
 - [Physical Device & Emulator Setup](#physical-device--emulator-setup)
@@ -35,7 +37,7 @@ Titan provides a Model Context Protocol (MCP) server that gives AI assistants re
 
 ## Overview
 
-The **Titan Blueprint MCP Server** (`titan-blueprint`) is a stdio-based JSON-RPC 2.0 server that exposes 20 tools to AI assistants. It connects to your running Flutter app through the **Relay** HTTP bridge (port 8642) and reads static blueprint data from `.titan/blueprint.json`.
+The **Titan Blueprint MCP Server** (`titan-blueprint`) is a stdio-based JSON-RPC 2.0 server that exposes 27 tools to AI assistants. It connects to your running Flutter app through the **Relay** HTTP bridge (port 8642) and reads static blueprint data from `.titan/blueprint.json`.
 
 ### Architecture
 
@@ -59,7 +61,7 @@ The **Titan Blueprint MCP Server** (`titan-blueprint`) is a stdio-based JSON-RPC
 
 1. **Static mode** — Read pre-exported blueprint data (`.titan/blueprint.json`). Works without a running app. Tools: `get_terrain`, `get_stratagems`, `get_ai_prompt`, `get_dead_ends`, `get_unreliable_routes`, `get_route_patterns`.
 
-2. **Live mode** — Connect to a running app via the Relay HTTP bridge. Required for real-time screen observation and action execution. Tools: `scry`, `scry_act`, `scry_diff`, `execute_campaign`, `relay_status`, `relay_terrain`, `generate_auth_stratagem`, `generate_campaign`, `audit_screen`.
+2. **Live mode** — Connect to a running app via the Relay HTTP bridge. Required for real-time screen observation, action execution, and performance monitoring. Tools: `scry`, `scry_act`, `scry_diff`, `execute_campaign`, `relay_status`, `relay_terrain`, `generate_auth_stratagem`, `generate_campaign`, `audit_screen`, `get_performance`, `get_frame_history`, `get_page_loads`, `get_memory_snapshot`, `get_alerts`, `list_sessions`, `get_recording_status`.
 
 ---
 
@@ -555,7 +557,7 @@ fvm dart run titan_colossus:blueprint_mcp_server \
 
 ## Tool Reference
 
-The server exposes **20 tools** organized into four categories.
+The server exposes **27 tools** organized into six categories.
 
 ### Screen Observation (Scry)
 
@@ -621,6 +623,25 @@ These tools work with static blueprint data from `.titan/blueprint.json`. No run
 | **`relay_status`** | Check whether the Relay is running in the app. |
 | **`relay_terrain`** | Get live Terrain from the running app (latest state). |
 
+### Performance Monitoring
+
+These tools provide detailed access to Colossus performance monitors in the running app.
+
+| Tool | Description |
+|------|-------------|
+| **`get_performance`** | Full performance report (Decree) with health verdict (good/fair/poor), Pulse (FPS, jank rate, frame times), Stride (page load times), Vessel (Pillar count, leak suspects), Echo (widget rebuild counts). |
+| **`get_frame_history`** | Per-frame timing history from Pulse. Up to 300 frames with build/raster durations (µs), jank flags, and timestamps. Use to investigate jank patterns. |
+| **`get_page_loads`** | Individual page load records from Stride. Up to 100 entries with route paths, durations (ms), and timestamps. Use to find slow routes. |
+| **`get_memory_snapshot`** | Live memory snapshot from Vessel. Returns Pillar count, DI instances, leak suspects with ages (seconds since first seen), and exempt types. |
+| **`get_alerts`** | Fired Tremor performance alert history. Up to 200 alerts with names, categories (frame, pageLoad, memory, rebuild), severities (info, warning, error), messages, and timestamps. |
+
+### Session & Recording
+
+| Tool | Description |
+|------|-------------|
+| **`list_sessions`** | List saved Shade recording sessions from ShadeVault. Returns summaries with IDs, names, recording dates, durations, and event counts. Sorted newest first. |
+| **`get_recording_status`** | Current Shade recording/replaying state. Shows whether recording or replaying is active, elapsed time, event count, performance recording state, and last session availability. |
+
 ---
 
 ## Usage Examples
@@ -676,6 +697,25 @@ The AI will:
 The AI will:
 1. Call `get_dead_ends` to find screens with no exit
 2. Call `get_unreliable_routes` to find flaky transitions
+
+### Performance analysis
+
+> "Check the app's performance — any jank, memory leaks, or slow pages?"
+
+The AI will:
+1. Call `get_performance` for a health summary
+2. Call `get_frame_history` to inspect janky frames
+3. Call `get_memory_snapshot` to check for leak suspects
+4. Call `get_alerts` to review fired Tremor alerts
+5. Call `get_page_loads` to find slow route transitions
+
+### Recording session management
+
+> "Is there a recording in progress? Show me saved sessions"
+
+The AI will:
+1. Call `get_recording_status` to check current state
+2. Call `list_sessions` to list saved ShadeVault recordings
 
 ---
 
