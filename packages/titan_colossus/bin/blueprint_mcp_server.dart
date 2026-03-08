@@ -374,6 +374,48 @@ class _BlueprintMcpServer {
               },
             },
           },
+          {
+            'name': 'generate_campaign',
+            'description':
+                'Auto-generate a complete Campaign JSON from the '
+                'live app\'s current screen via Relay. Detects all '
+                'interactive elements (buttons, text fields, tabs, '
+                'toggles) and generates ready-to-execute Campaign '
+                'JSON with proper schema (int step IDs, startRoute, '
+                'entries format). Optionally includes authStratagem '
+                'if the current screen is a login screen. '
+                'Returns valid JSON that can be passed directly to '
+                'execute_campaign.',
+            'inputSchema': {
+              'type': 'object',
+              'properties': {
+                'name': {
+                  'type': 'string',
+                  'description':
+                      'Campaign name (e.g., "smoke_test"). '
+                      'Defaults to "auto_campaign".',
+                },
+                'description': {
+                  'type': 'string',
+                  'description':
+                      'Campaign description. Defaults to '
+                      '"Auto-generated from live screen".',
+                },
+                'defaultValue': {
+                  'type': 'string',
+                  'description':
+                      'Default text for text fields '
+                      '(e.g., "Kael"). Defaults to "<fill_in_value>".',
+                },
+                'includeAuth': {
+                  'type': 'boolean',
+                  'description':
+                      'If true and current screen is a login screen, '
+                      'include authStratagem. Defaults to true.',
+                },
+              },
+            },
+          },
         ],
       },
       'id': id,
@@ -396,6 +438,7 @@ class _BlueprintMcpServer {
       'relay_status',
       'relay_terrain',
       'generate_auth_stratagem',
+      'generate_campaign',
     };
 
     if (relayOnlyTools.contains(toolName)) {
@@ -404,6 +447,7 @@ class _BlueprintMcpServer {
         'relay_status' => await _relayStatus(),
         'relay_terrain' => await _relayTerrain(),
         'generate_auth_stratagem' => await _generateAuthStratagem(toolArgs),
+        'generate_campaign' => await _generateCampaign(toolArgs),
         _ => 'Unknown tool: $toolName',
       };
 
@@ -786,28 +830,47 @@ class _BlueprintMcpServer {
       'gauntletIntensity': 'standard',
       'failurePolicy': 'skipDependents',
       'timeout': 300000,
+      'authStratagem': {
+        'name': '<auth_stratagem_name>',
+        'startRoute': '/login',
+        'steps': [
+          {
+            'id': 1,
+            'action': 'enterText',
+            'target': {'label': '<text_field_label>'},
+            'value': '<text_to_enter>',
+          },
+          {
+            'id': 2,
+            'action': 'tap',
+            'target': {'label': '<login_button_label>'},
+          },
+        ],
+      },
       'entries': [
         {
           'stratagem': {
             'name': '<stratagem_name>',
             'description': '<what_this_tests>',
-            'startRoute': '<route_pattern>',
+            'startRoute': '/',
             'tags': ['<tag>'],
             'steps': [
               {
-                'action': 'tap|type|swipe|scroll|wait|navigate|assert|back',
+                'id': 1,
+                'action': 'tap',
                 'description': '<step_description>',
-                'target': {
-                  'semanticLabel': '<widget_label>',
-                  'type': '<widget_type>',
-                },
-                'value': '<text_to_type_or_amount>',
-                'expectations': {
-                  'routeAfter': '<expected_route>',
-                  'elementsPresent': [
-                    {'semanticLabel': '<expected_label>'},
-                  ],
-                },
+                'target': {'label': '<widget_label>', 'type': '<widget_type>'},
+              },
+              {
+                'id': 2,
+                'action': 'waitForElement',
+                'target': {'label': '<expected_element>'},
+              },
+              {
+                'id': 3,
+                'action': 'enterText',
+                'target': {'label': '<field_label>'},
+                'value': '<text_to_type>',
               },
             ],
           },
@@ -824,30 +887,93 @@ class _BlueprintMcpServer {
       'with dependency resolution.',
     );
     buf.writeln();
-    buf.writeln('## How it works');
+    buf.writeln('## Schema Requirements');
     buf.writeln();
-    buf.writeln('1. Define Stratagems — each tests a specific user flow');
+    buf.writeln('### Campaign (top-level)');
+    buf.writeln('- `name` (String, REQUIRED) — campaign identifier');
     buf.writeln(
-      '2. Declare dependencies via `dependsOn` — '
-      'names of Stratagems that must pass first',
+      '- `entries` (List, REQUIRED) — array of CampaignEntry objects',
     );
+    buf.writeln('- `authStratagem` (Stratagem, optional) — auto-login config');
     buf.writeln(
-      '3. The engine topologically sorts, injects prerequisites, '
-      'and executes in order',
-    );
-    buf.writeln();
-    buf.writeln('## Available actions');
-    buf.writeln();
-    buf.writeln(
-      '`tap`, `type`, `swipe`, `scroll`, `wait`, `navigate`, '
-      '`assert`, `back`, `longPress`, `doubleTap`, `drag`',
+      '- `description`, `tags`, `sharedTestData`, '
+      '`failurePolicy`, `timeout` — optional',
     );
     buf.writeln();
-    buf.writeln('## Failure policies');
+    buf.writeln('### Stratagem (inside each entry)');
+    buf.writeln('- `name` (String, REQUIRED) — stratagem identifier');
+    buf.writeln(
+      '- `startRoute` (String, REQUIRED) — '
+      'route to navigate to before steps. Use "/" for root.',
+    );
+    buf.writeln('- `steps` (List, REQUIRED) — ordered list of steps');
+    buf.writeln();
+    buf.writeln('### StratagemStep');
+    buf.writeln(
+      '- `id` (int, REQUIRED) — sequential integer starting from 1. '
+      'NOT a string.',
+    );
+    buf.writeln(
+      '- `action` (String, REQUIRED) — '
+      'one of the available actions listed below',
+    );
+    buf.writeln(
+      '- `target` (object, optional) — '
+      'identifies UI element by `label`, `type`, `key`, `index`',
+    );
+    buf.writeln('- `value` (String, optional) — text for enterText actions');
+    buf.writeln();
+    buf.writeln('### StratagemTarget (finding elements)');
+    buf.writeln('- `label` (String) — widget label text (most common)');
+    buf.writeln('- `type` (String) — widget type name');
+    buf.writeln('- `key` (String) — widget Key value');
+    buf.writeln('- `index` (int) — nth matching element (0-based)');
+    buf.writeln('- `semanticRole` (String) — e.g. "button"');
+    buf.writeln('- `ancestor` (String) — ancestor widget type filter');
+    buf.writeln();
+    buf.writeln('## Available Actions');
+    buf.writeln();
+    buf.writeln('**Interactions:** `tap`, `longPress`, `doubleTap`');
+    buf.writeln('**Text:** `enterText`, `clearText`, `submitField`');
+    buf.writeln(
+      '**Scroll/Swipe:** `scroll`, `scrollUntilVisible`, `swipe`, `drag`',
+    );
+    buf.writeln(
+      '**Toggle/Select:** `toggleSwitch`, `toggleCheckbox`, '
+      '`selectRadio`, `adjustSlider`, `selectDropdown`, '
+      '`selectDate`, `selectSegment`',
+    );
+    buf.writeln('**Navigation:** `navigate`, `back`');
+    buf.writeln('**Waiting:** `wait`, `waitForElement`, `waitForElementGone`');
+    buf.writeln('**Verification:** `verify`');
+    buf.writeln('**Keyboard:** `dismissKeyboard`, `pressKey`');
+    buf.writeln();
+    buf.writeln('## Failure Policies');
     buf.writeln();
     buf.writeln('- `skipDependents` — skip entries that depend on a failure');
     buf.writeln('- `abortOnFirst` — stop the entire Campaign on first failure');
     buf.writeln('- `continueAll` — execute everything regardless of failures');
+    buf.writeln();
+    buf.writeln('## Common Mistakes to Avoid');
+    buf.writeln();
+    buf.writeln('1. Step `id` must be an **int** (1, 2, 3), NOT a string');
+    buf.writeln(
+      '2. `startRoute` is REQUIRED on every Stratagem '
+      '(including authStratagem)',
+    );
+    buf.writeln(
+      '3. Use `entries` array (each with nested `stratagem` '
+      'object), NOT top-level `stratagems`',
+    );
+    buf.writeln('4. Target field is `label`, NOT `semanticLabel`');
+    buf.writeln(
+      '5. Use `enterText` for text input, NOT `type` '
+      '(which is not a valid action)',
+    );
+    buf.writeln(
+      '6. Use `waitForElement` for assertions, NOT `assert` '
+      '(which is not a valid action)',
+    );
     buf.writeln();
     buf.writeln('## Template JSON');
     buf.writeln();
@@ -855,12 +981,21 @@ class _BlueprintMcpServer {
     buf.writeln(const JsonEncoder.withIndent('  ').convert(template));
     buf.writeln('```');
     buf.writeln();
-    buf.writeln('## Instructions');
+    buf.writeln('## Workflow');
     buf.writeln();
     buf.writeln(
-      'Use `get_full_context` to understand the app\'s navigation, '
-      'then generate a Campaign JSON using this template. Save it '
-      'with `save_campaign` for the app to execute.',
+      '1. Call `generate_auth_stratagem` to auto-detect login fields',
+    );
+    buf.writeln(
+      '2. Call `get_full_context` to understand the app\'s navigation',
+    );
+    buf.writeln(
+      '3. Generate Campaign JSON using this template with '
+      'correct field types',
+    );
+    buf.writeln(
+      '4. Call `execute_campaign` to run via Relay, or '
+      '`save_campaign` to save to disk',
     );
 
     return buf.toString();
@@ -1377,6 +1512,209 @@ class _BlueprintMcpServer {
     } finally {
       client.close();
     }
+  }
+
+  /// Auto-generate a complete Campaign JSON from the live app.
+  ///
+  /// Fetches the current Tableau from Relay, analyzes all interactive
+  /// elements, and builds a ready-to-execute Campaign JSON with
+  /// proper schema (int step IDs, startRoute, entries format).
+  Future<String> _generateCampaign(Map<String, dynamic> args) async {
+    final campaignName = args['name'] as String? ?? 'auto_campaign';
+    final description =
+        args['description'] as String? ?? 'Auto-generated from live screen';
+    final defaultValue = args['defaultValue'] as String? ?? '<fill_in_value>';
+    final includeAuth = args['includeAuth'] as bool? ?? true;
+
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 5);
+
+      final request = await client.getUrl(_relayUri('/blueprint'));
+      _relayHeaders.forEach(request.headers.set);
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
+
+      final body = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        return 'Relay returned ${response.statusCode}: $body';
+      }
+
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      final tableau =
+          data['currentTableau'] as Map<String, dynamic>? ?? const {};
+      final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
+
+      if (glyphs.isEmpty) {
+        return '# No Glyphs Found\n\n'
+            'The current screen has no widget tree data. '
+            'Make sure the app is running and visible.';
+      }
+
+      // Check for auth screen
+      Map<String, dynamic>? authStratagem;
+      if (includeAuth) {
+        final authResult = _authGenerator.generate(
+          glyphs,
+          defaultValue: defaultValue,
+        );
+        if (authResult.isAuthScreen) {
+          authStratagem = authResult.authStratagem;
+        }
+      }
+
+      // Collect interactive elements for stratagem entries
+      final tappables = <Map<String, dynamic>>[];
+      final textFields = <Map<String, dynamic>>[];
+      final seenLabels = <String>{};
+
+      for (final g in glyphs) {
+        final glyph = g as Map<String, dynamic>;
+        final isInteractive = glyph['ia'] == true;
+        final label = (glyph['l'] as String? ?? '').trim();
+        final interactionType = glyph['it'] as String? ?? '';
+        final widgetType = glyph['wt'] as String? ?? '';
+
+        // Skip non-interactive, empty, single-char, or duplicate labels
+        if (!isInteractive || label.length < 2) continue;
+        if (seenLabels.contains(label)) continue;
+        seenLabels.add(label);
+
+        if (interactionType == 'textInput' ||
+            widgetType == 'TextField' ||
+            widgetType == 'TextFormField') {
+          textFields.add(glyph);
+        } else if (interactionType == 'tap') {
+          tappables.add(glyph);
+        }
+      }
+
+      // Build entries — one stratagem per interactive element
+      final entries = <Map<String, dynamic>>[];
+
+      // Text field entries: enterText + verify
+      for (final field in textFields) {
+        final fieldLabel = field['l'] as String;
+        entries.add({
+          'stratagem': {
+            'name': 'fill_${_slugify(fieldLabel)}',
+            'description': 'Enter text in "$fieldLabel"',
+            'startRoute': '/',
+            'steps': [
+              {
+                'id': 1,
+                'action': 'enterText',
+                'target': {'label': fieldLabel},
+                'value': defaultValue,
+                'description': 'Type into "$fieldLabel"',
+              },
+            ],
+          },
+          'dependsOn': <String>[],
+        });
+      }
+
+      // Tap entries: one stratagem per tappable
+      for (final button in tappables) {
+        final buttonLabel = button['l'] as String;
+        entries.add({
+          'stratagem': {
+            'name': 'tap_${_slugify(buttonLabel)}',
+            'description': 'Tap "$buttonLabel"',
+            'startRoute': '/',
+            'steps': [
+              {
+                'id': 1,
+                'action': 'tap',
+                'target': {'label': buttonLabel},
+                'description': 'Tap "$buttonLabel"',
+              },
+            ],
+          },
+          'dependsOn': <String>[],
+        });
+      }
+
+      if (entries.isEmpty) {
+        return '# No Interactive Elements Found\n\n'
+            'The current screen has no tappable buttons or '
+            'text fields to generate tests for.\n\n'
+            'Navigate to a screen with interactive elements '
+            'and try again.';
+      }
+
+      // Build complete Campaign JSON
+      final campaign = <String, dynamic>{
+        r'$schema': 'titan://campaign/v1',
+        'name': campaignName,
+        'description': description,
+        // ignore: use_null_aware_elements
+        if (authStratagem != null) 'authStratagem': authStratagem,
+        'entries': entries,
+      };
+
+      // Format output
+      final buf = StringBuffer();
+      buf.writeln('# Auto-Generated Campaign');
+      buf.writeln();
+      buf.writeln('**Name**: $campaignName');
+      buf.writeln(
+        '**Entries**: ${entries.length} '
+        '(${textFields.length} text fields, '
+        '${tappables.length} tap targets)',
+      );
+      if (authStratagem != null) {
+        buf.writeln('**Auth**: Included (login screen detected)');
+      }
+      buf.writeln();
+
+      buf.writeln('## Detected Elements');
+      buf.writeln();
+      for (final f in textFields) {
+        buf.writeln('- \u270f\ufe0f Text: **${f['l']}** (${f['wt']})');
+      }
+      for (final b in tappables) {
+        buf.writeln('- \ud83d\udd18 Tap: **${b['l']}** (${b['wt']})');
+      }
+      buf.writeln();
+
+      buf.writeln('## Campaign JSON');
+      buf.writeln();
+      buf.writeln(
+        'Pass this directly to `execute_campaign`, '
+        'or modify entries as needed:',
+      );
+      buf.writeln();
+      buf.writeln('```json');
+      buf.writeln(const JsonEncoder.withIndent('  ').convert(campaign));
+      buf.writeln('```');
+      buf.writeln();
+      buf.writeln(
+        '> **Tip**: Modify the entries to match your '
+        'desired test flow. You can reorder, remove, or add '
+        'dependencies between entries.',
+      );
+
+      return buf.toString();
+    } on SocketException {
+      return 'Cannot connect to Relay — is the app running '
+          'with ColossusPlugin(enableRelay: true)?';
+    } on TimeoutException {
+      return 'Relay did not respond (timeout)';
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Convert a label to a URL-safe slug for stratagem names.
+  static String _slugify(String label) {
+    return label
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
   }
 
   /// Get the live Terrain from the running app (not from static file).

@@ -761,7 +761,34 @@ Available actions: ${StratagemAction.values.map((a) => a.name).join(', ')}
   };
 
   /// Deserialize from JSON.
+  ///
+  /// Throws [FormatException] with a descriptive message if
+  /// required fields are missing or have wrong types.
   factory Campaign.fromJson(Map<String, dynamic> json) {
+    // Validate required fields
+    if (json['name'] == null) {
+      throw const FormatException(
+        'Campaign JSON missing required field "name" (String).',
+      );
+    }
+    if (json['name'] is! String) {
+      throw FormatException(
+        'Campaign "name" must be a String, got ${json['name'].runtimeType}.',
+      );
+    }
+    if (json['entries'] == null) {
+      throw const FormatException(
+        'Campaign JSON missing required field "entries" (List). '
+        'Each entry must contain a "stratagem" object.',
+      );
+    }
+    if (json['entries'] is! List) {
+      throw FormatException(
+        'Campaign "entries" must be a List, '
+        'got ${json['entries'].runtimeType}.',
+      );
+    }
+
     return Campaign(
       name: json['name'] as String,
       description: json['description'] as String? ?? '',

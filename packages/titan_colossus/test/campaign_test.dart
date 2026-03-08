@@ -1021,4 +1021,286 @@ void main() {
       expect(template.containsKey('authStratagem'), isTrue);
     });
   });
+
+  // =========================================================================
+  // Campaign.fromJson schema validation
+  // =========================================================================
+
+  group('Campaign.fromJson — schema validation', () {
+    test('throws FormatException when name is missing', () {
+      expect(
+        () => Campaign.fromJson({'entries': []}),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('"name"'),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when name is wrong type', () {
+      expect(
+        () => Campaign.fromJson({'name': 42, 'entries': []}),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('String'),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when entries is missing', () {
+      expect(
+        () => Campaign.fromJson({'name': 'test'}),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('"entries"'),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when entries is wrong type', () {
+      expect(
+        () => Campaign.fromJson({'name': 'test', 'entries': 'not_a_list'}),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('List'),
+          ),
+        ),
+      );
+    });
+
+    test('parses valid minimal Campaign', () {
+      final campaign = Campaign.fromJson({
+        'name': 'minimal',
+        'entries': <dynamic>[],
+      });
+      expect(campaign.name, 'minimal');
+      expect(campaign.entries, isEmpty);
+    });
+  });
+
+  // =========================================================================
+  // Stratagem.fromJson schema validation
+  // =========================================================================
+
+  group('Stratagem.fromJson — schema validation', () {
+    test('throws FormatException when name is missing', () {
+      expect(
+        () => Stratagem.fromJson({'startRoute': '/', 'steps': <dynamic>[]}),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('"name"'),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when name is wrong type', () {
+      expect(
+        () => Stratagem.fromJson({
+          'name': 123,
+          'startRoute': '/',
+          'steps': <dynamic>[],
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('String'),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when startRoute is missing', () {
+      expect(
+        () => Stratagem.fromJson({'name': 'test', 'steps': <dynamic>[]}),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('"startRoute"'), contains('"test"')),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when startRoute is wrong type', () {
+      expect(
+        () => Stratagem.fromJson({
+          'name': 'test',
+          'startRoute': 42,
+          'steps': <dynamic>[],
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('String'),
+          ),
+        ),
+      );
+    });
+
+    test('error message includes stratagem name', () {
+      expect(
+        () => Stratagem.fromJson({'name': 'login_flow', 'steps': <dynamic>[]}),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('login_flow'),
+          ),
+        ),
+      );
+    });
+
+    test('parses valid minimal Stratagem', () {
+      final s = Stratagem.fromJson({
+        'name': 'minimal',
+        'startRoute': '/',
+        'steps': <dynamic>[],
+      });
+      expect(s.name, 'minimal');
+      expect(s.startRoute, '/');
+      expect(s.steps, isEmpty);
+    });
+  });
+
+  // =========================================================================
+  // StratagemStep.fromJson schema validation
+  // =========================================================================
+
+  group('StratagemStep.fromJson — schema validation', () {
+    test('throws FormatException when id is missing', () {
+      expect(
+        () => StratagemStep.fromJson({
+          'action': 'tap',
+          'target': {'label': 'Go'},
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('"id"'),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when id is a String', () {
+      expect(
+        () => StratagemStep.fromJson({
+          'id': 's1',
+          'action': 'tap',
+          'target': {'label': 'Go'},
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('int'), contains('s1')),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when action is missing', () {
+      expect(
+        () => StratagemStep.fromJson({
+          'id': 1,
+          'target': {'label': 'Go'},
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('"action"'), contains('#1')),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when action is wrong type', () {
+      expect(
+        () => StratagemStep.fromJson({
+          'id': 1,
+          'action': 42,
+          'target': {'label': 'Go'},
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('String'),
+          ),
+        ),
+      );
+    });
+
+    test('error message suggests valid actions', () {
+      expect(
+        () => StratagemStep.fromJson({
+          'id': 2,
+          'target': {'label': 'Go'},
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('tap'), contains('enterText')),
+          ),
+        ),
+      );
+    });
+
+    test('error message includes step id for missing action', () {
+      expect(
+        () => StratagemStep.fromJson({'id': 5}),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('#5'),
+          ),
+        ),
+      );
+    });
+
+    test('parses valid minimal step', () {
+      final step = StratagemStep.fromJson({
+        'id': 1,
+        'action': 'tap',
+        'target': {'label': 'Go'},
+      });
+      expect(step.id, 1);
+      expect(step.action, StratagemAction.tap);
+      expect(step.target?.label, 'Go');
+    });
+
+    test('preserves existing unknown action error', () {
+      expect(
+        () => StratagemStep.fromJson({'id': 1, 'action': 'nonexistent'}),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('Unknown StratagemAction'),
+          ),
+        ),
+      );
+    });
+  });
 }

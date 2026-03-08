@@ -57,6 +57,22 @@ void main() {
       expect(generator.isLoginButton('View Profile'), isFalse);
       expect(generator.isLoginButton('Delete Account'), isFalse);
     });
+
+    test('rejects labels where indicator is embedded in a word', () {
+      expect(generator.isLoginButton('Enterprise'), isFalse);
+      expect(generator.isLoginButton('Entrepreneurship'), isFalse);
+      expect(generator.isLoginButton('Reenter'), isFalse);
+      expect(generator.isLoginButton('Discontinue'), isFalse);
+      expect(generator.isLoginButton('Subcontinent'), isFalse);
+    });
+
+    test('accepts labels where indicator is at word boundary', () {
+      expect(generator.isLoginButton('Enter'), isTrue);
+      expect(generator.isLoginButton('Enter the App'), isTrue);
+      expect(generator.isLoginButton('Please Continue'), isTrue);
+      expect(generator.isLoginButton('Submit Form'), isTrue);
+      expect(generator.isLoginButton('Log In Here'), isTrue);
+    });
   });
 
   // -----------------------------------------------------------------------

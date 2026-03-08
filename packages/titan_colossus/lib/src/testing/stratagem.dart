@@ -135,7 +135,35 @@ class Stratagem {
   };
 
   /// Parse from JSON map (written by AI or loaded from file).
+  ///
+  /// Throws [FormatException] with a descriptive message if
+  /// required fields are missing or have wrong types.
   factory Stratagem.fromJson(Map<String, dynamic> json) {
+    // Validate required fields
+    if (json['name'] == null) {
+      throw const FormatException(
+        'Stratagem JSON missing required field "name" (String).',
+      );
+    }
+    if (json['name'] is! String) {
+      throw FormatException(
+        'Stratagem "name" must be a String, '
+        'got ${json['name'].runtimeType}.',
+      );
+    }
+    if (json['startRoute'] == null) {
+      throw FormatException(
+        'Stratagem "${json['name']}" missing required field '
+        '"startRoute" (String). Use "/" for the default route.',
+      );
+    }
+    if (json['startRoute'] is! String) {
+      throw FormatException(
+        'Stratagem "${json['name']}" field "startRoute" must be '
+        'a String, got ${json['startRoute'].runtimeType}.',
+      );
+    }
+
     return Stratagem(
       name: json['name'] as String,
       description: json['description'] as String? ?? '',
@@ -448,7 +476,37 @@ class StratagemStep {
   };
 
   /// Parse from JSON map.
+  ///
+  /// Throws [FormatException] with a descriptive message if
+  /// required fields are missing or have wrong types.
   factory StratagemStep.fromJson(Map<String, dynamic> json) {
+    // Validate required fields
+    if (json['id'] == null) {
+      throw const FormatException(
+        'StratagemStep JSON missing required field "id" (int).',
+      );
+    }
+    if (json['id'] is! int) {
+      throw FormatException(
+        'StratagemStep "id" must be an int, '
+        'got ${json['id'].runtimeType} (${json['id']}). '
+        'Use sequential integers: 1, 2, 3, …',
+      );
+    }
+    if (json['action'] == null) {
+      throw FormatException(
+        'StratagemStep #${json['id']} missing required field '
+        '"action" (String). Valid actions: '
+        '${StratagemAction.values.map((a) => a.name).join(', ')}.',
+      );
+    }
+    if (json['action'] is! String) {
+      throw FormatException(
+        'StratagemStep #${json['id']} field "action" must be a '
+        'String, got ${json['action'].runtimeType}.',
+      );
+    }
+
     return StratagemStep(
       id: json['id'] as int,
       action: _actionFromName(json['action'] as String),

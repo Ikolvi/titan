@@ -234,18 +234,33 @@ class AuthStratagemGenerator {
 
   /// Check if [label] looks like a login button.
   ///
-  /// Performs a case-insensitive check against
-  /// [loginButtonIndicators].
+  /// Performs a case-insensitive word-boundary check against
+  /// [loginButtonIndicators]. Multi-word indicators (e.g.
+  /// `'sign in'`, `'get started'`) match as substrings.
+  /// Single-word indicators (e.g. `'enter'`, `'login'`) match
+  /// only at word boundaries to avoid false positives like
+  /// "Enterprise" matching "enter".
   ///
   /// ```dart
   /// const gen = AuthStratagemGenerator();
-  /// gen.isLoginButton('Sign In');   // true
-  /// gen.isLoginButton('Cancel');    // false
-  /// gen.isLoginButton('Log In');    // true
-  /// gen.isLoginButton('ENTER');     // true
+  /// gen.isLoginButton('Sign In');          // true
+  /// gen.isLoginButton('Cancel');           // false
+  /// gen.isLoginButton('Log In');           // true
+  /// gen.isLoginButton('ENTER');            // true
+  /// gen.isLoginButton('Enter the App');    // true
+  /// gen.isLoginButton('Enterprise');       // false
   /// ```
   bool isLoginButton(String label) {
     final lower = label.toLowerCase();
-    return loginButtonIndicators.any((ind) => lower.contains(ind));
+    for (final ind in loginButtonIndicators) {
+      if (ind.contains(' ')) {
+        // Multi-word indicators: substring match is fine
+        if (lower.contains(ind)) return true;
+      } else {
+        // Single-word indicators: use word-boundary matching
+        if (RegExp('\\b${RegExp.escape(ind)}\\b').hasMatch(lower)) return true;
+      }
+    }
+    return false;
   }
 }
