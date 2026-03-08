@@ -415,6 +415,237 @@ enum ScryTargetStrategy {
 }
 
 // =========================================================================
+// ScryFieldValueType — Expected input type for text fields
+// =========================================================================
+
+/// Inferred input type for a text field.
+///
+/// Helps the AI generate appropriate test data (e.g., a valid email
+/// address instead of random text).
+///
+/// ```dart
+/// switch (element.inputType) {
+///   case ScryFieldValueType.email:
+///     scryAct(action: 'enterText', label: element.label,
+///         value: 'test@example.com');
+///   case ScryFieldValueType.password:
+///     scryAct(action: 'enterText', label: element.label,
+///         value: 'P@ssw0rd123');
+///   // ...
+/// }
+/// ```
+enum ScryFieldValueType {
+  /// Email address field.
+  email,
+
+  /// Password / secret field.
+  password,
+
+  /// Phone / telephone number field.
+  phone,
+
+  /// Numeric-only field.
+  numeric,
+
+  /// Date or date-time field.
+  date,
+
+  /// URL / web address field.
+  url,
+
+  /// Search query field.
+  search,
+
+  /// Free-form text (no specific type detected).
+  freeText,
+}
+
+// =========================================================================
+// ScryActionImpact — Predicted outcome of interacting with an element
+// =========================================================================
+
+/// Predicted outcome when the AI interacts with an element.
+///
+/// Helps the AI plan multi-step interactions by knowing in advance
+/// what will likely happen when tapping a button or element.
+///
+/// ```dart
+/// if (element.predictedImpact == ScryActionImpact.delete) {
+///   // This is destructive — confirm with user first
+/// }
+/// ```
+enum ScryActionImpact {
+  /// Will navigate to another screen.
+  navigate,
+
+  /// Will submit a form or save data.
+  submit,
+
+  /// Will delete or remove something.
+  delete,
+
+  /// Will toggle a boolean state.
+  toggle,
+
+  /// Will expand or collapse a section.
+  expand,
+
+  /// Will dismiss a dialog or overlay.
+  dismiss,
+
+  /// Will open a modal, dialog, or picker.
+  openModal,
+
+  /// Impact cannot be predicted.
+  unknown,
+}
+
+// =========================================================================
+// ScryLayoutPattern — Dominant element arrangement
+// =========================================================================
+
+/// Detected layout pattern from spatial element positions.
+///
+/// Tells the AI whether it's looking at a scrollable list, a grid,
+/// a single-detail view, etc.
+///
+/// ```dart
+/// if (gaze.layoutPattern == ScryLayoutPattern.verticalList) {
+///   // Scroll down to find more items
+/// }
+/// ```
+enum ScryLayoutPattern {
+  /// Elements stacked vertically (list-like).
+  verticalList,
+
+  /// Elements arranged in a regular grid.
+  grid,
+
+  /// Elements laid out horizontally in a row.
+  horizontalRow,
+
+  /// Single card or detail panel.
+  singleCard,
+
+  /// No clear pattern detected.
+  freeform,
+}
+
+// =========================================================================
+// ScryOverlayInfo — Structured overlay/modal description
+// =========================================================================
+
+/// Structured description of an active overlay (dialog, modal, picker).
+///
+/// When Scry detects elements behind overlays, this class describes
+/// what the overlay itself is, so the AI can decide how to interact.
+///
+/// ```dart
+/// if (gaze.overlay != null) {
+///   print('Overlay: ${gaze.overlay!.type}');
+///   print('Title: ${gaze.overlay!.title}');
+///   print('Actions: ${gaze.overlay!.actions.map((a) => a.label)}');
+/// }
+/// ```
+class ScryOverlayInfo {
+  /// Creates a [ScryOverlayInfo].
+  const ScryOverlayInfo({
+    required this.type,
+    this.title,
+    this.actions = const [],
+    this.canDismiss = false,
+  });
+
+  /// The overlay type (e.g., `'Dialog'`, `'BottomSheet'`, `'Snackbar'`).
+  final String type;
+
+  /// The overlay title (if a text element in the overlay is detected).
+  final String? title;
+
+  /// Interactive elements within the overlay.
+  final List<ScryElement> actions;
+
+  /// Whether the overlay can be dismissed (close/cancel button present).
+  final bool canDismiss;
+
+  /// Serialize to JSON.
+  Map<String, dynamic> toJson() => {
+    'type': type,
+    if (title != null) 'title': title,
+    if (actions.isNotEmpty) 'actions': actions.map((a) => a.label).toList(),
+    'canDismiss': canDismiss,
+  };
+}
+
+// =========================================================================
+// ScryToggleSummary — Aggregate toggle/selection state
+// =========================================================================
+
+/// Summary of all toggle, checkbox, switch, and slider states on screen.
+///
+/// Gives the AI a quick snapshot of current selection states,
+/// especially useful on settings/preferences screens.
+///
+/// ```dart
+/// if (gaze.toggleSummary != null) {
+///   for (final t in gaze.toggleSummary!.toggles) {
+///     print('${t.label}: ${t.currentValue}');
+///   }
+/// }
+/// ```
+class ScryToggleSummary {
+  /// Creates a [ScryToggleSummary].
+  const ScryToggleSummary({required this.toggles});
+
+  /// Individual toggle states.
+  final List<ScryToggleState> toggles;
+
+  /// Number of toggles currently "on" or "selected".
+  int get activeCount => toggles.where((t) => t.isActive).length;
+
+  /// Total number of toggles.
+  int get totalCount => toggles.length;
+
+  /// Serialize to JSON.
+  Map<String, dynamic> toJson() => {
+    'active': activeCount,
+    'total': totalCount,
+    'toggles': toggles.map((t) => t.toJson()).toList(),
+  };
+}
+
+/// State of a single toggle/switch/checkbox element.
+class ScryToggleState {
+  /// Creates a [ScryToggleState].
+  const ScryToggleState({
+    required this.label,
+    required this.widgetType,
+    this.currentValue,
+    this.isActive = false,
+  });
+
+  /// The toggle's visible label.
+  final String label;
+
+  /// Widget type (Switch, Checkbox, Radio, etc.).
+  final String widgetType;
+
+  /// Raw value string (e.g., 'true', 'false', 'on', 'off').
+  final String? currentValue;
+
+  /// Whether the toggle is in an "active" state.
+  final bool isActive;
+
+  /// Serialize to JSON.
+  Map<String, dynamic> toJson() => {
+    'label': label,
+    'widgetType': widgetType,
+    if (currentValue != null) 'value': currentValue,
+    'isActive': isActive,
+  };
+}
+
+// =========================================================================
 // ScryScrollInfo — Viewport / scrollability analysis
 // =========================================================================
 
@@ -635,6 +866,8 @@ class ScryElement {
     this.targetStrategy = ScryTargetStrategy.uniqueLabel,
     this.reachable = true,
     this.prominence = 0.0,
+    this.inputType,
+    this.predictedImpact,
   });
 
   /// The categorized kind of this element.
@@ -743,6 +976,18 @@ class ScryElement {
   /// Higher values indicate more visually prominent elements.
   final double prominence;
 
+  /// Inferred input type for text fields.
+  ///
+  /// `null` for non-field elements. Helps the AI generate
+  /// appropriate test data (valid email, phone number, etc.).
+  final ScryFieldValueType? inputType;
+
+  /// Predicted impact of interacting with this element.
+  ///
+  /// `null` for non-interactive elements. Helps the AI plan
+  /// multi-step flows by knowing consequences before acting.
+  final ScryActionImpact? predictedImpact;
+
   /// Serialize to JSON.
   Map<String, dynamic> toJson() => {
     'kind': kind.name,
@@ -771,6 +1016,8 @@ class ScryElement {
     if (!reachable) 'reachable': false,
     if (prominence > 0)
       'prominence': double.parse(prominence.toStringAsFixed(2)),
+    if (inputType != null) 'inputType': inputType!.name,
+    if (predictedImpact != null) 'predictedImpact': predictedImpact!.name,
   };
 }
 
@@ -807,6 +1054,10 @@ class ScryGaze {
     this.scrollInfo,
     this.groups = const [],
     this.landmarks,
+    this.overlay,
+    this.layoutPattern = ScryLayoutPattern.freeform,
+    this.toggleSummary,
+    this.tabOrder = const [],
   });
 
   /// All detected elements.
@@ -841,6 +1092,18 @@ class ScryGaze {
 
   /// Key semantic landmarks on this page.
   final ScryLandmarks? landmarks;
+
+  /// Active overlay/modal info (non-null when dialog/sheet detected).
+  final ScryOverlayInfo? overlay;
+
+  /// Detected layout pattern from spatial positions.
+  final ScryLayoutPattern layoutPattern;
+
+  /// Toggle/switch/checkbox state summary (non-null when toggles present).
+  final ScryToggleSummary? toggleSummary;
+
+  /// Text fields ordered by natural tab order (top-to-bottom, left-to-right).
+  final List<String> tabOrder;
 
   /// Interactive buttons (tappable, non-navigation).
   List<ScryElement> get buttons =>
@@ -905,6 +1168,11 @@ class ScryGaze {
     if (scrollInfo != null) 'scrollInfo': scrollInfo!.toJson(),
     if (groups.isNotEmpty) 'groups': groups.map((g) => g.toJson()).toList(),
     if (landmarks != null) 'landmarks': landmarks!.toJson(),
+    if (overlay != null) 'overlay': overlay!.toJson(),
+    if (layoutPattern != ScryLayoutPattern.freeform)
+      'layoutPattern': layoutPattern.name,
+    if (toggleSummary != null) 'toggleSummary': toggleSummary!.toJson(),
+    if (tabOrder.isNotEmpty) 'tabOrder': tabOrder,
     'elements': elements.map((e) => e.toJson()).toList(),
   };
 }
@@ -1192,9 +1460,15 @@ class Scry {
     _applyTargetScoring(elementList);
     _applyReachability(elementList);
     _applyProminence(elementList);
+    _applyInputTypes(elementList);
+    _applyActionImpacts(elementList);
     final scrollInfo = _analyzeScroll(elementList);
     final groups = _groupElements(elementList, glyphs);
     final landmarks = _detectLandmarks(elementList, screenType);
+    final overlay = _analyzeOverlay(elementList);
+    final layoutPattern = _detectLayoutPattern(elementList);
+    final toggleSummary = _buildToggleSummary(elementList);
+    final tabOrder = _computeTabOrder(elementList);
 
     return ScryGaze(
       elements: elementList,
@@ -1208,6 +1482,10 @@ class Scry {
       scrollInfo: scrollInfo,
       groups: groups,
       landmarks: landmarks,
+      overlay: overlay,
+      layoutPattern: layoutPattern,
+      toggleSummary: toggleSummary,
+      tabOrder: tabOrder,
     );
   }
 
@@ -1235,6 +1513,9 @@ class Scry {
     final parts = <String>[];
     if (gaze.route != null) parts.add('**Route**: ${gaze.route}');
     parts.add('**Type**: ${gaze.screenType.name}');
+    if (gaze.layoutPattern != ScryLayoutPattern.freeform) {
+      parts.add('**Layout**: ${gaze.layoutPattern.name}');
+    }
     parts.add('${gaze.glyphCount} glyphs');
     buf.writeln(parts.join(' | '));
 
@@ -1263,6 +1544,20 @@ class Scry {
         '${si.belowFoldCount} element(s) below fold. '
         'Scroll down for more.',
       );
+    }
+
+    // --- Overlay Info ---
+    if (gaze.overlay != null) {
+      buf.writeln();
+      final ov = gaze.overlay!;
+      final ovParts = <String>['**${ov.type}**'];
+      if (ov.title != null) ovParts.add('"${ov.title}"');
+      if (ov.actions.isNotEmpty) {
+        final labels = ov.actions.map((a) => a.label).join(', ');
+        ovParts.add('actions: $labels');
+      }
+      if (ov.canDismiss) ovParts.add('dismissible');
+      buf.writeln('> 🪟 **Overlay active** — ${ovParts.join(' | ')}');
     }
 
     if (gaze.isAuthScreen) {
@@ -1365,6 +1660,18 @@ class Scry {
       buf.writeln();
     }
 
+    // --- Toggle Summary ---
+    if (gaze.toggleSummary != null) {
+      final ts = gaze.toggleSummary!;
+      buf.writeln('## 🔀 Toggles (${ts.activeCount}/${ts.totalCount} active)');
+      buf.writeln();
+      for (final t in ts.toggles) {
+        final state = t.isActive ? '✅ on' : '⬜ off';
+        buf.writeln('- **${t.label}** (${t.widgetType}): $state');
+      }
+      buf.writeln();
+    }
+
     // --- Fields (most important for input) ---
     if (gaze.fields.isNotEmpty) {
       buf.writeln('## 📝 Text Fields (${gaze.fields.length})');
@@ -1378,6 +1685,7 @@ class Scry {
         final parts = <String>[f.widgetType];
         if (f.fieldId != null) parts.add('fieldId: ${f.fieldId}');
         if (f.key != null) parts.add('key: ${f.key}');
+        if (f.inputType != null) parts.add('expects: ${f.inputType!.name}');
         if (f.currentValue != null) {
           parts.add('value: "${f.currentValue}"');
         }
@@ -1385,6 +1693,10 @@ class Scry {
         if (f.obscured) parts.add('⛔ obscured');
         if (f.context != null) parts.add('in ${f.context}');
         buf.writeln('- **${f.label}** (${parts.join(', ')})');
+      }
+      if (gaze.tabOrder.length > 1) {
+        buf.writeln();
+        buf.writeln('**Tab order**: ${gaze.tabOrder.join(' → ')}');
       }
       buf.writeln();
     }
@@ -2393,11 +2705,11 @@ class Scry {
 
   /// Known container widgets that provide useful context.
   static const _contextContainers = [
-    'Dialog',
     'AlertDialog',
     'SimpleDialog',
-    'BottomSheet',
+    'Dialog',
     'ModalBottomSheet',
+    'BottomSheet',
     'Card',
     'ExpansionTile',
     'ListTile',
@@ -2890,6 +3202,8 @@ class Scry {
     ScryTargetStrategy? targetStrategy,
     bool? reachable,
     double? prominence,
+    ScryFieldValueType? inputType,
+    ScryActionImpact? predictedImpact,
   }) => ScryElement(
     kind: e.kind,
     label: e.label,
@@ -2916,5 +3230,308 @@ class Scry {
     targetStrategy: targetStrategy ?? e.targetStrategy,
     reachable: reachable ?? e.reachable,
     prominence: prominence ?? e.prominence,
+    inputType: inputType ?? e.inputType,
+    predictedImpact: predictedImpact ?? e.predictedImpact,
   );
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Field input type inference
+  // -----------------------------------------------------------------------
+
+  /// Patterns for detecting field input types from labels and fieldIds.
+  static final _emailPattern = RegExp(
+    r'\b(e-?mail|correo|courriel)\b',
+    caseSensitive: false,
+  );
+  static final _passwordPattern = RegExp(
+    r'\b(password|passwd|secret|pin|passcode|contraseña|mot.de.passe)\b',
+    caseSensitive: false,
+  );
+  static final _phonePattern = RegExp(
+    r'\b(phone|tel|mobile|cell|número|telefon)\b',
+    caseSensitive: false,
+  );
+  static final _numericPattern = RegExp(
+    r'\b(amount|price|cost|quantity|qty|age|count|number|total|sum)\b',
+    caseSensitive: false,
+  );
+  static final _datePattern = RegExp(
+    r'\b(date|birth|dob|deadline|expir|calendar|fecha)\b',
+    caseSensitive: false,
+  );
+  static final _urlPattern = RegExp(
+    r'\b(url|website|link|href|domain|homepage)\b',
+    caseSensitive: false,
+  );
+
+  /// Infer the expected input type for each text field element.
+  void _applyInputTypes(List<ScryElement> elements) {
+    for (var i = 0; i < elements.length; i++) {
+      final e = elements[i];
+      if (e.kind != ScryElementKind.field) continue;
+
+      final type = _inferFieldType(e);
+      if (type != null) {
+        elements[i] = _copyWith(e, inputType: type);
+      }
+    }
+  }
+
+  /// Determine the input type from label, fieldId, and value patterns.
+  ScryFieldValueType? _inferFieldType(ScryElement e) {
+    final text = '${e.label} ${e.fieldId ?? ''}';
+
+    if (_emailPattern.hasMatch(text)) return ScryFieldValueType.email;
+    if (_passwordPattern.hasMatch(text)) return ScryFieldValueType.password;
+    if (_phonePattern.hasMatch(text)) return ScryFieldValueType.phone;
+    if (_numericPattern.hasMatch(text)) return ScryFieldValueType.numeric;
+    if (_datePattern.hasMatch(text)) return ScryFieldValueType.date;
+    if (_urlPattern.hasMatch(text)) return ScryFieldValueType.url;
+    if (_searchPattern.hasMatch(text)) return ScryFieldValueType.search;
+
+    // Check current value patterns
+    final cv = e.currentValue ?? '';
+    if (cv.contains('@') && cv.contains('.')) return ScryFieldValueType.email;
+
+    return null; // freeText is the default, no need to set explicitly
+  }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Action impact prediction
+  // -----------------------------------------------------------------------
+
+  /// Patterns for predicting action outcomes.
+  static final _navigatePattern = RegExp(
+    r'\b(view|details|open|go|show|see|more|info|profile|settings)\b',
+    caseSensitive: false,
+  );
+  static final _submitPattern = RegExp(
+    r'\b(save|submit|send|apply|confirm|ok|done|create|post|update)\b',
+    caseSensitive: false,
+  );
+  static final _deletePattern = RegExp(
+    r'\b(delete|remove|trash|clear|erase|destroy|discard)\b',
+    caseSensitive: false,
+  );
+  static final _expandPattern = RegExp(
+    r'\b(expand|collapse|toggle|show more|show less|accordion)\b',
+    caseSensitive: false,
+  );
+  static final _dismissPattern = RegExp(
+    r'\b(close|cancel|dismiss|back|return|exit|no)\b',
+    caseSensitive: false,
+  );
+
+  /// Predict the impact of interacting with each interactive element.
+  void _applyActionImpacts(List<ScryElement> elements) {
+    for (var i = 0; i < elements.length; i++) {
+      final e = elements[i];
+      if (!e.isInteractive) continue;
+
+      final impact = _predictImpact(e);
+      elements[i] = _copyWith(e, predictedImpact: impact);
+    }
+  }
+
+  /// Predict what will happen when the user interacts with this element.
+  ScryActionImpact _predictImpact(ScryElement e) {
+    final label = e.label.toLowerCase();
+    final wt = e.widgetType.toLowerCase();
+
+    // Toggle widgets
+    if (wt.contains('switch') ||
+        wt.contains('checkbox') ||
+        wt.contains('radio') ||
+        e.interactionType == 'toggle') {
+      return ScryActionImpact.toggle;
+    }
+
+    // ExpansionTile / accordion
+    if (wt.contains('expansiontile') || _expandPattern.hasMatch(label)) {
+      return ScryActionImpact.expand;
+    }
+
+    // Overlay-opening widgets
+    if (wt.contains('popupmenu') ||
+        wt.contains('dropdownbutton') ||
+        label.contains('menu') && e.kind == ScryElementKind.button) {
+      return ScryActionImpact.openModal;
+    }
+
+    // Label-based predictions (order matters)
+    if (_deletePattern.hasMatch(label)) return ScryActionImpact.delete;
+    if (_dismissPattern.hasMatch(label)) return ScryActionImpact.dismiss;
+    if (_submitPattern.hasMatch(label)) return ScryActionImpact.submit;
+    if (_navigatePattern.hasMatch(label)) return ScryActionImpact.navigate;
+
+    // Navigation elements default to navigate
+    if (e.kind == ScryElementKind.navigation) return ScryActionImpact.navigate;
+
+    return ScryActionImpact.unknown;
+  }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Overlay / modal content analysis
+  // -----------------------------------------------------------------------
+
+  /// Overlay container types to detect.
+  static const _overlayTypes = [
+    'AlertDialog',
+    'Dialog',
+    'SimpleDialog',
+    'BottomSheet',
+    'ModalBottomSheet',
+    'Snackbar',
+    'DatePicker',
+    'TimePicker',
+  ];
+
+  /// Analyze overlay structure when elements are obscured.
+  ScryOverlayInfo? _analyzeOverlay(List<ScryElement> elements) {
+    // Check if any elements have overlay context
+    final overlayElements = elements
+        .where((e) => _overlayTypes.contains(e.context))
+        .toList();
+    if (overlayElements.isEmpty) return null;
+
+    // Determine the overlay type from context
+    final type = overlayElements.first.context!;
+
+    // Find title: first structural or content element in the overlay
+    String? title;
+    for (final e in overlayElements) {
+      if (e.kind == ScryElementKind.structural ||
+          e.kind == ScryElementKind.content) {
+        title = e.label;
+        break;
+      }
+    }
+
+    // Find action buttons in the overlay
+    final actions = overlayElements
+        .where((e) => e.kind == ScryElementKind.button)
+        .toList();
+
+    // Check for dismiss capability
+    final canDismiss = overlayElements.any(
+      (e) => e.isInteractive && _dismissPattern.hasMatch(e.label.toLowerCase()),
+    );
+
+    return ScryOverlayInfo(
+      type: type,
+      title: title,
+      actions: actions,
+      canDismiss: canDismiss,
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Layout pattern detection
+  // -----------------------------------------------------------------------
+
+  /// Detect the dominant layout pattern from element positions.
+  ScryLayoutPattern _detectLayoutPattern(List<ScryElement> elements) {
+    final withPos = elements.where((e) => e.x != null && e.y != null).toList();
+    if (withPos.length < 3) return ScryLayoutPattern.freeform;
+
+    // Collect unique X and Y positions (rounded to nearest 10px)
+    final xPositions = <int>{};
+    final yPositions = <int>{};
+    for (final e in withPos) {
+      xPositions.add((e.x! / 10).round());
+      yPositions.add((e.y! / 10).round());
+    }
+
+    final uniqueX = xPositions.length;
+    final uniqueY = yPositions.length;
+
+    // Grid: multiple distinct X AND Y positions (rows × columns)
+    if (uniqueX >= 2 && uniqueY >= 2 && withPos.length >= uniqueX * 2) {
+      return ScryLayoutPattern.grid;
+    }
+
+    // If most elements share the same X (±10px), it's a vertical list
+    if (uniqueX <= 2 && uniqueY >= 3) return ScryLayoutPattern.verticalList;
+
+    // If most elements share the same Y, it's a horizontal row
+    if (uniqueY <= 2 && uniqueX >= 3) return ScryLayoutPattern.horizontalRow;
+
+    // Very few elements may be a single card
+    if (withPos.length <= 4 && uniqueY <= 3) {
+      return ScryLayoutPattern.singleCard;
+    }
+
+    return ScryLayoutPattern.freeform;
+  }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Toggle / selection state summary
+  // -----------------------------------------------------------------------
+
+  /// Toggle interaction types.
+  static const _toggleInteractionTypes = {
+    'toggle',
+    'checkbox',
+    'switch',
+    'radio',
+  };
+
+  /// Toggle widget type patterns.
+  static final _toggleWidgetPattern = RegExp(
+    r'switch|checkbox|radio|togglebutton',
+    caseSensitive: false,
+  );
+
+  /// Build a summary of all toggle/switch/checkbox states.
+  ScryToggleSummary? _buildToggleSummary(List<ScryElement> elements) {
+    final toggles = <ScryToggleState>[];
+
+    for (final e in elements) {
+      if (!e.isInteractive) continue;
+
+      final isToggle =
+          _toggleInteractionTypes.contains(e.interactionType) ||
+          _toggleWidgetPattern.hasMatch(e.widgetType);
+
+      if (!isToggle) continue;
+
+      final cv = (e.currentValue ?? '').toLowerCase();
+      final isActive =
+          cv == 'true' || cv == 'on' || cv == '1' || cv == 'selected';
+
+      toggles.add(
+        ScryToggleState(
+          label: e.label,
+          widgetType: e.widgetType,
+          currentValue: e.currentValue,
+          isActive: isActive,
+        ),
+      );
+    }
+
+    return toggles.isEmpty ? null : ScryToggleSummary(toggles: toggles);
+  }
+
+  // -----------------------------------------------------------------------
+  // Pass 5: Field tab order
+  // -----------------------------------------------------------------------
+
+  /// Compute the natural tab order for text fields (top→bottom, left→right).
+  List<String> _computeTabOrder(List<ScryElement> elements) {
+    final fields = elements
+        .where((e) => e.kind == ScryElementKind.field)
+        .toList();
+    if (fields.length < 2) {
+      return fields.map((e) => e.label).toList();
+    }
+
+    // Sort by Y first, then X for same-row fields
+    fields.sort((a, b) {
+      final yCompare = (a.y ?? 0).compareTo(b.y ?? 0);
+      if (yCompare != 0) return yCompare;
+      return (a.x ?? 0).compareTo(b.x ?? 0);
+    });
+
+    return fields.map((e) => e.label).toList();
+  }
 }

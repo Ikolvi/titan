@@ -4449,4 +4449,1154 @@ void main() {
       expect(md, isNot(contains('📜 **Scrollable**')));
     });
   });
+
+  // ===================================================================
+  // Batch 3: Value Type Inference
+  // ===================================================================
+  group('Value type inference', () {
+    test('detects email fields from label', () {
+      final glyphs = [
+        glyph(
+          label: 'Email Address',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'email_field',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final field = gaze.elements.firstWhere((e) => e.label == 'Email Address');
+      expect(field.inputType, ScryFieldValueType.email);
+    });
+
+    test('detects password fields from label', () {
+      final glyphs = [
+        glyph(
+          label: 'Password',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'password_field',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final field = gaze.elements.firstWhere((e) => e.label == 'Password');
+      expect(field.inputType, ScryFieldValueType.password);
+    });
+
+    test('detects phone fields', () {
+      final glyphs = [
+        glyph(
+          label: 'Phone Number',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'phone_field',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final field = gaze.elements.firstWhere((e) => e.label == 'Phone Number');
+      expect(field.inputType, ScryFieldValueType.phone);
+    });
+
+    test('detects numeric fields', () {
+      final glyphs = [
+        glyph(
+          label: 'Total Amount',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'amount_field',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final field = gaze.elements.firstWhere((e) => e.label == 'Total Amount');
+      expect(field.inputType, ScryFieldValueType.numeric);
+    });
+
+    test('detects date fields', () {
+      final glyphs = [
+        glyph(
+          label: 'Date of Birth',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'dob_field',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final field = gaze.elements.firstWhere((e) => e.label == 'Date of Birth');
+      expect(field.inputType, ScryFieldValueType.date);
+    });
+
+    test('detects url fields', () {
+      final glyphs = [
+        glyph(
+          label: 'Website URL',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'url_field',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final field = gaze.elements.firstWhere((e) => e.label == 'Website URL');
+      expect(field.inputType, ScryFieldValueType.url);
+    });
+
+    test('detects email from current value pattern', () {
+      final glyphs = [
+        glyph(
+          label: 'Contact Info',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'contact_field',
+          currentValue: 'user@example.com',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final field = gaze.elements.firstWhere((e) => e.label == 'Contact Info');
+      expect(field.inputType, ScryFieldValueType.email);
+    });
+
+    test('leaves null for generic text fields', () {
+      final glyphs = [
+        glyph(
+          label: 'Description',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'desc_field',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final field = gaze.elements.firstWhere((e) => e.label == 'Description');
+      expect(field.inputType, isNull);
+    });
+
+    test('does not apply inputType to non-field elements', () {
+      final glyphs = [
+        glyph(
+          label: 'Email Settings',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final btn = gaze.elements.firstWhere((e) => e.label == 'Email Settings');
+      expect(btn.inputType, isNull);
+    });
+
+    test('inputType appears in toJson', () {
+      final element = ScryElement(
+        kind: ScryElementKind.field,
+        label: 'Email',
+        widgetType: 'TextField',
+        isInteractive: true,
+        inputType: ScryFieldValueType.email,
+      );
+      final json = element.toJson();
+      expect(json['inputType'], 'email');
+    });
+
+    test('formatGaze shows expects for typed fields', () {
+      final glyphs = [
+        glyph(
+          label: 'Email Address',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'email',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('expects: email'));
+    });
+  });
+
+  // ===================================================================
+  // Batch 3: Action Impact Prediction
+  // ===================================================================
+  group('Action impact prediction', () {
+    test('predicts delete for destructive labels', () {
+      final glyphs = [
+        glyph(
+          label: 'Delete Quest',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final btn = gaze.elements.firstWhere((e) => e.label == 'Delete Quest');
+      expect(btn.predictedImpact, ScryActionImpact.delete);
+    });
+
+    test('predicts submit for save labels', () {
+      final glyphs = [
+        glyph(
+          label: 'Save Changes',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final btn = gaze.elements.firstWhere((e) => e.label == 'Save Changes');
+      expect(btn.predictedImpact, ScryActionImpact.submit);
+    });
+
+    test('predicts dismiss for cancel labels', () {
+      final glyphs = [
+        glyph(
+          label: 'Cancel Action',
+          widgetType: 'TextButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final btn = gaze.elements.firstWhere((e) => e.label == 'Cancel Action');
+      expect(btn.predictedImpact, ScryActionImpact.dismiss);
+    });
+
+    test('predicts navigate for view labels', () {
+      final glyphs = [
+        glyph(
+          label: 'View Details',
+          widgetType: 'TextButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final btn = gaze.elements.firstWhere((e) => e.label == 'View Details');
+      expect(btn.predictedImpact, ScryActionImpact.navigate);
+    });
+
+    test('predicts toggle for switch widget types', () {
+      final glyphs = [
+        glyph(
+          label: 'Dark Mode',
+          widgetType: 'Switch',
+          interactive: true,
+          interactionType: 'toggle',
+          currentValue: 'false',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final toggle = gaze.elements.firstWhere((e) => e.label == 'Dark Mode');
+      expect(toggle.predictedImpact, ScryActionImpact.toggle);
+    });
+
+    test('predicts expand for expansion tiles', () {
+      final glyphs = [
+        glyph(
+          label: 'Advanced Settings',
+          widgetType: 'ExpansionTile',
+          interactive: true,
+          interactionType: 'tap',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final tile = gaze.elements.firstWhere(
+        (e) => e.label == 'Advanced Settings',
+      );
+      expect(tile.predictedImpact, ScryActionImpact.expand);
+    });
+
+    test('predicts openModal for popup menus', () {
+      final glyphs = [
+        glyph(
+          label: 'Options Menu',
+          widgetType: 'PopupMenuButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final popup = gaze.elements.firstWhere((e) => e.label == 'Options Menu');
+      expect(popup.predictedImpact, ScryActionImpact.openModal);
+    });
+
+    test('predicts unknown for ambiguous labels', () {
+      final glyphs = [
+        glyph(
+          label: 'Continue Action',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final btn = gaze.elements.firstWhere((e) => e.label == 'Continue Action');
+      expect(btn.predictedImpact, ScryActionImpact.unknown);
+    });
+
+    test('does not apply impact to non-interactive elements', () {
+      final glyphs = [
+        glyph(label: 'Delete Warning', widgetType: 'Text', y: 100),
+      ];
+      final gaze = scry.observe(glyphs);
+      final text = gaze.elements.firstWhere((e) => e.label == 'Delete Warning');
+      expect(text.predictedImpact, isNull);
+    });
+
+    test('predictedImpact appears in toJson', () {
+      final element = ScryElement(
+        kind: ScryElementKind.button,
+        label: 'Submit',
+        widgetType: 'ElevatedButton',
+        isInteractive: true,
+        predictedImpact: ScryActionImpact.submit,
+      );
+      final json = element.toJson();
+      expect(json['predictedImpact'], 'submit');
+    });
+
+    test('navigation kind defaults to navigate', () {
+      final glyphs = [
+        glyph(
+          label: 'Quests Tab',
+          widgetType: 'Text',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['BottomNavigationBar', 'Scaffold'],
+          y: 750,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final nav = gaze.elements.firstWhere((e) => e.label == 'Quests Tab');
+      expect(nav.predictedImpact, ScryActionImpact.navigate);
+    });
+  });
+
+  // ===================================================================
+  // Batch 3: Overlay / Modal Content Analysis
+  // ===================================================================
+  group('Overlay / modal analysis', () {
+    test('detects AlertDialog overlay', () {
+      final glyphs = [
+        glyph(
+          label: 'Confirm Deletion',
+          widgetType: 'Text',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 300,
+        ),
+        glyph(
+          label: 'Are you sure?',
+          widgetType: 'Text',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 350,
+        ),
+        glyph(
+          label: 'Cancel',
+          widgetType: 'TextButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 400,
+        ),
+        glyph(
+          label: 'Delete',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 400,
+          x: 200,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+
+      expect(gaze.overlay, isNotNull);
+      expect(gaze.overlay!.type, 'AlertDialog');
+      expect(gaze.overlay!.canDismiss, isTrue);
+      expect(gaze.overlay!.actions.length, greaterThanOrEqualTo(1));
+    });
+
+    test('detects BottomSheet overlay', () {
+      final glyphs = [
+        glyph(
+          label: 'Share Options',
+          widgetType: 'Text',
+          ancestors: ['BottomSheet', 'Scaffold'],
+          y: 500,
+        ),
+        glyph(
+          label: 'Copy Link',
+          widgetType: 'ListTile',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['BottomSheet', 'Scaffold'],
+          y: 550,
+        ),
+        glyph(
+          label: 'Share via Email',
+          widgetType: 'ListTile',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['BottomSheet', 'Scaffold'],
+          y: 600,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+
+      expect(gaze.overlay, isNotNull);
+      expect(gaze.overlay!.type, 'BottomSheet');
+    });
+
+    test('no overlay when no dialog ancestors', () {
+      final glyphs = [
+        glyph(label: 'Normal Screen', widgetType: 'Text', y: 100),
+        glyph(
+          label: 'Submit',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 200,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.overlay, isNull);
+    });
+
+    test('overlay title detected from structural element', () {
+      final glyphs = [
+        glyph(
+          label: 'Warning Message',
+          widgetType: 'Text',
+          ancestors: ['Dialog', 'Scaffold'],
+          y: 300,
+        ),
+        glyph(
+          label: 'OK Button',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['Dialog', 'Scaffold'],
+          y: 400,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+
+      expect(gaze.overlay, isNotNull);
+      expect(gaze.overlay!.title, isNotNull);
+    });
+
+    test('overlay toJson serializes correctly', () {
+      final overlay = ScryOverlayInfo(
+        type: 'AlertDialog',
+        title: 'Confirm',
+        actions: [
+          ScryElement(
+            kind: ScryElementKind.button,
+            label: 'OK',
+            widgetType: 'TextButton',
+            isInteractive: true,
+          ),
+        ],
+        canDismiss: true,
+      );
+      final json = overlay.toJson();
+      expect(json['type'], 'AlertDialog');
+      expect(json['title'], 'Confirm');
+      expect(json['actions'], ['OK']);
+      expect(json['canDismiss'], isTrue);
+    });
+
+    test('overlay appears in formatGaze', () {
+      final glyphs = [
+        glyph(
+          label: 'Alert Title',
+          widgetType: 'Text',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 300,
+        ),
+        glyph(
+          label: 'Close Dialog',
+          widgetType: 'TextButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 400,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('🪟'));
+      expect(md, contains('Overlay active'));
+    });
+
+    test('overlay in gaze toJson', () {
+      final glyphs = [
+        glyph(
+          label: 'Dialog Title',
+          widgetType: 'Text',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 300,
+        ),
+        glyph(
+          label: 'Dismiss',
+          widgetType: 'TextButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 400,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final json = gaze.toJson();
+      expect(json.containsKey('overlay'), isTrue);
+    });
+  });
+
+  // ===================================================================
+  // Batch 3: Layout Pattern Detection
+  // ===================================================================
+  group('Layout pattern detection', () {
+    test('detects vertical list pattern', () {
+      final glyphs = [
+        glyph(label: 'Item Alpha', widgetType: 'ListTile', y: 100, x: 20),
+        glyph(label: 'Item Bravo', widgetType: 'ListTile', y: 160, x: 20),
+        glyph(label: 'Item Charlie', widgetType: 'ListTile', y: 220, x: 20),
+        glyph(label: 'Item Delta', widgetType: 'ListTile', y: 280, x: 20),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.layoutPattern, ScryLayoutPattern.verticalList);
+    });
+
+    test('detects horizontal row pattern', () {
+      final glyphs = [
+        glyph(label: 'Tab Alpha', widgetType: 'Tab', x: 0, y: 50, w: 80),
+        glyph(label: 'Tab Bravo', widgetType: 'Tab', x: 80, y: 50, w: 80),
+        glyph(label: 'Tab Charlie', widgetType: 'Tab', x: 160, y: 50, w: 80),
+        glyph(label: 'Tab Delta', widgetType: 'Tab', x: 240, y: 50, w: 80),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.layoutPattern, ScryLayoutPattern.horizontalRow);
+    });
+
+    test('detects grid pattern', () {
+      final glyphs = [
+        glyph(label: 'Cell AA', widgetType: 'Card', x: 0, y: 0, w: 150),
+        glyph(label: 'Cell AB', widgetType: 'Card', x: 180, y: 0, w: 150),
+        glyph(label: 'Cell BA', widgetType: 'Card', x: 0, y: 200, w: 150),
+        glyph(label: 'Cell BB', widgetType: 'Card', x: 180, y: 200, w: 150),
+        glyph(label: 'Cell CA', widgetType: 'Card', x: 0, y: 400, w: 150),
+        glyph(label: 'Cell CB', widgetType: 'Card', x: 180, y: 400, w: 150),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.layoutPattern, ScryLayoutPattern.grid);
+    });
+
+    test('defaults to freeform when fewer than 3 elements', () {
+      final glyphs = [
+        glyph(label: 'Only Alpha', widgetType: 'Text', x: 10, y: 100),
+        glyph(label: 'Only Bravo', widgetType: 'Text', x: 200, y: 300),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.layoutPattern, ScryLayoutPattern.freeform);
+    });
+
+    test('layout pattern appears in formatGaze header', () {
+      final glyphs = [
+        glyph(label: 'Row Alpha', widgetType: 'ListTile', y: 100, x: 20),
+        glyph(label: 'Row Bravo', widgetType: 'ListTile', y: 160, x: 20),
+        glyph(label: 'Row Charlie', widgetType: 'ListTile', y: 220, x: 20),
+        glyph(label: 'Row Delta', widgetType: 'ListTile', y: 280, x: 20),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('**Layout**: verticalList'));
+    });
+
+    test('freeform layout omitted from formatGaze header', () {
+      final glyphs = [
+        glyph(label: 'Lone Widget', widgetType: 'Text', x: 50, y: 100),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, isNot(contains('**Layout**')));
+    });
+
+    test('layout pattern in toJson when not freeform', () {
+      final glyphs = [
+        glyph(label: 'List Alpha', widgetType: 'Text', y: 100, x: 20),
+        glyph(label: 'List Bravo', widgetType: 'Text', y: 160, x: 20),
+        glyph(label: 'List Charlie', widgetType: 'Text', y: 220, x: 20),
+        glyph(label: 'List Delta', widgetType: 'Text', y: 280, x: 20),
+      ];
+      final gaze = scry.observe(glyphs);
+      final json = gaze.toJson();
+      expect(json.containsKey('layoutPattern'), isTrue);
+      expect(json['layoutPattern'], 'verticalList');
+    });
+
+    test('freeform layout omitted from toJson', () {
+      final glyphs = [
+        glyph(label: 'Single Item', widgetType: 'Text', x: 50, y: 100),
+      ];
+      final gaze = scry.observe(glyphs);
+      final json = gaze.toJson();
+      expect(json.containsKey('layoutPattern'), isFalse);
+    });
+  });
+
+  // ===================================================================
+  // Batch 3: Toggle / Selection State Summary
+  // ===================================================================
+  group('Toggle / selection state summary', () {
+    test('detects switches and their state', () {
+      final glyphs = [
+        glyph(
+          label: 'Dark Mode',
+          widgetType: 'Switch',
+          interactive: true,
+          interactionType: 'toggle',
+          currentValue: 'true',
+          y: 100,
+        ),
+        glyph(
+          label: 'Notifications',
+          widgetType: 'Switch',
+          interactive: true,
+          interactionType: 'toggle',
+          currentValue: 'false',
+          y: 160,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+
+      expect(gaze.toggleSummary, isNotNull);
+      expect(gaze.toggleSummary!.totalCount, 2);
+      expect(gaze.toggleSummary!.activeCount, 1);
+    });
+
+    test('detects checkboxes', () {
+      final glyphs = [
+        glyph(
+          label: 'Accept Terms',
+          widgetType: 'Checkbox',
+          interactive: true,
+          interactionType: 'checkbox',
+          currentValue: 'true',
+          y: 100,
+        ),
+        glyph(
+          label: 'Subscribe Newsletter',
+          widgetType: 'Checkbox',
+          interactive: true,
+          interactionType: 'checkbox',
+          currentValue: 'false',
+          y: 160,
+        ),
+        glyph(
+          label: 'Share Data',
+          widgetType: 'Checkbox',
+          interactive: true,
+          interactionType: 'checkbox',
+          currentValue: 'on',
+          y: 220,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+
+      expect(gaze.toggleSummary, isNotNull);
+      expect(gaze.toggleSummary!.totalCount, 3);
+      expect(gaze.toggleSummary!.activeCount, 2);
+    });
+
+    test('null when no toggles present', () {
+      final glyphs = [
+        glyph(
+          label: 'Submit',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 100,
+        ),
+        glyph(
+          label: 'Username Field',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          y: 160,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.toggleSummary, isNull);
+    });
+
+    test('toggle summary toJson', () {
+      final summary = ScryToggleSummary(
+        toggles: [
+          ScryToggleState(
+            label: 'Theme',
+            widgetType: 'Switch',
+            currentValue: 'true',
+            isActive: true,
+          ),
+          ScryToggleState(
+            label: 'Sound',
+            widgetType: 'Switch',
+            currentValue: 'false',
+            isActive: false,
+          ),
+        ],
+      );
+      final json = summary.toJson();
+      expect(json['active'], 1);
+      expect(json['total'], 2);
+      expect(json['toggles'], hasLength(2));
+    });
+
+    test('toggle state toJson', () {
+      final state = ScryToggleState(
+        label: 'WiFi',
+        widgetType: 'Switch',
+        currentValue: 'on',
+        isActive: true,
+      );
+      final json = state.toJson();
+      expect(json['label'], 'WiFi');
+      expect(json['widgetType'], 'Switch');
+      expect(json['value'], 'on');
+      expect(json['isActive'], isTrue);
+    });
+
+    test('toggle state toJson omits null value', () {
+      final state = ScryToggleState(
+        label: 'Something',
+        widgetType: 'Checkbox',
+        isActive: false,
+      );
+      final json = state.toJson();
+      expect(json.containsKey('value'), isFalse);
+    });
+
+    test('toggle summary appears in formatGaze', () {
+      final glyphs = [
+        glyph(
+          label: 'Auto Save',
+          widgetType: 'Switch',
+          interactive: true,
+          interactionType: 'toggle',
+          currentValue: 'true',
+          y: 100,
+        ),
+        glyph(
+          label: 'Auto Update',
+          widgetType: 'Switch',
+          interactive: true,
+          interactionType: 'toggle',
+          currentValue: 'false',
+          y: 160,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('🔀'));
+      expect(md, contains('Toggles'));
+      expect(md, contains('✅'));
+      expect(md, contains('⬜'));
+    });
+
+    test('toggle summary in gaze toJson', () {
+      final glyphs = [
+        glyph(
+          label: 'Dark Mode Toggle',
+          widgetType: 'Switch',
+          interactive: true,
+          interactionType: 'toggle',
+          currentValue: 'true',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final json = gaze.toJson();
+      expect(json.containsKey('toggleSummary'), isTrue);
+    });
+  });
+
+  // ===================================================================
+  // Batch 3: Field Tab Order
+  // ===================================================================
+  group('Field tab order', () {
+    test('orders fields by Y then X', () {
+      final glyphs = [
+        glyph(
+          label: 'Third Field',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'field3',
+          y: 300,
+          x: 20,
+        ),
+        glyph(
+          label: 'First Field',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'field1',
+          y: 100,
+          x: 20,
+        ),
+        glyph(
+          label: 'Second Field',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'field2',
+          y: 200,
+          x: 20,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+
+      expect(gaze.tabOrder, hasLength(3));
+      expect(gaze.tabOrder[0], 'First Field');
+      expect(gaze.tabOrder[1], 'Second Field');
+      expect(gaze.tabOrder[2], 'Third Field');
+    });
+
+    test('same Y sorts by X', () {
+      final glyphs = [
+        glyph(
+          label: 'Right Field',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'right',
+          y: 200,
+          x: 200,
+        ),
+        glyph(
+          label: 'Left Field',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'left',
+          y: 200,
+          x: 20,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+
+      expect(gaze.tabOrder, ['Left Field', 'Right Field']);
+    });
+
+    test('empty when no fields', () {
+      final glyphs = [
+        glyph(
+          label: 'Just a Button',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.tabOrder, isEmpty);
+    });
+
+    test('single field returns one-element list', () {
+      final glyphs = [
+        glyph(
+          label: 'Only Field',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'only',
+          y: 100,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.tabOrder, ['Only Field']);
+    });
+
+    test('tab order appears in formatGaze', () {
+      final glyphs = [
+        glyph(
+          label: 'Email Address',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'email',
+          y: 100,
+        ),
+        glyph(
+          label: 'Password Field',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'password',
+          y: 200,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('Tab order'));
+      expect(md, contains('→'));
+    });
+
+    test('tab order in gaze toJson when non-empty', () {
+      final glyphs = [
+        glyph(
+          label: 'Input Alpha',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'alpha',
+          y: 100,
+        ),
+        glyph(
+          label: 'Input Bravo',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'bravo',
+          y: 200,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      final json = gaze.toJson();
+      expect(json['tabOrder'], ['Input Alpha', 'Input Bravo']);
+    });
+
+    test('tab order omitted from toJson when empty', () {
+      final glyphs = [glyph(label: 'Just Text', widgetType: 'Text', y: 100)];
+      final gaze = scry.observe(glyphs);
+      final json = gaze.toJson();
+      expect(json.containsKey('tabOrder'), isFalse);
+    });
+  });
+
+  // ===================================================================
+  // Batch 3: ScryFieldValueType enum
+  // ===================================================================
+  group('ScryFieldValueType', () {
+    test('has all expected values', () {
+      expect(ScryFieldValueType.values, hasLength(8));
+      expect(ScryFieldValueType.values, contains(ScryFieldValueType.email));
+      expect(ScryFieldValueType.values, contains(ScryFieldValueType.password));
+      expect(ScryFieldValueType.values, contains(ScryFieldValueType.phone));
+      expect(ScryFieldValueType.values, contains(ScryFieldValueType.numeric));
+      expect(ScryFieldValueType.values, contains(ScryFieldValueType.date));
+      expect(ScryFieldValueType.values, contains(ScryFieldValueType.url));
+      expect(ScryFieldValueType.values, contains(ScryFieldValueType.search));
+      expect(ScryFieldValueType.values, contains(ScryFieldValueType.freeText));
+    });
+  });
+
+  // ===================================================================
+  // Batch 3: ScryActionImpact enum
+  // ===================================================================
+  group('ScryActionImpact', () {
+    test('has all expected values', () {
+      expect(ScryActionImpact.values, hasLength(8));
+      expect(ScryActionImpact.values, contains(ScryActionImpact.navigate));
+      expect(ScryActionImpact.values, contains(ScryActionImpact.submit));
+      expect(ScryActionImpact.values, contains(ScryActionImpact.delete));
+      expect(ScryActionImpact.values, contains(ScryActionImpact.toggle));
+      expect(ScryActionImpact.values, contains(ScryActionImpact.expand));
+      expect(ScryActionImpact.values, contains(ScryActionImpact.dismiss));
+      expect(ScryActionImpact.values, contains(ScryActionImpact.openModal));
+      expect(ScryActionImpact.values, contains(ScryActionImpact.unknown));
+    });
+  });
+
+  // ===================================================================
+  // Batch 3: ScryLayoutPattern enum
+  // ===================================================================
+  group('ScryLayoutPattern', () {
+    test('has all expected values', () {
+      expect(ScryLayoutPattern.values, hasLength(5));
+      expect(
+        ScryLayoutPattern.values,
+        contains(ScryLayoutPattern.verticalList),
+      );
+      expect(ScryLayoutPattern.values, contains(ScryLayoutPattern.grid));
+      expect(
+        ScryLayoutPattern.values,
+        contains(ScryLayoutPattern.horizontalRow),
+      );
+      expect(ScryLayoutPattern.values, contains(ScryLayoutPattern.singleCard));
+      expect(ScryLayoutPattern.values, contains(ScryLayoutPattern.freeform));
+    });
+  });
+
+  // ===================================================================
+  // Batch 3: Integration test
+  // ===================================================================
+  group('Batch 3 integration', () {
+    test('login form with all batch 3 features', () {
+      final glyphs = [
+        glyph(label: 'Login Title', widgetType: 'Text', y: 80, x: 20),
+        glyph(
+          label: 'Email Address',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'email_field',
+          y: 150,
+          x: 20,
+          w: 300,
+        ),
+        glyph(
+          label: 'Password',
+          widgetType: 'TextField',
+          interactive: true,
+          interactionType: 'input',
+          fieldId: 'password_field',
+          y: 220,
+          x: 20,
+          w: 300,
+        ),
+        glyph(
+          label: 'Remember Me',
+          widgetType: 'Checkbox',
+          interactive: true,
+          interactionType: 'checkbox',
+          currentValue: 'false',
+          y: 290,
+          x: 20,
+        ),
+        glyph(
+          label: 'Sign In',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          y: 360,
+          x: 20,
+          w: 300,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+
+      // Input type inference
+      final emailField = gaze.elements.firstWhere(
+        (e) => e.label == 'Email Address',
+      );
+      expect(emailField.inputType, ScryFieldValueType.email);
+
+      final passField = gaze.elements.firstWhere((e) => e.label == 'Password');
+      expect(passField.inputType, ScryFieldValueType.password);
+
+      // Action impact prediction
+      final signIn = gaze.elements.firstWhere((e) => e.label == 'Sign In');
+      expect(signIn.predictedImpact, ScryActionImpact.unknown);
+
+      // Toggle summary
+      expect(gaze.toggleSummary, isNotNull);
+      expect(gaze.toggleSummary!.totalCount, 1);
+      expect(gaze.toggleSummary!.activeCount, 0);
+
+      // Tab order
+      expect(gaze.tabOrder, ['Email Address', 'Password']);
+
+      // Layout pattern — vertical
+      expect(gaze.layoutPattern, ScryLayoutPattern.verticalList);
+
+      // No overlay
+      expect(gaze.overlay, isNull);
+    });
+
+    test('dialog overlay with toggles and actions', () {
+      final glyphs = [
+        glyph(
+          label: 'Preferences Title',
+          widgetType: 'Text',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 200,
+          x: 50,
+        ),
+        glyph(
+          label: 'Enable Features',
+          widgetType: 'Switch',
+          interactive: true,
+          interactionType: 'toggle',
+          currentValue: 'true',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 260,
+          x: 50,
+        ),
+        glyph(
+          label: 'Dark Theme',
+          widgetType: 'Switch',
+          interactive: true,
+          interactionType: 'toggle',
+          currentValue: 'false',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 320,
+          x: 50,
+        ),
+        glyph(
+          label: 'Cancel',
+          widgetType: 'TextButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 400,
+          x: 50,
+        ),
+        glyph(
+          label: 'Save Preferences',
+          widgetType: 'ElevatedButton',
+          interactive: true,
+          interactionType: 'tap',
+          ancestors: ['AlertDialog', 'Scaffold'],
+          y: 400,
+          x: 200,
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+
+      // Overlay detected
+      expect(gaze.overlay, isNotNull);
+      expect(gaze.overlay!.type, 'AlertDialog');
+      expect(gaze.overlay!.canDismiss, isTrue);
+
+      // Toggle summary in dialog
+      expect(gaze.toggleSummary, isNotNull);
+      expect(gaze.toggleSummary!.totalCount, 2);
+      expect(gaze.toggleSummary!.activeCount, 1);
+
+      // Action impacts
+      final cancel = gaze.elements.firstWhere((e) => e.label == 'Cancel');
+      expect(cancel.predictedImpact, ScryActionImpact.dismiss);
+
+      final save = gaze.elements.firstWhere(
+        (e) => e.label == 'Save Preferences',
+      );
+      expect(save.predictedImpact, ScryActionImpact.submit);
+
+      // formatGaze includes overlay and toggle sections
+      final md = scry.formatGaze(gaze);
+      expect(md, contains('🪟'));
+      expect(md, contains('🔀'));
+    });
+  });
 }
