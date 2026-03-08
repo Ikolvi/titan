@@ -2447,6 +2447,23 @@ class Scry {
       final ancestors = glyph['anc'] as List<dynamic>? ?? [];
       final ancestorStr = ancestors.join(' ');
 
+      // ErrorWidget — Flutter red error screen (framework / build error)
+      if (wt == 'ErrorWidget') {
+        final msg = label.isNotEmpty
+            ? label
+            : 'Flutter framework error (red screen)';
+        if (seenMessages.add(msg)) {
+          alerts.add(
+            ScryAlert(
+              severity: ScryAlertSeverity.error,
+              message: msg,
+              widgetType: wt,
+            ),
+          );
+        }
+        continue;
+      }
+
       // Loading indicators (by widget type)
       if (_loadingWidgetPattern.hasMatch(wt)) {
         final msg = label.isNotEmpty ? label : 'Loading indicator ($wt)';

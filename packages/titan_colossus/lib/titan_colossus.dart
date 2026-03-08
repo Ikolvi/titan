@@ -39,6 +39,7 @@ export 'src/metrics/decree.dart';
 
 // Alerts
 export 'src/alerts/tremor.dart';
+export 'src/framework_error.dart';
 
 // Monitors
 export 'src/monitors/pulse.dart';

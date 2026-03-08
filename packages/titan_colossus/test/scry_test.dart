@@ -1501,6 +1501,36 @@ void main() {
   // ScryAlert — Error / Loading / Notice detection
   // ===================================================================
   group('ScryAlert detection', () {
+    test('detects ErrorWidget (red screen) as error alert', () {
+      final glyphs = [
+        glyph(
+          label: 'A RenderFlex overflowed by 42 pixels',
+          widgetType: 'ErrorWidget',
+        ),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.alerts, hasLength(1));
+      expect(gaze.alerts.first.severity, ScryAlertSeverity.error);
+      expect(gaze.alerts.first.message, contains('overflowed'));
+      expect(gaze.alerts.first.widgetType, 'ErrorWidget');
+    });
+
+    test('detects ErrorWidget without label with fallback message', () {
+      final glyphs = [glyph(label: '', widgetType: 'ErrorWidget')];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.alerts, hasLength(1));
+      expect(gaze.alerts.first.severity, ScryAlertSeverity.error);
+      expect(gaze.alerts.first.message, contains('red screen'));
+    });
+
+    test('ErrorWidget triggers error screen type', () {
+      final glyphs = [
+        glyph(label: 'Build failed: null value', widgetType: 'ErrorWidget'),
+      ];
+      final gaze = scry.observe(glyphs);
+      expect(gaze.screenType, ScryScreenType.error);
+    });
+
     test('detects loading indicators by widget type', () {
       final glyphs = [
         glyph(label: '', widgetType: 'CircularProgressIndicator'),

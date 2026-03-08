@@ -178,6 +178,12 @@ abstract interface class RelayHandler {
   /// Returns whether recording or replaying is active,
   /// the elapsed time, and event count.
   Map<String, dynamic> getRecordingStatus();
+
+  /// Get captured Flutter framework errors.
+  ///
+  /// Returns overflow, build, layout, paint, and gesture errors
+  /// intercepted from [FlutterError.onError] since initialization.
+  Map<String, dynamic> getFrameworkErrors();
 }
 
 // ---------------------------------------------------------------------------

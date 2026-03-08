@@ -1,6 +1,11 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show ChangeNotifier;
+import 'package:flutter/foundation.dart'
+    show
+        ChangeNotifier,
+        FlutterError,
+        FlutterErrorDetails,
+        FlutterExceptionHandler;
 import 'dart:io';
 
 import 'package:flutter/scheduler.dart';
@@ -8,6 +13,7 @@ import 'package:titan_atlas/titan_atlas.dart' show Atlas;
 import 'package:titan_bastion/titan_bastion.dart';
 
 import 'alerts/tremor.dart';
+import 'framework_error.dart';
 import 'integration/lens.dart';
 import 'export/inscribe.dart';
 import 'integration/blueprint_lens_tab.dart';
@@ -180,6 +186,36 @@ class Colossus extends Pillar {
   /// }
   /// ```
   List<ColossusTremor> get alertHistory => List.unmodifiable(_alertHistory);
+
+  // -----------------------------------------------------------------------
+  // Framework error capture (FlutterError.onError)
+  // -----------------------------------------------------------------------
+
+  /// Captured Flutter framework errors (newest last).
+  ///
+  /// Populated by hooking [FlutterError.onError] during [onInit].
+  /// Captures overflow, build, layout, paint, and gesture errors.
+  final List<FrameworkError> _frameworkErrors = [];
+
+  /// Maximum number of framework errors to retain.
+  static const int _maxFrameworkErrors = 200;
+
+  /// The original [FlutterError.onError] handler, restored on dispose.
+  FlutterExceptionHandler? _previousErrorHandler;
+
+  /// All captured Flutter framework errors since initialization (newest last).
+  ///
+  /// Includes overflow, build, layout, paint, and gesture errors
+  /// that Flutter reports through [FlutterError.onError].
+  ///
+  /// ```dart
+  /// final errors = Colossus.instance.frameworkErrors;
+  /// final overflows = errors
+  ///     .where((e) => e.category == FrameworkErrorCategory.overflow);
+  /// print('Overflow errors: ${overflows.length}');
+  /// ```
+  List<FrameworkError> get frameworkErrors =>
+      List.unmodifiable(_frameworkErrors);
 
   /// Notifier that fires when Terrain is updated (session analyzed).
   ///
@@ -456,6 +492,12 @@ class Colossus extends Pillar {
         existingCallback?.call(session);
       };
     }
+
+    // Hook FlutterError.onError to capture framework errors
+    // (overflow, build, layout, paint, gesture). The previous
+    // handler is chained so errors still surface normally.
+    _previousErrorHandler = FlutterError.onError;
+    FlutterError.onError = _captureFlutterError;
   }
 
   @override
@@ -491,6 +533,10 @@ class Colossus extends Pillar {
 
     // Dispose terrain notifier
     terrainNotifier.dispose();
+
+    // Restore original FlutterError.onError handler
+    FlutterError.onError = _previousErrorHandler;
+    _previousErrorHandler = null;
 
     _chronicle?.info('Colossus shut down');
     Spark.textControllerFactory = null;
@@ -616,6 +662,57 @@ class Colossus extends Pillar {
       TremorSeverity.warning => ErrorSeverity.warning,
       TremorSeverity.error => ErrorSeverity.error,
     };
+  }
+
+  // -----------------------------------------------------------------------
+  // Framework error capture
+  // -----------------------------------------------------------------------
+
+  /// Handles a Flutter framework error by storing it, logging it,
+  /// and forwarding to the previous handler (if any).
+  void _captureFlutterError(FlutterErrorDetails details) {
+    final message = details.exceptionAsString();
+    final library = details.library;
+    final context = details.context?.toDescription();
+
+    // Truncate message to first line if very long
+    final firstLine = message.contains('\n')
+        ? message.substring(0, message.indexOf('\n'))
+        : message;
+    final truncated = firstLine.length > 300
+        ? '${firstLine.substring(0, 300)}...'
+        : firstLine;
+
+    // Truncate stack trace to top 5 frames
+    String? stackStr;
+    if (details.stack != null) {
+      final lines = details.stack.toString().split('\n');
+      stackStr = lines.take(5).join('\n');
+    }
+
+    final error = FrameworkError(
+      category: FrameworkError.classify(
+        message: message,
+        library: library,
+        context: context,
+      ),
+      message: truncated,
+      timestamp: DateTime.now(),
+      library: library,
+      stackTrace: stackStr,
+    );
+
+    // Store in buffer (capped)
+    _frameworkErrors.add(error);
+    if (_frameworkErrors.length > _maxFrameworkErrors) {
+      _frameworkErrors.removeAt(0);
+    }
+
+    // Log via Chronicle
+    _chronicle?.warning('Framework ${error.category.name}: $truncated');
+
+    // Forward to previous handler (preserves default behavior)
+    _previousErrorHandler?.call(details);
   }
 
   // -----------------------------------------------------------------------
@@ -1528,5 +1625,17 @@ class _ColossusRelayHandler implements RelayHandler {
     'elapsedMs': _colossus.shade.elapsed.inMilliseconds,
     'isPerfRecording': _colossus.isPerfRecording,
     'hasLastSession': _colossus.lastRecordedSession != null,
+  };
+
+  @override
+  Map<String, dynamic> getFrameworkErrors() => {
+    'errors': _colossus.frameworkErrors.map((e) => e.toMap()).toList(),
+    'total': _colossus.frameworkErrors.length,
+    'byCategory': {
+      for (final cat in FrameworkErrorCategory.values)
+        cat.name: _colossus.frameworkErrors
+            .where((e) => e.category == cat)
+            .length,
+    },
   };
 }

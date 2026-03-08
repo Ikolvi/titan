@@ -578,6 +578,27 @@ void main() {
       expect(handler.getRecordingStatusCallCount, 1);
     });
 
+    // -- GET /errors --
+
+    test('GET /errors returns framework errors', () async {
+      await startRelay();
+
+      final request = await client.get('127.0.0.1', port, '/errors');
+      final response = await request.close();
+      final body = await _readBody(response);
+
+      expect(response.statusCode, 200);
+      expect(body['total'], 2);
+      expect(body['errors'], isList);
+      final errors = body['errors'] as List;
+      expect(errors.length, 2);
+      expect(errors[0]['category'], 'overflow');
+      expect(errors[1]['category'], 'build');
+      expect(body['byCategory']['overflow'], 1);
+      expect(body['byCategory']['build'], 1);
+      expect(handler.getFrameworkErrorsCallCount, 1);
+    });
+
     // -- Unknown endpoint --
 
     test('unknown endpoint returns 404', () async {
@@ -847,6 +868,7 @@ class _MockRelayHandler implements RelayHandler {
   int getAlertsCallCount = 0;
   int listSessionsCallCount = 0;
   int getRecordingStatusCallCount = 0;
+  int getFrameworkErrorsCallCount = 0;
 
   @override
   Future<Map<String, dynamic>> executeCampaign(
@@ -1015,6 +1037,36 @@ class _MockRelayHandler implements RelayHandler {
       'elapsedMs': 0,
       'isPerfRecording': false,
       'hasLastSession': false,
+    };
+  }
+
+  @override
+  Map<String, dynamic> getFrameworkErrors() {
+    getFrameworkErrorsCallCount++;
+    return {
+      'errors': [
+        {
+          'category': 'overflow',
+          'message': 'A RenderFlex overflowed by 42 pixels',
+          'timestamp': '2025-01-01T12:00:00.000',
+          'library': 'rendering library',
+        },
+        {
+          'category': 'build',
+          'message': 'Null check operator used on a null value',
+          'timestamp': '2025-01-01T12:01:00.000',
+          'library': 'widgets library',
+        },
+      ],
+      'total': 2,
+      'byCategory': {
+        'overflow': 1,
+        'build': 1,
+        'layout': 0,
+        'paint': 0,
+        'gesture': 0,
+        'other': 0,
+      },
     };
   }
 }

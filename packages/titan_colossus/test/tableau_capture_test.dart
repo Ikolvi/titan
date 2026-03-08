@@ -186,4 +186,41 @@ void main() {
       controller.dispose();
     });
   });
+
+  group('TableauCapture — ErrorWidget capture', () {
+    testWidgets('captures ErrorWidget as content glyph', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: ErrorWidget('Build failure: null value')),
+        ),
+      );
+
+      final tableau = await TableauCapture.capture(index: 0);
+      final errorGlyphs = tableau.glyphs
+          .where((g) => g.widgetType == 'ErrorWidget')
+          .toList();
+
+      expect(errorGlyphs, hasLength(1));
+      expect(errorGlyphs.first.label, contains('Build failure'));
+      expect(errorGlyphs.first.isInteractive, false);
+    });
+
+    testWidgets('captures ErrorWidget.withDetails message', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ErrorWidget.withDetails(message: 'Widget build failed'),
+          ),
+        ),
+      );
+
+      final tableau = await TableauCapture.capture(index: 0);
+      final errorGlyphs = tableau.glyphs
+          .where((g) => g.widgetType == 'ErrorWidget')
+          .toList();
+
+      expect(errorGlyphs, hasLength(1));
+      expect(errorGlyphs.first.label, 'Widget build failed');
+    });
+  });
 }

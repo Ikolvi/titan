@@ -318,7 +318,8 @@ class TableauCapture {
         widget is Tooltip ||
         widget is Drawer ||
         widget is CircularProgressIndicator ||
-        widget is LinearProgressIndicator) {
+        widget is LinearProgressIndicator ||
+        widget is ErrorWidget) {
       return _WidgetClassification.content;
     }
 
@@ -374,6 +375,11 @@ class TableauCapture {
     // Icon — semanticLabel
     if (widget is Icon) {
       return widget.semanticLabel ?? widget.icon?.toString();
+    }
+
+    // ErrorWidget — framework error message (red error screen)
+    if (widget is ErrorWidget) {
+      return widget.message;
     }
 
     // NavigationDestination — use label property

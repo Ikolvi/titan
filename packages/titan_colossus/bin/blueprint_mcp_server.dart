@@ -433,6 +433,17 @@ class _BlueprintMcpServer {
             'inputSchema': {'type': 'object', 'properties': {}},
           },
           {
+            'name': 'get_framework_errors',
+            'description':
+                'Get captured Flutter framework errors (overflow, '
+                'build, layout, paint, gesture). These are errors '
+                'from FlutterError.onError — including RenderFlex '
+                'overflow, red error screen exceptions, and layout '
+                'failures. Shows error category, message, library, '
+                'truncated stack trace, and category breakdown.',
+            'inputSchema': {'type': 'object', 'properties': {}},
+          },
+          {
             'name': 'generate_auth_stratagem',
             'description':
                 'Auto-generate an authStratagem JSON from the live '
@@ -748,6 +759,7 @@ class _BlueprintMcpServer {
       'get_alerts',
       'list_sessions',
       'get_recording_status',
+      'get_framework_errors',
       'generate_auth_stratagem',
       'generate_campaign',
       'audit_screen',
@@ -767,6 +779,7 @@ class _BlueprintMcpServer {
         'get_alerts' => await _getAlerts(),
         'list_sessions' => await _listSessions(),
         'get_recording_status' => await _getRecordingStatus(),
+        'get_framework_errors' => await _getFrameworkErrors(),
         'generate_auth_stratagem' => await _generateAuthStratagem(toolArgs),
         'generate_campaign' => await _generateCampaign(toolArgs),
         'audit_screen' => await _auditScreen(toolArgs),
@@ -2180,6 +2193,11 @@ class _BlueprintMcpServer {
     return _fetchAndFormat('/recording', _formatRecordingStatus);
   }
 
+  /// Fetch and format framework errors from Relay `/errors` endpoint.
+  Future<String> _getFrameworkErrors() async {
+    return _fetchAndFormat('/errors', _formatFrameworkErrors);
+  }
+
   /// Format recording status JSON into Markdown.
   String _formatRecordingStatus(Map<String, dynamic> data) {
     final buf = StringBuffer();
@@ -2206,6 +2224,60 @@ class _BlueprintMcpServer {
       '| Last Session | '
       '${hasLastSession ? 'available' : 'none'} |',
     );
+    buf.writeln();
+
+    return buf.toString();
+  }
+
+  /// Format framework errors JSON into Markdown.
+  String _formatFrameworkErrors(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+    final errors = data['errors'] as List<dynamic>? ?? [];
+    final total = data['total'] as int? ?? 0;
+    final byCategory = data['byCategory'] as Map<String, dynamic>? ?? {};
+
+    buf.writeln('# Framework Errors');
+    buf.writeln();
+
+    if (errors.isEmpty) {
+      buf.writeln('No framework errors captured.');
+      buf.writeln();
+      return buf.toString();
+    }
+
+    // Category summary
+    buf.writeln('## Summary ($total total)');
+    buf.writeln();
+    buf.writeln('| Category | Count |');
+    buf.writeln('|----------|-------|');
+    for (final entry in byCategory.entries) {
+      final count = entry.value as int? ?? 0;
+      if (count > 0) {
+        buf.writeln('| ${entry.key} | $count |');
+      }
+    }
+    buf.writeln();
+
+    // Recent errors (last 20)
+    final recent = errors.length > 20
+        ? errors.sublist(errors.length - 20)
+        : errors;
+    buf.writeln('## Recent Errors (${recent.length} shown)');
+    buf.writeln();
+    buf.writeln('| # | Category | Library | Message | Time |');
+    buf.writeln('|---|----------|---------|---------|------|');
+    for (var i = 0; i < recent.length; i++) {
+      final e = recent[i] as Map<String, dynamic>;
+      final cat = e['category'] as String? ?? 'other';
+      final msg = (e['message'] as String? ?? '')
+          .replaceAll('|', '\\|')
+          .replaceAll('\n', ' ');
+      final truncMsg = msg.length > 80 ? '${msg.substring(0, 80)}...' : msg;
+      final lib = e['library'] as String? ?? '-';
+      final ts = e['timestamp'] as String? ?? '';
+      final time = ts.length >= 19 ? ts.substring(11, 19) : ts;
+      buf.writeln('| ${i + 1} | $cat | $lib | $truncMsg | $time |');
+    }
     buf.writeln();
 
     return buf.toString();

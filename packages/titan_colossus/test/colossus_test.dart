@@ -349,6 +349,25 @@ void main() {
         throwsUnsupportedError,
       );
     });
+
+    test('frameworkErrors starts empty', () {
+      final colossus = Colossus.init(enableLensTab: false);
+      expect(colossus.frameworkErrors, isEmpty);
+    });
+
+    test('frameworkErrors is unmodifiable', () {
+      final colossus = Colossus.init(enableLensTab: false);
+      expect(
+        () => colossus.frameworkErrors.add(
+          FrameworkError(
+            category: FrameworkErrorCategory.overflow,
+            message: 'test',
+            timestamp: DateTime.now(),
+          ),
+        ),
+        throwsUnsupportedError,
+      );
+    });
   });
 
   // ---------------------------------------------------------

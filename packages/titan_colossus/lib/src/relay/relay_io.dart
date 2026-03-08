@@ -176,6 +176,9 @@ class RelayPlatform {
         case ('GET', '/recording'):
           _handleGetRecording(request);
 
+        case ('GET', '/errors'):
+          _handleGetErrors(request);
+
         case ('GET', '/debug/tree'):
           await _handleDebugTree(request);
 
@@ -403,6 +406,20 @@ class RelayPlatform {
     }
 
     _sendJson(request.response, handler.getRecordingStatus());
+  }
+
+  void _handleGetErrors(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    _sendJson(request.response, handler.getFrameworkErrors());
   }
 
   // -----------------------------------------------------------------------
