@@ -416,6 +416,67 @@ void main() {
       expect(response.statusCode, 400);
     });
 
+    // -- GET /performance --
+
+    test('GET /performance returns decree report', () async {
+      await startRelay();
+
+      final request = await client.get('127.0.0.1', port, '/performance');
+      final response = await request.close();
+      final body = await _readBody(response);
+
+      expect(response.statusCode, 200);
+      expect(body['health'], 'good');
+      expect(body['durationSeconds'], 0);
+
+      // Pulse section
+      expect(body['pulse'], isA<Map>());
+      expect(body['pulse']['totalFrames'], 0);
+      expect(body['pulse']['jankFrames'], 0);
+      expect(body['pulse']['jankRate'], 0.0);
+      expect(body['pulse']['avgFps'], 60.0);
+      expect(body['pulse']['avgBuildTimeUs'], 0);
+      expect(body['pulse']['avgRasterTimeUs'], 0);
+
+      // Stride section
+      expect(body['stride'], isA<Map>());
+      expect(body['stride']['totalPageLoads'], 0);
+      expect(body['stride']['pageLoads'], isEmpty);
+
+      // Vessel section
+      expect(body['vessel'], isA<Map>());
+      expect(body['vessel']['pillarCount'], 0);
+      expect(body['vessel']['leakSuspects'], isEmpty);
+
+      // Echo section
+      expect(body['echo'], isA<Map>());
+      expect(body['echo']['totalRebuilds'], 0);
+
+      // Handler was called exactly once
+      expect(handler.getPerformanceReportCallCount, 1);
+    });
+
+    test('GET /performance requires auth when token set', () async {
+      await startRelay(authToken: 'secret');
+
+      final request = await client.get('127.0.0.1', port, '/performance');
+      final response = await request.close();
+
+      expect(response.statusCode, 401);
+    });
+
+    test('GET /performance accepts valid auth token', () async {
+      await startRelay(authToken: 'secret');
+
+      final request = await client.get('127.0.0.1', port, '/performance');
+      request.headers.set('Authorization', 'Bearer secret');
+      final response = await request.close();
+      final body = await _readBody(response);
+
+      expect(response.statusCode, 200);
+      expect(body['health'], 'good');
+    });
+
     // -- Unknown endpoint --
 
     test('unknown endpoint returns 404', () async {
@@ -592,6 +653,38 @@ void main() {
         HttpOverrides.global = savedOverrides;
       }
     });
+
+    test('Relay serves performance report from Colossus', () async {
+      final colossus = Colossus.init(enableLensTab: false);
+
+      await colossus.startRelay(
+        config: const RelayConfig(
+          port: 0,
+          host: '127.0.0.1',
+          enableLogging: false,
+        ),
+      );
+
+      final port = colossus.relay.status.port!;
+      final savedOverrides = HttpOverrides.current;
+      HttpOverrides.global = null;
+      final client = HttpClient();
+      try {
+        final request = await client.get('127.0.0.1', port, '/performance');
+        final response = await request.close();
+        final body = await _readBody(response);
+
+        expect(response.statusCode, 200);
+        expect(body['health'], isA<String>());
+        expect(body['pulse'], isA<Map>());
+        expect(body['stride'], isA<Map>());
+        expect(body['vessel'], isA<Map>());
+        expect(body['echo'], isA<Map>());
+      } finally {
+        client.close();
+        HttpOverrides.global = savedOverrides;
+      }
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -646,6 +739,7 @@ class _MockRelayHandler implements RelayHandler {
   int getTerrainCallCount = 0;
   int getBlueprintCallCount = 0;
   int debriefCallCount = 0;
+  int getPerformanceReportCallCount = 0;
 
   @override
   Future<Map<String, dynamic>> executeCampaign(
@@ -699,6 +793,7 @@ class _MockRelayHandler implements RelayHandler {
 
   @override
   Map<String, dynamic> getPerformanceReport() {
+    getPerformanceReportCallCount++;
     return {
       'health': 'good',
       'durationSeconds': 0,
