@@ -354,7 +354,7 @@ Kael smiled. "Judgment."
 
 ---
 
-*Next: [Chapter LX — ???](chapter-60-todo.md)*
+*Next: [Chapter LX — The Scry Judges](chapter-60-the-scry-judges.md)*
 
 ---
 
