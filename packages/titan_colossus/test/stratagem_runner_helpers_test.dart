@@ -481,4 +481,98 @@ void main() {
       expect(result, isNull);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // StratagemRunner — navigateToRoute callback
+  // -------------------------------------------------------------------------
+  group('StratagemRunner — navigateToRoute', () {
+    test('constructor accepts navigateToRoute callback', () {
+      final navigatedRoutes = <String>[];
+      final r = StratagemRunner(
+        shade: Shade(),
+        navigateToRoute: (route) async {
+          navigatedRoutes.add(route);
+        },
+      );
+      expect(r.navigateToRoute, isNotNull);
+    });
+
+    test('navigateToRoute is null by default', () {
+      final r = StratagemRunner(shade: Shade());
+      expect(r.navigateToRoute, isNull);
+    });
+
+    test('actionNeedsTarget returns false for navigate', () {
+      expect(runner.actionNeedsTarget(StratagemAction.navigate), isFalse);
+    });
+
+    test('targetDescription handles various targets', () {
+      expect(
+        runner.targetDescription(
+          const StratagemTarget(label: 'OK', type: 'Button'),
+        ),
+        contains('OK'),
+      );
+      expect(
+        runner.targetDescription(const StratagemTarget(key: 'myKey')),
+        contains('myKey'),
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // StratagemRunner — authStratagem
+  // -------------------------------------------------------------------------
+  group('StratagemRunner — authStratagem', () {
+    test('constructor accepts authStratagem', () {
+      const auth = Stratagem(
+        name: '_auth',
+        startRoute: '',
+        steps: [
+          StratagemStep(
+            id: 1,
+            action: StratagemAction.enterText,
+            target: StratagemTarget(label: 'Hero Name'),
+            value: 'Kael',
+          ),
+          StratagemStep(
+            id: 2,
+            action: StratagemAction.tap,
+            target: StratagemTarget(label: 'Login'),
+          ),
+        ],
+      );
+      final r = StratagemRunner(shade: Shade(), authStratagem: auth);
+      expect(r.authStratagem, isNotNull);
+      expect(r.authStratagem!.name, '_auth');
+      expect(r.authStratagem!.steps, hasLength(2));
+    });
+
+    test('authStratagem is null by default', () {
+      final r = StratagemRunner(shade: Shade());
+      expect(r.authStratagem, isNull);
+    });
+
+    test('authStratagem and navigateToRoute can both be set', () {
+      final routes = <String>[];
+      const auth = Stratagem(
+        name: '_auth',
+        startRoute: '',
+        steps: [
+          StratagemStep(
+            id: 1,
+            action: StratagemAction.tap,
+            target: StratagemTarget(label: 'Login'),
+          ),
+        ],
+      );
+      final r = StratagemRunner(
+        shade: Shade(),
+        authStratagem: auth,
+        navigateToRoute: (route) async => routes.add(route),
+      );
+      expect(r.authStratagem, isNotNull);
+      expect(r.navigateToRoute, isNotNull);
+    });
+  });
 }

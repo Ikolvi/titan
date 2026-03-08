@@ -338,6 +338,28 @@ class Campaign {
   /// Total campaign timeout.
   final Duration timeout;
 
+  /// Optional auth [Stratagem] for automatic login handling.
+  ///
+  /// When specified, the runner detects whether the app is on the
+  /// login screen before each Stratagem by checking if the first
+  /// step's target is visible. If found (login screen detected),
+  /// the runner executes the auth steps automatically, then
+  /// re-navigates to the original `startRoute`.
+  ///
+  /// ```json
+  /// {
+  ///   "authStratagem": {
+  ///     "name": "_auth",
+  ///     "startRoute": "",
+  ///     "steps": [
+  ///       {"id": 1, "action": "enterText", "target": {"label": "Hero Name"}, "value": "Kael"},
+  ///       {"id": 2, "action": "tap", "target": {"label": "Enter the Questboard"}}
+  ///     ]
+  ///   }
+  /// }
+  /// ```
+  final Stratagem? authStratagem;
+
   /// Creates a [Campaign].
   const Campaign({
     required this.name,
@@ -349,6 +371,7 @@ class Campaign {
     this.gauntletIntensity = GauntletIntensity.standard,
     this.failurePolicy = CampaignFailurePolicy.skipDependents,
     this.timeout = const Duration(minutes: 5),
+    this.authStratagem,
   });
 
   // -----------------------------------------------------------------------
@@ -691,6 +714,24 @@ Available actions: ${StratagemAction.values.map((a) => a.name).join(', ')}
     'description': '<description>',
     'tags': ['<tag1>', '<tag2>'],
     'sharedTestData': {'heroName': '<test_hero_name>'},
+    'authStratagem': {
+      'name': '_auth',
+      'description': 'Auto-login when auth screen is detected',
+      'startRoute': '',
+      'steps': [
+        {
+          'id': 1,
+          'action': 'enterText',
+          'target': {'label': '<login_field_label>'},
+          'value': r'${testData.heroName}',
+        },
+        {
+          'id': 2,
+          'action': 'tap',
+          'target': {'label': '<login_button_label>'},
+        },
+      ],
+    },
     'includeGauntlet': false,
     'gauntletIntensity': 'standard',
     'failurePolicy': 'skipDependents',
@@ -712,6 +753,7 @@ Available actions: ${StratagemAction.values.map((a) => a.name).join(', ')}
     'tags': tags,
     'entries': entries.map((e) => e.toJson()).toList(),
     if (sharedTestData != null) 'sharedTestData': sharedTestData,
+    if (authStratagem != null) 'authStratagem': authStratagem!.toJson(),
     'includeGauntlet': includeGauntlet,
     'gauntletIntensity': gauntletIntensity.name,
     'failurePolicy': failurePolicy.name,
@@ -740,6 +782,9 @@ Available actions: ${StratagemAction.values.map((a) => a.name).join(', ')}
         orElse: () => CampaignFailurePolicy.skipDependents,
       ),
       timeout: Duration(milliseconds: json['timeout'] as int? ?? 300000),
+      authStratagem: json['authStratagem'] != null
+          ? Stratagem.fromJson(json['authStratagem'] as Map<String, dynamic>)
+          : null,
     );
   }
 

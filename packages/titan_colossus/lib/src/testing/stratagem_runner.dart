@@ -5,6 +5,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import 'package:titan_atlas/titan_atlas.dart' show Atlas;
+
 import '../recording/glyph.dart';
 import '../recording/tableau.dart';
 import '../recording/tableau_capture.dart';
@@ -20,12 +22,13 @@ import 'verdict.dart';
 /// **StratagemRunner** — executes a [Stratagem] against the live app.
 ///
 /// For each step, the runner:
-/// 1. Captures a [Tableau] (current screen state)
-/// 2. Resolves the target [Glyph] by label/type
-/// 3. Dispatches the action (tap, enter text, scroll, etc.)
-/// 4. Waits for the UI to settle
-/// 5. Validates expectations
-/// 6. Records a [VerdictStep]
+/// 1. Navigates to the Stratagem's `startRoute` (if set)
+/// 2. Captures a [Tableau] (current screen state)
+/// 3. Resolves the target [Glyph] by label/type
+/// 4. Dispatches the action (tap, enter text, scroll, etc.)
+/// 5. Waits for the UI to settle
+/// 6. Validates expectations
+/// 7. Records a [VerdictStep]
 ///
 /// ## Why "StratagemRunner"?
 ///
@@ -56,6 +59,56 @@ class StratagemRunner {
   /// Callback invoked after each step completes.
   final void Function(VerdictStep step)? onStepComplete;
 
+  /// Optional callback to navigate to a route programmatically.
+  ///
+  /// When set, the runner calls this before executing a Stratagem's
+  /// steps if the Stratagem has a non-null [Stratagem.startRoute].
+  /// Also used by the [StratagemAction.navigate] action.
+  ///
+  /// The callback should push/replace to the given route and return
+  /// a [Future] that completes once navigation settles. Typically
+  /// provided by the application's router (e.g. Atlas / GoRouter).
+  ///
+  /// ```dart
+  /// StratagemRunner(
+  ///   shade: shade,
+  ///   navigateToRoute: (route) async {
+  ///     GoRouter.of(context).go(route);
+  ///     await Future.delayed(Duration(milliseconds: 500));
+  ///   },
+  /// );
+  /// ```
+  final Future<void> Function(String route)? navigateToRoute;
+
+  /// Optional auth [Stratagem] for automatic login handling.
+  ///
+  /// When set, the runner checks if the app is on the auth screen
+  /// before each Stratagem execution by resolving the first step's
+  /// target against the current [Tableau]. If found (auth screen
+  /// detected), the runner executes the auth steps automatically,
+  /// then re-navigates to the Stratagem's `startRoute`.
+  ///
+  /// The `authStratagem`'s first step target acts as the login
+  /// detector — if that element is visible, auth is needed.
+  ///
+  /// ```dart
+  /// StratagemRunner(
+  ///   shade: shade,
+  ///   authStratagem: Stratagem(
+  ///     name: '_auth',
+  ///     startRoute: '',
+  ///     steps: [
+  ///       StratagemStep(id: 1, action: StratagemAction.enterText,
+  ///         target: StratagemTarget(label: 'Hero Name'),
+  ///         value: 'Kael'),
+  ///       StratagemStep(id: 2, action: StratagemAction.tap,
+  ///         target: StratagemTarget(label: 'Enter the Questboard')),
+  ///     ],
+  ///   ),
+  /// );
+  /// ```
+  final Stratagem? authStratagem;
+
   /// Pointer ID counter for synthetic events.
   int _pointerCounter = 200;
 
@@ -72,6 +125,8 @@ class StratagemRunner {
     this.defaultSettleTimeout = const Duration(seconds: 2),
     this.defaultStepTimeout = const Duration(seconds: 10),
     this.onStepComplete,
+    this.navigateToRoute,
+    this.authStratagem,
   });
 
   // -----------------------------------------------------------------------
@@ -97,6 +152,25 @@ class StratagemRunner {
     final deadline = DateTime.now().add(stratagem.timeout);
 
     try {
+      // Navigate to startRoute before executing steps
+      if (navigateToRoute != null && stratagem.startRoute.isNotEmpty) {
+        try {
+          await navigateToRoute!(stratagem.startRoute);
+          await _waitForSettle(defaultSettleTimeout);
+        } catch (e) {
+          // Navigation failed — record and continue with current screen
+          _capturedErrors.add('startRoute navigation failed: $e');
+        }
+      }
+
+      // Auth detection: check if auth screen is showing and handle it
+      if (authStratagem != null && authStratagem!.steps.isNotEmpty) {
+        final authNeeded = await _detectAuthScreen();
+        if (authNeeded) {
+          await _executeAuthSteps(stratagem);
+        }
+      }
+
       for (final step in stratagem.steps) {
         // Check total timeout
         if (DateTime.now().isAfter(deadline)) {
@@ -405,17 +479,39 @@ class StratagemRunner {
         }
 
       case StratagemAction.navigate:
-        // Programmatic navigation not directly available here —
-        // Stratagem would need Atlas integration. For now, this
-        // is a placeholder that the Colossus.executeStratagem
-        // method can override with actual navigation.
-        break;
+        // Programmatic navigation via the navigateToRoute callback
+        // or Atlas.go as the default.
+        final route = stratagem.interpolate(step.value ?? '');
+        if (navigateToRoute != null && route.isNotEmpty) {
+          await navigateToRoute!(route);
+        } else if (route.isNotEmpty) {
+          try {
+            Atlas.go(route);
+          } catch (_) {
+            // Atlas not initialized — fall back to Navigator
+            final navigator = _findNavigator();
+            if (navigator != null) {
+              navigator.pushNamed(route);
+            }
+          }
+        }
 
       case StratagemAction.back:
-        // Try to find a back button or call Navigator.pop
-        final navigator = _findNavigator();
-        if (navigator != null && navigator.canPop()) {
-          navigator.pop();
+        // Use Atlas.back when available, fall back to Navigator.pop
+        try {
+          if (Atlas.canBack) {
+            Atlas.back();
+          } else {
+            final navigator = _findNavigator();
+            if (navigator != null && navigator.canPop()) {
+              navigator.pop();
+            }
+          }
+        } catch (_) {
+          final navigator = _findNavigator();
+          if (navigator != null && navigator.canPop()) {
+            navigator.pop();
+          }
         }
 
       case StratagemAction.wait:
@@ -985,6 +1081,61 @@ class StratagemRunner {
     }
 
     return null;
+  }
+
+  // -----------------------------------------------------------------------
+  // Auth detection & handling
+  // -----------------------------------------------------------------------
+
+  /// Detect whether the auth screen is currently showing.
+  ///
+  /// Captures a [Tableau] and checks if the [authStratagem]'s first
+  /// step target resolves. If found, the app is on the auth screen
+  /// (e.g., login page) and auth handling is needed.
+  Future<bool> _detectAuthScreen() async {
+    if (authStratagem == null || authStratagem!.steps.isEmpty) return false;
+
+    final firstStep = authStratagem!.steps.first;
+    if (firstStep.target == null) return false;
+
+    final tableau = await TableauCapture.capture(
+      index: -1,
+      enableScreenCapture: false,
+    );
+
+    final resolved = firstStep.target!.fuzzyResolve(tableau);
+    return resolved != null;
+  }
+
+  /// Execute the [authStratagem]'s steps inline, then re-navigate
+  /// to the original Stratagem's `startRoute`.
+  ///
+  /// Auth steps run silently — their [VerdictStep] results are not
+  /// included in the main Verdict. If a step fails, a captured
+  /// error is recorded but execution continues.
+  Future<void> _executeAuthSteps(Stratagem originalStratagem) async {
+    final auth = authStratagem!;
+
+    for (final step in auth.steps) {
+      try {
+        await _executeStep(step, auth);
+      } catch (e) {
+        _capturedErrors.add('auth step ${step.id} failed: $e');
+      }
+    }
+
+    // Allow the auth transition to settle
+    await _waitForSettle(defaultSettleTimeout);
+
+    // Re-navigate to the original Stratagem's startRoute
+    if (navigateToRoute != null && originalStratagem.startRoute.isNotEmpty) {
+      try {
+        await navigateToRoute!(originalStratagem.startRoute);
+        await _waitForSettle(defaultSettleTimeout);
+      } catch (e) {
+        _capturedErrors.add('Post-auth startRoute navigation failed: $e');
+      }
+    }
   }
 
   // -----------------------------------------------------------------------

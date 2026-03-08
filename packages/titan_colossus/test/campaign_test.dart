@@ -49,6 +49,7 @@ void main() {
     GauntletIntensity gauntletIntensity = GauntletIntensity.standard,
     CampaignFailurePolicy failurePolicy = CampaignFailurePolicy.skipDependents,
     Map<String, dynamic>? sharedTestData,
+    Stratagem? authStratagem,
   }) {
     return Campaign(
       name: name,
@@ -58,6 +59,7 @@ void main() {
       gauntletIntensity: gauntletIntensity,
       failurePolicy: failurePolicy,
       sharedTestData: sharedTestData,
+      authStratagem: authStratagem,
     );
   }
 
@@ -940,6 +942,83 @@ void main() {
 
       // 'c' must come before 'd'
       expect(names.indexOf('c'), lessThan(names.indexOf('d')));
+    });
+  });
+
+  // =========================================================================
+  // Campaign — authStratagem
+  // =========================================================================
+
+  group('Campaign — authStratagem', () {
+    Stratagem makeAuthStratagem() {
+      return const Stratagem(
+        name: '_auth',
+        description: 'Auto-login',
+        startRoute: '',
+        steps: [
+          StratagemStep(
+            id: 1,
+            action: StratagemAction.enterText,
+            target: StratagemTarget(label: 'Hero Name'),
+            value: 'Kael',
+          ),
+          StratagemStep(
+            id: 2,
+            action: StratagemAction.tap,
+            target: StratagemTarget(label: 'Enter the Questboard'),
+          ),
+        ],
+      );
+    }
+
+    test('authStratagem is null by default', () {
+      final campaign = makeCampaign();
+      expect(campaign.authStratagem, isNull);
+    });
+
+    test('constructor accepts authStratagem', () {
+      final auth = makeAuthStratagem();
+      final campaign = makeCampaign(authStratagem: auth);
+      expect(campaign.authStratagem, isNotNull);
+      expect(campaign.authStratagem!.name, '_auth');
+    });
+
+    test('toJson includes authStratagem when set', () {
+      final auth = makeAuthStratagem();
+      final campaign = makeCampaign(authStratagem: auth);
+      final json = campaign.toJson();
+      expect(json.containsKey('authStratagem'), isTrue);
+      expect(json['authStratagem'], isA<Map<String, dynamic>>());
+      expect((json['authStratagem'] as Map<String, dynamic>)['name'], '_auth');
+    });
+
+    test('toJson omits authStratagem when null', () {
+      final campaign = makeCampaign();
+      final json = campaign.toJson();
+      expect(json.containsKey('authStratagem'), isFalse);
+    });
+
+    test('fromJson round-trip preserves authStratagem', () {
+      final auth = makeAuthStratagem();
+      final campaign = makeCampaign(authStratagem: auth);
+      final json = campaign.toJson();
+      final restored = Campaign.fromJson(json);
+      expect(restored.authStratagem, isNotNull);
+      expect(restored.authStratagem!.name, '_auth');
+      expect(restored.authStratagem!.steps, hasLength(2));
+      expect(restored.authStratagem!.steps.first.target?.label, 'Hero Name');
+    });
+
+    test('fromJson without authStratagem produces null', () {
+      final campaign = makeCampaign();
+      final json = campaign.toJson();
+      final restored = Campaign.fromJson(json);
+      expect(restored.authStratagem, isNull);
+    });
+
+    test('template includes authStratagem section', () {
+      final template = Campaign.template;
+      expect(template.containsKey('authStratagem'), isTrue);
     });
   });
 }

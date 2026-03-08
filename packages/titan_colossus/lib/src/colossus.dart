@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show ChangeNotifier;
 import 'dart:io';
 
 import 'package:flutter/scheduler.dart';
+import 'package:titan_atlas/titan_atlas.dart' show Atlas;
 import 'package:titan_bastion/titan_bastion.dart';
 
 import 'alerts/tremor.dart';
@@ -1207,6 +1208,10 @@ class Colossus extends Pillar {
   /// Resolves prerequisites, performs topological sort, and executes
   /// Stratagems in dependency order.
   ///
+  /// The [navigateToRoute] callback is used to programmatically navigate
+  /// to each Stratagem's `startRoute` before its steps execute. When
+  /// `null`, the runner navigates via [Atlas.go] as the default.
+  ///
   /// ```dart
   /// final result = await Colossus.instance.executeCampaign(campaign);
   /// print(result.passRate);
@@ -1214,6 +1219,7 @@ class Colossus extends Pillar {
   Future<CampaignResult> executeCampaign(
     Campaign campaign, {
     bool captureScreenshots = false,
+    Future<void> Function(String route)? navigateToRoute,
   }) async {
     _chronicle?.info(
       'Executing Campaign: ${campaign.name} '
@@ -1224,6 +1230,8 @@ class Colossus extends Pillar {
       shade: shade,
       captureScreenshots: captureScreenshots,
       defaultStepTimeout: campaign.timeout,
+      navigateToRoute: navigateToRoute ?? _defaultNavigateToRoute,
+      authStratagem: campaign.authStratagem,
     );
 
     final result = await campaign.execute(runner: runner, terrain: terrain);
@@ -1248,9 +1256,29 @@ class Colossus extends Pillar {
   Future<CampaignResult> executeCampaignJson(
     Map<String, dynamic> json, {
     bool captureScreenshots = false,
+    Future<void> Function(String route)? navigateToRoute,
   }) {
     final campaign = Campaign.fromJson(json);
-    return executeCampaign(campaign, captureScreenshots: captureScreenshots);
+    return executeCampaign(
+      campaign,
+      captureScreenshots: captureScreenshots,
+      navigateToRoute: navigateToRoute,
+    );
+  }
+
+  /// Default navigation callback for the [StratagemRunner].
+  ///
+  /// Uses [Atlas.go] for declarative navigation. If Atlas is
+  /// not initialized (no router configured), the call is caught
+  /// and silently ignored so the remaining steps still execute.
+  Future<void> _defaultNavigateToRoute(String route) async {
+    try {
+      Atlas.go(route);
+      // Allow the frame to settle after navigation
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    } catch (_) {
+      // Atlas not initialized — skip programmatic navigation
+    }
   }
 
   /// Analyze verdicts and produce a [DebriefReport].
