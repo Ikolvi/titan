@@ -648,6 +648,90 @@ class Scry {
     };
   }
 
+  /// Build a Campaign JSON from multiple action requests.
+  ///
+  /// Combines several actions into a single Campaign structure.
+  /// Each action in [actions] is a map with:
+  /// - `action` (required) — the action type
+  /// - `label` (optional) — target element label
+  /// - `value` (optional) — text value or route
+  ///
+  /// Text-entry actions automatically get `waitForElement` pre-steps
+  /// and `dismissKeyboard` post-steps, just like [buildActionCampaign].
+  ///
+  /// ```dart
+  /// const scry = Scry();
+  /// final campaign = scry.buildMultiActionCampaign([
+  ///   {'action': 'enterText', 'label': 'Hero Name', 'value': 'Kael'},
+  ///   {'action': 'tap', 'label': 'Enter the Questboard'},
+  /// ]);
+  /// ```
+  Map<String, dynamic> buildMultiActionCampaign(
+    List<Map<String, dynamic>> actions, {
+    int timeout = 5000,
+  }) {
+    var stepId = 1;
+    final steps = <Map<String, dynamic>>[];
+
+    for (final entry in actions) {
+      final action = entry['action'] as String;
+      final label = entry['label'] as String?;
+      final value = entry['value'] as String?;
+
+      final target = <String, dynamic>{};
+      if (label != null) target['label'] = label;
+
+      if (target.isEmpty && action != 'back' && action != 'navigate') {
+        target['label'] = label ?? '';
+      }
+
+      // Pre-step: waitForElement for text actions
+      if (_textActions.contains(action) && target.isNotEmpty) {
+        steps.add({
+          'id': stepId++,
+          'action': 'waitForElement',
+          'target': Map<String, dynamic>.from(target),
+          'timeout': timeout,
+        });
+      }
+
+      final step = <String, dynamic>{
+        'id': stepId++,
+        'action': action,
+        if (target.isNotEmpty) 'target': target,
+        // ignore: use_null_aware_elements
+        if (value != null) 'value': value,
+        if (action == 'enterText') 'clearFirst': true,
+        if (action == 'waitForElement' || action == 'waitForElementGone')
+          'timeout': timeout,
+      };
+
+      if (action == 'navigate' && value != null) {
+        step['target'] = {'route': value};
+      }
+
+      steps.add(step);
+
+      // Post-step: dismissKeyboard for text actions
+      if (_textActions.contains(action)) {
+        steps.add({'id': stepId++, 'action': 'dismissKeyboard'});
+      }
+    }
+
+    return {
+      'name': '_scry_multi_action',
+      'entries': [
+        {
+          'stratagem': {
+            'name': '_scry_steps',
+            'startRoute': '',
+            'steps': steps,
+          },
+        },
+      ],
+    };
+  }
+
   /// Format the result of a `scry_act` execution.
   ///
   /// [action] — the action that was performed.
@@ -709,6 +793,74 @@ class Scry {
     buf.writeln();
 
     // New screen state
+    buf.write(formatGaze(newGaze));
+
+    return buf.toString();
+  }
+
+  /// Format the result of a multi-action `scry_act` execution.
+  ///
+  /// Similar to [formatActionResult] but lists all actions performed.
+  String formatMultiActionResult({
+    required List<Map<String, dynamic>> actions,
+    required Map<String, dynamic>? result,
+    required ScryGaze newGaze,
+  }) {
+    final buf = StringBuffer();
+
+    final passRate = result?['passRate'] as num?;
+    final succeeded = passRate != null && passRate == 1.0;
+
+    if (succeeded) {
+      buf.writeln('# ✅ All Actions Succeeded');
+    } else {
+      buf.writeln('# ❌ Actions Failed');
+    }
+    buf.writeln();
+
+    // List all actions
+    buf.writeln('**Actions performed** (${actions.length}):');
+    for (var i = 0; i < actions.length; i++) {
+      final a = actions[i];
+      final action = a['action'] as String;
+      final label = a['label'] as String?;
+      final value = a['value'] as String?;
+      final target = label ?? value ?? '';
+      final detail = value != null && action == 'enterText'
+          ? ' → "$value"'
+          : '';
+      buf.writeln('${i + 1}. `$action`'
+          '${target.isNotEmpty ? ' on "$target"' : ''}'
+          '$detail');
+    }
+    buf.writeln();
+
+    if (passRate != null) {
+      buf.writeln('**Pass Rate**: $passRate');
+    }
+
+    // If failed, include error details
+    if (!succeeded && result != null) {
+      final verdicts = result['verdicts'] as List<dynamic>? ?? [];
+      for (final v in verdicts) {
+        final verdict = v as Map<String, dynamic>;
+        final steps = verdict['steps'] as List<dynamic>? ?? [];
+        for (final s in steps) {
+          final step = s as Map<String, dynamic>;
+          if (step['passed'] != true) {
+            final error = step['error'] as String?;
+            if (error != null) {
+              buf.writeln('**Error** (step ${step['id']}): $error');
+            }
+          }
+        }
+      }
+    }
+
+    buf.writeln();
+    buf.writeln('---');
+    buf.writeln();
+
     buf.write(formatGaze(newGaze));
 
     return buf.toString();

@@ -1168,4 +1168,203 @@ void main() {
       expect(gaze.gated, hasLength(1));
     });
   });
+
+  // ===================================================================
+  // Scry.buildMultiActionCampaign
+  // ===================================================================
+  group('Scry.buildMultiActionCampaign', () {
+    test('combines enterText + tap into one campaign', () {
+      final campaign = scry.buildMultiActionCampaign([
+        {'action': 'enterText', 'label': 'Hero Name', 'value': 'Kael'},
+        {'action': 'tap', 'label': 'Enter the Questboard'},
+      ]);
+
+      expect(campaign['name'], '_scry_multi_action');
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      expect(stratagem['name'], '_scry_steps');
+      expect(stratagem['startRoute'], '');
+
+      final steps = stratagem['steps'] as List;
+      // enterText: waitForElement + enterText + dismissKeyboard = 3
+      // tap: 1
+      // Total: 4
+      expect(steps, hasLength(4));
+
+      // Step 1: waitForElement for "Hero Name"
+      expect(steps[0]['action'], 'waitForElement');
+      expect(steps[0]['target']['label'], 'Hero Name');
+
+      // Step 2: enterText "Kael" into "Hero Name"
+      expect(steps[1]['action'], 'enterText');
+      expect(steps[1]['target']['label'], 'Hero Name');
+      expect(steps[1]['value'], 'Kael');
+      expect(steps[1]['clearFirst'], true);
+
+      // Step 3: dismissKeyboard
+      expect(steps[2]['action'], 'dismissKeyboard');
+
+      // Step 4: tap "Enter the Questboard"
+      expect(steps[3]['action'], 'tap');
+      expect(steps[3]['target']['label'], 'Enter the Questboard');
+    });
+
+    test('multiple text fields get individual pre/post steps', () {
+      final campaign = scry.buildMultiActionCampaign([
+        {'action': 'enterText', 'label': 'Username', 'value': 'alice'},
+        {'action': 'enterText', 'label': 'Password', 'value': 'secret'},
+        {'action': 'tap', 'label': 'Login'},
+      ]);
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+
+      // 2 × (wait + enter + dismiss) + 1 tap = 7
+      expect(steps, hasLength(7));
+
+      expect(steps[0]['action'], 'waitForElement');
+      expect(steps[1]['action'], 'enterText');
+      expect(steps[1]['value'], 'alice');
+      expect(steps[2]['action'], 'dismissKeyboard');
+
+      expect(steps[3]['action'], 'waitForElement');
+      expect(steps[4]['action'], 'enterText');
+      expect(steps[4]['value'], 'secret');
+      expect(steps[5]['action'], 'dismissKeyboard');
+
+      expect(steps[6]['action'], 'tap');
+      expect(steps[6]['target']['label'], 'Login');
+    });
+
+    test('step IDs are sequential', () {
+      final campaign = scry.buildMultiActionCampaign([
+        {'action': 'enterText', 'label': 'Name', 'value': 'X'},
+        {'action': 'tap', 'label': 'Go'},
+      ]);
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+
+      for (var i = 0; i < steps.length; i++) {
+        expect(steps[i]['id'], i + 1);
+      }
+    });
+
+    test('non-text actions have no pre/post steps', () {
+      final campaign = scry.buildMultiActionCampaign([
+        {'action': 'tap', 'label': 'Button A'},
+        {'action': 'tap', 'label': 'Button B'},
+      ]);
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+
+      expect(steps, hasLength(2));
+      expect(steps[0]['action'], 'tap');
+      expect(steps[1]['action'], 'tap');
+    });
+
+    test('navigate action uses route target', () {
+      final campaign = scry.buildMultiActionCampaign([
+        {'action': 'navigate', 'value': '/quests'},
+        {'action': 'tap', 'label': 'Refresh'},
+      ]);
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+
+      expect(steps, hasLength(2));
+      expect(steps[0]['target']['route'], '/quests');
+      expect(steps[1]['target']['label'], 'Refresh');
+    });
+
+    test('back action has no target', () {
+      final campaign = scry.buildMultiActionCampaign([
+        {'action': 'back'},
+      ]);
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+
+      expect(steps, hasLength(1));
+      expect(steps[0]['action'], 'back');
+      expect(steps[0].containsKey('target'), isFalse);
+    });
+  });
+
+  // ===================================================================
+  // Scry.formatMultiActionResult
+  // ===================================================================
+  group('Scry.formatMultiActionResult', () {
+    test('formats successful multi-action result', () {
+      final gaze = ScryGaze(
+        elements: const [
+          ScryElement(
+            kind: ScryElementKind.content,
+            label: 'Welcome',
+            widgetType: 'Text',
+          ),
+        ],
+        route: '/home',
+        glyphCount: 1,
+      );
+
+      final md = scry.formatMultiActionResult(
+        actions: [
+          {'action': 'enterText', 'label': 'Hero Name', 'value': 'Kael'},
+          {'action': 'tap', 'label': 'Enter the Questboard'},
+        ],
+        result: {'passRate': 1.0},
+        newGaze: gaze,
+      );
+
+      expect(md, contains('✅ All Actions Succeeded'));
+      expect(md, contains('Actions performed'));
+      expect(md, contains('`enterText` on "Hero Name" → "Kael"'));
+      expect(md, contains('`tap` on "Enter the Questboard"'));
+      expect(md, contains('Welcome'));
+    });
+
+    test('formats failed multi-action result with error', () {
+      final gaze = ScryGaze(
+        elements: const [],
+        route: '/login',
+        glyphCount: 0,
+      );
+
+      final md = scry.formatMultiActionResult(
+        actions: [
+          {'action': 'enterText', 'label': 'Email', 'value': 'test@x.com'},
+          {'action': 'tap', 'label': 'Submit'},
+        ],
+        result: {
+          'passRate': 0.5,
+          'verdicts': [
+            {
+              'steps': [
+                {'id': 1, 'passed': true},
+                {'id': 2, 'passed': false, 'error': 'Element not found'},
+              ],
+            },
+          ],
+        },
+        newGaze: gaze,
+      );
+
+      expect(md, contains('❌ Actions Failed'));
+      expect(md, contains('Element not found'));
+      expect(md, contains('step 2'));
+    });
+  });
 }

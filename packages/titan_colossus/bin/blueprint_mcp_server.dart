@@ -485,42 +485,41 @@ class _BlueprintMcpServer {
           {
             'name': 'scry_act',
             'description':
-                'Execute a single action on the live app and return '
-                'the resulting screen state. This is the real-time '
-                'agent interface — the AI performs one action at a '
-                'time and observes the result. Supports all Flutter '
-                'interactions: tap, enterText, clearText, scroll, '
+                'Execute one or more actions on the live app and '
+                'return the resulting screen state. Supports single '
+                'actions (action + label + value) or multiple '
+                'actions via the actions array. For multi-step '
+                'flows (e.g., fill a form and tap submit), use the '
+                'actions array to combine them in one call. '
+                'Supports: tap, enterText, clearText, scroll, '
                 'back, longPress, swipe, navigate, waitForElement, '
                 'submitField, dismissKeyboard, and more. For text '
                 'entry: use enterText with label (the field\'s '
                 'visible label) and value (text to type). The '
                 'keyboard is automatically dismissed after text '
-                'actions. After the action, the new screen state '
-                'is automatically returned (no need to call scry '
-                'separately). IMPORTANT: If an element is marked '
-                'with ⚠️ "requires permission" in the scry output, '
-                'ask the user for approval before acting on it.',
+                'actions. After the action(s), the new screen state '
+                'is automatically returned. IMPORTANT: If an '
+                'element is marked with ⚠️ "requires permission" '
+                'in the scry output, ask the user for approval '
+                'before acting on it.',
             'inputSchema': {
               'type': 'object',
-              'required': ['action'],
               'properties': {
                 'action': {
                   'type': 'string',
                   'description':
-                      'The action to perform. One of: tap, enterText, '
-                      'clearText, scroll, back, longPress, doubleTap, '
-                      'swipe, navigate, waitForElement, '
+                      'Single action to perform. One of: tap, '
+                      'enterText, clearText, scroll, back, longPress, '
+                      'doubleTap, swipe, navigate, waitForElement, '
                       'waitForElementGone, pressKey, submitField, '
-                      'toggleSwitch, toggleCheckbox, selectDropdown.',
+                      'toggleSwitch, toggleCheckbox, selectDropdown. '
+                      'Use this OR actions array, not both.',
                 },
                 'label': {
                   'type': 'string',
                   'description':
-                      'Target element by its visible label text. '
-                      'Used for tap, longPress, doubleTap, swipe, '
-                      'enterText, clearText, waitForElement, '
-                      'waitForElementGone. For text fields, use the '
-                      'field label shown in the scry output.',
+                      'Target element by its visible label text '
+                      '(for single action mode).',
                 },
                 'fieldId': {
                   'type': 'string',
@@ -533,7 +532,43 @@ class _BlueprintMcpServer {
                   'type': 'string',
                   'description':
                       'Value to enter (for enterText) or route path '
-                      '(for navigate).',
+                      '(for navigate). Used in single action mode.',
+                },
+                'actions': {
+                  'type': 'array',
+                  'description':
+                      'Array of actions to perform in sequence. '
+                      'Each item has action (required), label, '
+                      'fieldId, and value. Example: '
+                      '[{"action":"enterText","label":"Hero Name",'
+                      '"value":"Kael"},{"action":"tap",'
+                      '"label":"Submit"}]',
+                  'items': {
+                    'type': 'object',
+                    'required': ['action'],
+                    'properties': {
+                      'action': {
+                        'type': 'string',
+                        'description': 'The action to perform.',
+                      },
+                      'label': {
+                        'type': 'string',
+                        'description':
+                            'Target element by visible label text.',
+                      },
+                      'fieldId': {
+                        'type': 'string',
+                        'description':
+                            'Target text field by field ID '
+                            '(auto-resolved to label).',
+                      },
+                      'value': {
+                        'type': 'string',
+                        'description':
+                            'Text to enter or route to navigate to.',
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -2154,13 +2189,22 @@ class _BlueprintMcpServer {
     }
   }
 
-  /// Execute a single action on the live app.
+  /// Execute one or more actions on the live app.
   Future<String> _scryAct(Map<String, dynamic> args) async {
+    final actionsList = args['actions'] as List<dynamic>?;
+
+    // Multi-action mode
+    if (actionsList != null && actionsList.isNotEmpty) {
+      return _scryActMulti(actionsList);
+    }
+
+    // Single-action mode
     final action = args['action'] as String?;
     if (action == null || action.isEmpty) {
       return '# Scry Act Failed\n\n'
-          'Missing required parameter: `action`. '
-          'Specify one of: tap, enterText, clearText, scroll, back, '
+          'Missing required parameter: provide either `action` (single) '
+          'or `actions` (array) parameter. '
+          'Available actions: tap, enterText, clearText, scroll, back, '
           'longPress, doubleTap, swipe, navigate, waitForElement, '
           'waitForElementGone, pressKey, submitField, dismissKeyboard.';
     }
@@ -2183,15 +2227,8 @@ class _BlueprintMcpServer {
 
     try {
       // Resolve fieldId → label when only fieldId is provided.
-      // StratagemTarget matches by label, not fieldId, so we need
-      // to look up the field's display label from the current glyphs.
       if (label == null && fieldId != null) {
-        final blueprint = await _fetchBlueprintData();
-        final tableau =
-            blueprint?['currentTableau'] as Map<String, dynamic>? ??
-            const {};
-        final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
-        label = _scryEngine.resolveFieldLabel(glyphs, fieldId);
+        label = await _resolveFieldId(fieldId);
         if (label == null) {
           return '# Scry Act Failed\n\n'
               'Could not find a text field with fieldId "$fieldId" on the '
@@ -2210,18 +2247,10 @@ class _BlueprintMcpServer {
       final result = await _executeRawCampaign(campaign);
 
       // Settle delay for screen to update after navigation transitions.
-      // Actions like sign-out trigger reactive redirects (CoreRefresh)
-      // that need several frames to complete the full navigation chain.
       await Future<void>.delayed(const Duration(milliseconds: 1000));
 
       // Observe the new screen state
-      final blueprint = await _fetchBlueprintData();
-      final tableau =
-          blueprint?['currentTableau'] as Map<String, dynamic>? ?? const {};
-      final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
-      final route = tableau['route'] as String?;
-
-      final newGaze = _scryEngine.observe(glyphs, route: route);
+      final newGaze = await _observeCurrentScreen();
 
       return _scryEngine.formatActionResult(
         action: action,
@@ -2235,6 +2264,105 @@ class _BlueprintMcpServer {
     } on TimeoutException {
       return '# Scry Act Failed\n\nRelay did not respond (timeout).';
     }
+  }
+
+  /// Execute multiple actions in sequence on the live app.
+  Future<String> _scryActMulti(List<dynamic> actionsList) async {
+    try {
+      // Validate and resolve each action
+      final resolvedActions = <Map<String, dynamic>>[];
+      List<dynamic>? cachedGlyphs;
+
+      for (var i = 0; i < actionsList.length; i++) {
+        final entry = actionsList[i] as Map<String, dynamic>;
+        final action = entry['action'] as String?;
+        if (action == null || action.isEmpty) {
+          return '# Scry Act Failed\n\n'
+              'Action ${i + 1} is missing the `action` field.';
+        }
+
+        var label = entry['label'] as String?;
+        final fieldId = entry['fieldId'] as String?;
+        final value = entry['value'] as String?;
+
+        // Resolve fieldId → label
+        if (label == null && fieldId != null) {
+          // Lazy-load glyphs once for all resolutions
+          if (cachedGlyphs == null) {
+            final blueprint = await _fetchBlueprintData();
+            final tableau =
+                blueprint?['currentTableau'] as Map<String, dynamic>? ??
+                const {};
+            cachedGlyphs = tableau['glyphs'] as List<dynamic>? ?? [];
+          }
+          label = _scryEngine.resolveFieldLabel(cachedGlyphs, fieldId);
+          if (label == null) {
+            return '# Scry Act Failed\n\n'
+                'Action ${i + 1}: could not find a text field with '
+                'fieldId "$fieldId". Use `scry` to see available fields.';
+          }
+        }
+
+        // Validate target for actions that need one
+        if (label == null &&
+            action != 'back' &&
+            action != 'navigate' &&
+            action != 'dismissKeyboard' &&
+            action != 'scroll') {
+          return '# Scry Act Failed\n\n'
+              'Action ${i + 1} (`$action`): missing target. Provide '
+              '`label` or `fieldId`.';
+        }
+
+        resolvedActions.add({
+          'action': action,
+          // ignore: use_null_aware_elements
+          if (label != null) 'label': label,
+          // ignore: use_null_aware_elements
+          if (value != null) 'value': value,
+        });
+      }
+
+      // Build and execute the combined campaign
+      final campaign =
+          _scryEngine.buildMultiActionCampaign(resolvedActions);
+      final result = await _executeRawCampaign(campaign);
+
+      // Settle delay
+      await Future<void>.delayed(const Duration(milliseconds: 1000));
+
+      // Observe the new screen state
+      final newGaze = await _observeCurrentScreen();
+
+      return _scryEngine.formatMultiActionResult(
+        actions: resolvedActions,
+        result: result,
+        newGaze: newGaze,
+      );
+    } on SocketException {
+      return '# Scry Act Failed\n\nCannot connect to Relay.';
+    } on TimeoutException {
+      return '# Scry Act Failed\n\nRelay did not respond (timeout).';
+    }
+  }
+
+  /// Resolve a fieldId to its display label from current screen glyphs.
+  Future<String?> _resolveFieldId(String fieldId) async {
+    final blueprint = await _fetchBlueprintData();
+    final tableau =
+        blueprint?['currentTableau'] as Map<String, dynamic>? ?? const {};
+    final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
+    return _scryEngine.resolveFieldLabel(glyphs, fieldId);
+  }
+
+  /// Observe the current screen and return a [ScryGaze].
+  Future<ScryGaze> _observeCurrentScreen() async {
+    final blueprint = await _fetchBlueprintData();
+    final tableau =
+        blueprint?['currentTableau'] as Map<String, dynamic>? ?? const {};
+    final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
+    final route = tableau['route'] as String?;
+    return _scryEngine.observe(glyphs, route: route);
   }
 
   // -----------------------------------------------------------------------
