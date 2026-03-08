@@ -477,14 +477,22 @@ class _BlueprintMcpServer {
                 'BottomSheet), overlap/occlusion detection (elements '
                 'behind dialogs are marked obscured), widget Keys '
                 'for stable targeting, repeated-element multiplicity '
-                '(e.g. 3× "Delete" buttons with indices), and form '
+                '(e.g. 3× "Delete" buttons with indices), form '
                 'validation status (filled/empty/disabled fields, '
-                'validation errors). Use this to understand what is '
-                'on screen before deciding what action to take with '
-                'scry_act. Together, scry + scry_act form a real-time '
-                'agent loop: observe → decide → act → observe again. '
-                'No pre-recorded stratagems needed — interact with '
-                'the live app directly.',
+                'validation errors), semantic landmarks (page title, '
+                'primary action, back/search availability), scroll '
+                'inventory (viewport analysis, below-fold content), '
+                'element grouping by container (Card, ListTile), '
+                'target stability scoring (0-100 per element: key=100, '
+                'fieldId=90, uniqueLabel=70, indexedLabel=40), '
+                'reachability analysis (disabled/obscured/offscreen '
+                'elements marked unreachable), and visual prominence '
+                '(area × region weight). Use this to understand what '
+                'is on screen before deciding what action to take '
+                'with scry_act. Together, scry + scry_act form a '
+                'real-time agent loop: observe → decide → act → '
+                'observe again. No pre-recorded stratagems needed — '
+                'interact with the live app directly.',
             'inputSchema': {'type': 'object', 'properties': {}},
           },
           {
@@ -502,15 +510,18 @@ class _BlueprintMcpServer {
                 'entry: use enterText with label (the field\'s '
                 'visible label) and value (text to type). The '
                 'keyboard is automatically dismissed after text '
-                'actions. TARGETING: prefer key over label when '
-                'available — keys survive i18n changes. For '
-                'repeated elements (e.g. 3 "Delete" buttons), '
-                'use key to target a specific one. Avoid acting '
-                'on obscured elements. After the action(s), the '
-                'new screen state is automatically returned. '
-                'IMPORTANT: If an element is marked with ⚠️ '
-                '"requires permission" in the scry output, ask '
-                'the user for approval before acting on it.',
+                'actions. TARGETING: check targetScore and '
+                'targetStrategy in scry output — prefer key '
+                '(score=100) over fieldId (90) over label (70). '
+                'For repeated elements (e.g. 3 "Delete" buttons), '
+                'use key to target a specific one. Only act on '
+                'reachable elements (reachable=true) — disabled, '
+                'obscured, or offscreen elements are unreachable. '
+                'After the action(s), the new screen state is '
+                'automatically returned. IMPORTANT: If an element '
+                'is marked with ⚠️ "requires permission" in the '
+                'scry output, ask the user for approval before '
+                'acting on it.',
             'inputSchema': {
               'type': 'object',
               'properties': {
@@ -606,9 +617,11 @@ class _BlueprintMcpServer {
                 'Must call scry at least once beforehand. Returns '
                 'a structured diff showing route changes, screen '
                 'type transitions, new/removed elements, value '
-                'changes, occlusion changes, and form status '
-                'updates. Also includes the full current screen '
-                'observation with spatial layout and form state.',
+                'changes, occlusion changes, form status updates, '
+                'landmark changes, and scroll position shifts. '
+                'Also includes the full current screen observation '
+                'with spatial layout, landmarks, scroll info, '
+                'element groups, and reachability.',
             'inputSchema': {'type': 'object', 'properties': {}},
           },
         ],
