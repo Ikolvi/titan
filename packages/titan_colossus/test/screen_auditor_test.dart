@@ -16,8 +16,11 @@ void main() {
     'wt': widgetType,
     'l': label,
     'ia': interactive,
+    // ignore: use_null_aware_elements
     if (interactionType != null) 'it': interactionType,
+    // ignore: use_null_aware_elements
     if (semanticRole != null) 'sr': semanticRole,
+    // ignore: use_null_aware_elements
     if (ancestors != null) 'anc': ancestors,
     'x': 0.0,
     'y': 0.0,

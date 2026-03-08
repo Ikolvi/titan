@@ -69,6 +69,7 @@ export 'src/testing/auth_stratagem_generator.dart';
 export 'src/testing/campaign.dart';
 export 'src/testing/debrief.dart';
 export 'src/testing/screen_auditor.dart';
+export 'src/testing/scry.dart';
 export 'src/testing/stratagem.dart';
 export 'src/testing/stratagem_runner.dart';
 export 'src/testing/verdict.dart';

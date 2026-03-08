@@ -62,6 +62,7 @@ import 'dart:io';
 
 import 'package:titan_colossus/src/testing/auth_stratagem_generator.dart';
 import 'package:titan_colossus/src/testing/screen_auditor.dart';
+import 'package:titan_colossus/src/testing/scry.dart';
 
 /// MCP Server for Titan Blueprint data.
 ///
@@ -464,6 +465,73 @@ class _BlueprintMcpServer {
               },
             },
           },
+          {
+            'name': 'scry',
+            'description':
+                'Observe the current live app screen in real-time. '
+                'Returns a structured, AI-actionable view of all '
+                'visible elements: buttons, text fields, navigation '
+                'tabs, and content. Use this to understand what is '
+                'on screen before deciding what action to take with '
+                'scry_act. Together, scry + scry_act form a real-time '
+                'agent loop: observe → decide → act → observe again. '
+                'No pre-recorded stratagems needed — interact with '
+                'the live app directly.',
+            'inputSchema': {
+              'type': 'object',
+              'properties': {},
+            },
+          },
+          {
+            'name': 'scry_act',
+            'description':
+                'Execute a single action on the live app and return '
+                'the resulting screen state. This is the real-time '
+                'agent interface — the AI performs one action at a '
+                'time and observes the result. Supports all Flutter '
+                'interactions: tap, enterText, clearText, scroll, '
+                'back, longPress, swipe, navigate, waitForElement, '
+                'and more. After the action, the new screen state '
+                'is automatically returned (no need to call scry '
+                'separately). IMPORTANT: If an element is marked '
+                'with ⚠️ "requires permission" in the scry output, '
+                'ask the user for approval before acting on it.',
+            'inputSchema': {
+              'type': 'object',
+              'required': ['action'],
+              'properties': {
+                'action': {
+                  'type': 'string',
+                  'description':
+                      'The action to perform. One of: tap, enterText, '
+                      'clearText, scroll, back, longPress, doubleTap, '
+                      'swipe, navigate, waitForElement, '
+                      'waitForElementGone, pressKey, submitField, '
+                      'toggleSwitch, toggleCheckbox, selectDropdown.',
+                },
+                'label': {
+                  'type': 'string',
+                  'description':
+                      'Target element by its visible label text. '
+                      'Used for tap, longPress, doubleTap, swipe, '
+                      'waitForElement, waitForElementGone.',
+                },
+                'fieldId': {
+                  'type': 'string',
+                  'description':
+                      'Target text field by its field ID. Used for '
+                      'enterText, clearText. Get field IDs from the '
+                      'scry output.',
+                },
+                'value': {
+                  'type': 'string',
+                  'description':
+                      'Value to enter (for enterText) or route path '
+                      '(for navigate).',
+                },
+              },
+            },
+          },
         ],
       },
       'id': id,
@@ -488,6 +556,8 @@ class _BlueprintMcpServer {
       'generate_auth_stratagem',
       'generate_campaign',
       'audit_screen',
+      'scry',
+      'scry_act',
     };
 
     if (relayOnlyTools.contains(toolName)) {
@@ -498,6 +568,8 @@ class _BlueprintMcpServer {
         'generate_auth_stratagem' => await _generateAuthStratagem(toolArgs),
         'generate_campaign' => await _generateCampaign(toolArgs),
         'audit_screen' => await _auditScreen(toolArgs),
+        'scry' => await _scry(),
+        'scry_act' => await _scryAct(toolArgs),
         _ => 'Unknown tool: $toolName',
       };
 
@@ -1765,6 +1837,7 @@ class _BlueprintMcpServer {
 
   /// Instance of the screen auditor for snapshot comparison.
   static const _screenAuditor = ScreenAuditor();
+  static const _scryEngine = Scry();
 
   /// Automatically detect data-binding bugs via a full
   /// sign-out → re-login cycle.
@@ -2038,6 +2111,132 @@ class _BlueprintMcpServer {
           'with ColossusPlugin(enableRelay: true)?';
     } on TimeoutException {
       return 'Relay did not respond (timeout)';
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Scry — Real-Time AI Agent Interface
+  // -----------------------------------------------------------------------
+
+  /// Observe the current screen state.
+  Future<String> _scry() async {
+    try {
+      final blueprint = await _fetchBlueprintData();
+      if (blueprint == null) {
+        return '# Scry Failed\n\n'
+            'Could not connect to Relay. '
+            'Is the app running with ColossusPlugin(enableRelay: true)?';
+      }
+
+      final tableau =
+          blueprint['currentTableau'] as Map<String, dynamic>? ?? const {};
+      final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
+      final route = tableau['route'] as String?;
+
+      if (glyphs.isEmpty) {
+        return '# Scry — Empty Screen\n\n'
+            'The screen has no visible elements. '
+            'The app may be loading or in a transition state.';
+      }
+
+      final gaze = _scryEngine.observe(glyphs, route: route);
+      return _scryEngine.formatGaze(gaze);
+    } on SocketException {
+      return '# Scry Failed\n\nCannot connect to Relay.';
+    } on TimeoutException {
+      return '# Scry Failed\n\nRelay did not respond (timeout).';
+    }
+  }
+
+  /// Execute a single action on the live app.
+  Future<String> _scryAct(Map<String, dynamic> args) async {
+    final action = args['action'] as String?;
+    if (action == null || action.isEmpty) {
+      return '# Scry Act Failed\n\n'
+          'Missing required parameter: `action`. '
+          'Specify one of: tap, enterText, clearText, scroll, back, '
+          'longPress, doubleTap, swipe, navigate, waitForElement, '
+          'waitForElementGone, pressKey, submitField.';
+    }
+
+    final label = args['label'] as String?;
+    final fieldId = args['fieldId'] as String?;
+    final value = args['value'] as String?;
+
+    if (label == null && fieldId == null && action != 'back') {
+      return '# Scry Act Failed\n\n'
+          'Missing target: provide `label` or `fieldId` to identify '
+          'the element to interact with. Use `scry` first to see '
+          'available elements.';
+    }
+
+    try {
+      // Build and execute a 1-step campaign
+      final campaign = _scryEngine.buildActionCampaign(
+        action: action,
+        label: label,
+        fieldId: fieldId,
+        value: value,
+      );
+
+      final result = await _executeRawCampaign(campaign);
+
+      // Brief settle delay for screen to update
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      // Observe the new screen state
+      final blueprint = await _fetchBlueprintData();
+      final tableau =
+          blueprint?['currentTableau'] as Map<String, dynamic>? ?? const {};
+      final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
+      final route = tableau['route'] as String?;
+
+      final newGaze = _scryEngine.observe(glyphs, route: route);
+
+      return _scryEngine.formatActionResult(
+        action: action,
+        label: label,
+        value: value,
+        result: result,
+        newGaze: newGaze,
+      );
+    } on SocketException {
+      return '# Scry Act Failed\n\nCannot connect to Relay.';
+    } on TimeoutException {
+      return '# Scry Act Failed\n\nRelay did not respond (timeout).';
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Relay helpers
+  // -----------------------------------------------------------------------
+
+  /// Fetch the full blueprint data from Relay (includes tableau + route).
+  Future<Map<String, dynamic>?> _fetchBlueprintData() async {
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 5);
+
+      final request = await client.getUrl(_relayUri('/blueprint'));
+      _relayHeaders.forEach(request.headers.set);
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
+
+      if (response.statusCode != 200) {
+        await response.drain<void>();
+        return null;
+      }
+
+      final body = await response.transform(utf8.decoder).join();
+      return jsonDecode(body) as Map<String, dynamic>;
+    } on SocketException {
+      return null;
+    } on TimeoutException {
+      return null;
+    } finally {
+      client.close();
     }
   }
 
