@@ -767,7 +767,8 @@ The MCP server reads these files for static analysis tools (`get_terrain`, `get_
 | `--transport` | `stdio` | Transport type: `stdio`, `sse`, `ws`, `streamable`, or `auto` |
 | `--tls-cert` | *(none)* | Path to TLS certificate chain (PEM). Enables HTTPS/WSS when paired with `--tls-key` |
 | `--tls-key` | *(none)* | Path to TLS private key (PEM). Enables HTTPS/WSS when paired with `--tls-cert` |
-| `--auth-token` | *(none)* | Require Bearer token authentication on all data endpoints (health check remains public) |
+| `--auth-token` | *(none)* | Add a Bearer token for authentication (repeatable for multiple tokens) |
+| `--auth-tokens-file` | *(none)* | Path to a file containing tokens (one per line). File changes are hot-reloaded |
 
 ### TLS / SSL
 
@@ -804,7 +805,7 @@ All HTTP-based transports support Bearer token authentication when
 remains public so monitoring tools can verify the server is running.
 
 ```bash
-# Start the server with authentication
+# Start the server with a single token
 dart run titan_colossus:blueprint_mcp_server \
   --transport auto --auto-port 3001 \
   --auth-token my-secret-token
@@ -833,13 +834,57 @@ final client = McpWebSocketClient(
 await client.connect();
 ```
 
+#### Multiple Tokens
+
+Pass `--auth-token` multiple times to accept several tokens concurrently.
+This is useful during key rotation when both old and new tokens must work
+simultaneously:
+
+```bash
+dart run titan_colossus:blueprint_mcp_server \
+  --transport auto --auto-port 3001 \
+  --auth-token old-token \
+  --auth-token new-token
+```
+
+#### Token File with Hot-Reload
+
+For production environments, use `--auth-tokens-file` to manage tokens in a
+file. The file is watched for changes — tokens are reloaded automatically
+without restarting the server.
+
+```bash
+# tokens.txt
+# Primary API key
+alpha-key-xxxxxxxx
+
+# Secondary API key (rotation)
+beta-key-yyyyyyyy
+```
+
+```bash
+dart run titan_colossus:blueprint_mcp_server \
+  --transport auto --auto-port 3001 \
+  --auth-tokens-file tokens.txt
+```
+
+**Zero-downtime key rotation workflow:**
+
+1. Add the new token to the file (keep the old one)
+2. The server detects the file change and reloads — both tokens work
+3. Update all clients to use the new token
+4. Remove the old token from the file
+5. The server reloads — only the new token is accepted
+
+Blank lines and lines starting with `#` are ignored.
+
 Combine TLS and authentication for production deployments:
 
 ```bash
 dart run titan_colossus:blueprint_mcp_server \
   --transport auto --auto-port 3001 \
   --tls-cert cert.pem --tls-key key.pem \
-  --auth-token my-secret-token
+  --auth-tokens-file /etc/titan/tokens.txt
 ```
 
 ```dart

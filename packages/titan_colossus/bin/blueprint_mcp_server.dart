@@ -149,7 +149,10 @@ Future<void> main(List<String> args) async {
         case '--tls-key':
           server._tlsKeyPath = args[i + 1];
         case '--auth-token':
-          server._authToken = args[i + 1];
+          server._authTokens.add(args[i + 1]);
+        case '--auth-tokens-file':
+          server._authTokensFilePath = args[i + 1];
+          server._loadTokensFile();
       }
     }
   }
@@ -191,7 +194,18 @@ class _BlueprintMcpServer {
   String _autoHost = '127.0.0.1';
   String? _tlsCertPath;
   String? _tlsKeyPath;
-  String? _authToken;
+
+  /// Active authentication tokens. Requests must present one of these
+  /// via `Authorization: Bearer <token>` (or `?token=` for WebSocket).
+  /// Empty set means auth is disabled.
+  final Set<String> _authTokens = {};
+
+  /// Optional path to a tokens file (one token per line). When set,
+  /// the file is watched for changes and tokens are hot-reloaded.
+  String? _authTokensFilePath;
+
+  /// File-system watcher subscription for [_authTokensFilePath].
+  StreamSubscription<FileSystemEvent>? _tokensFileWatcher;
 
   /// Whether TLS is enabled (both cert and key provided).
   bool get _tlsEnabled => _tlsCertPath != null && _tlsKeyPath != null;
@@ -199,16 +213,78 @@ class _BlueprintMcpServer {
   /// The scheme prefix based on TLS config (`https` or `http`).
   String get _scheme => _tlsEnabled ? 'https' : 'http';
 
+  /// Whether authentication is enabled (at least one token configured).
+  bool get _authEnabled => _authTokens.isNotEmpty;
+
+  /// Loads tokens from [_authTokensFilePath] and starts a file watcher
+  /// so token changes are picked up without restarting the server.
+  void _loadTokensFile() {
+    final path = _authTokensFilePath;
+    if (path == null) return;
+
+    final file = File(path);
+    if (file.existsSync()) {
+      _readTokensFromFile(file);
+    } else {
+      stderr.writeln('Warning: auth-tokens-file not found: $path');
+    }
+
+    // Watch the parent directory for changes to the file.
+    _tokensFileWatcher?.cancel();
+    final dir = file.parent;
+    if (dir.existsSync()) {
+      _tokensFileWatcher = dir.watch().listen((event) {
+        if (event.path == file.absolute.path ||
+            event.path.endsWith(
+              Platform.pathSeparator + file.uri.pathSegments.last,
+            )) {
+          if (event.type == FileSystemEvent.modify ||
+              event.type == FileSystemEvent.create) {
+            _readTokensFromFile(file);
+            stderr.writeln(
+              'Auth tokens reloaded: ${_authTokens.length} token(s) active',
+            );
+          }
+        }
+      });
+    }
+  }
+
+  /// Reads non-empty, non-comment lines from [file] into [_authTokens].
+  void _readTokensFromFile(File file) {
+    try {
+      final lines = file
+          .readAsLinesSync()
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty && !l.startsWith('#'));
+
+      // Replace all file-sourced tokens (keep CLI tokens by re-reading file)
+      _authTokens
+        ..clear()
+        ..addAll(lines);
+
+      // Re-add any tokens passed via --auth-token CLI args by re-parsing.
+      // Since we can't distinguish sources, the tokens file is the
+      // authoritative source once set. CLI --auth-token tokens should also
+      // be listed in the file for rotation scenarios.
+    } on FileSystemException catch (e) {
+      stderr.writeln('Warning: could not read auth-tokens-file: $e');
+    }
+  }
+
   /// Validates the `Authorization: Bearer <token>` header on [request].
   ///
-  /// Returns `true` if auth is not required (no [_authToken] set) or
-  /// the header matches. Returns `false` and sends a 401 response if
-  /// the token is missing or invalid.
+  /// Returns `true` if auth is not required (no tokens configured) or
+  /// the header matches one of [_authTokens]. Returns `false` and sends
+  /// a 401 response if the token is missing or invalid.
   bool _checkAuth(HttpRequest request) {
-    if (_authToken == null) return true;
+    if (!_authEnabled) return true;
 
     final header = request.headers.value('Authorization');
-    if (header == 'Bearer $_authToken') return true;
+    if (header != null && header.startsWith('Bearer ')) {
+      final token = header.substring(7);
+      if (_authTokens.contains(token)) return true;
+    }
 
     request.response
       ..statusCode = 401
@@ -237,15 +313,18 @@ class _BlueprintMcpServer {
   /// ws://host:port/ws?token=SECRET
   /// ```
   bool _checkWsAuth(HttpRequest request) {
-    if (_authToken == null) return true;
+    if (!_authEnabled) return true;
 
     // Check Authorization header first
     final header = request.headers.value('Authorization');
-    if (header == 'Bearer $_authToken') return true;
+    if (header != null && header.startsWith('Bearer ')) {
+      final token = header.substring(7);
+      if (_authTokens.contains(token)) return true;
+    }
 
     // Fallback: check query parameter (for browser WebSocket clients)
     final queryToken = request.uri.queryParameters['token'];
-    if (queryToken == _authToken) return true;
+    if (queryToken != null && _authTokens.contains(queryToken)) return true;
 
     request.response
       ..statusCode = 401
