@@ -1,5 +1,6 @@
 {
   "servers": {
+    // Stdio transport — default for local VS Code (auto-spawns the server)
     "titan-blueprint": {
       "command": "dart",
       "args": [
@@ -7,6 +8,14 @@
         "bin/blueprint_mcp_server.dart"
       ],
       "cwd": "${workspaceFolder}/packages/titan_colossus"
+    },
+    // Streamable HTTP transport — for VS Code Web / Codespaces / remote
+    // Start the server first:
+    //   cd packages/titan_colossus
+    //   dart run bin/blueprint_mcp_server.dart --transport auto --port 3000
+    "titan-blueprint-web": {
+      "type": "http",
+      "url": "http://localhost:3000/mcp"
     }
   }
 }
