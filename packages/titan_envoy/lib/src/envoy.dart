@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'courier.dart';
 import 'dispatch.dart';
@@ -8,6 +9,7 @@ import 'envoy_error.dart';
 import 'missive.dart';
 import 'parcel.dart';
 import 'recall.dart';
+import 'security.dart';
 
 /// Envoy — Titan's HTTP client for making network requests.
 ///
@@ -44,6 +46,8 @@ class Envoy {
   ///   status codes considered successful.
   /// - [followRedirects]: Whether to follow redirects (default: `true`).
   /// - [maxRedirects]: Maximum redirect hops (default: `5`).
+  /// - [pin]: SSL/TLS certificate pinning configuration.
+  /// - [proxy]: HTTP/HTTPS proxy configuration.
   Envoy({
     this.baseUrl = '',
     Map<String, String>? headers,
@@ -53,6 +57,8 @@ class Envoy {
     this.validateStatus,
     this.followRedirects = true,
     this.maxRedirects = 5,
+    this.pin,
+    this.proxy,
   }) : defaultHeaders = headers ?? {};
 
   /// Base URL prepended to all relative request paths.
@@ -84,6 +90,17 @@ class Envoy {
   /// Maximum number of redirect hops.
   int maxRedirects;
 
+  /// SSL/TLS certificate pinning configuration.
+  ///
+  /// When set, server certificates are validated against pinned
+  /// fingerprints to prevent man-in-the-middle attacks.
+  final EnvoyPin? pin;
+
+  /// HTTP/HTTPS proxy configuration.
+  ///
+  /// Routes all requests through the specified proxy server.
+  final EnvoyProxy? proxy;
+
   final List<Courier> _couriers = [];
   HttpClient? _httpClient;
   bool _closed = false;
@@ -93,7 +110,12 @@ class Envoy {
 
   HttpClient get _client {
     if (_closed) throw StateError('Envoy has been closed');
-    return _httpClient ??= HttpClient()..connectionTimeout = connectTimeout;
+    if (_httpClient == null) {
+      _httpClient = HttpClient()..connectionTimeout = connectTimeout;
+      pin?.applyTo(_httpClient!);
+      proxy?.applyTo(_httpClient!);
+    }
+    return _httpClient!;
   }
 
   // ── HTTP Methods ─────────────────────────────────────────────────
@@ -311,6 +333,77 @@ class Envoy {
     }
   }
 
+  /// Downloads a URL and returns the response body as bytes.
+  ///
+  /// Progress is reported through the [onReceiveProgress] callback on the
+  /// [Missive], or via the optional [onProgress] parameter.
+  ///
+  /// ```dart
+  /// final dispatch = await envoy.download(
+  ///   '/files/report.pdf',
+  ///   onProgress: (received, total) {
+  ///     print('${(received / total * 100).toStringAsFixed(1)}%');
+  ///   },
+  /// );
+  /// final bytes = dispatch.data as Uint8List;
+  /// ```
+  Future<Dispatch> download(
+    String path, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParameters,
+    Recall? recall,
+    Duration? receiveTimeout,
+    void Function(int received, int total)? onProgress,
+    Map<String, Object?>? extra,
+  }) {
+    return send(
+      Missive(
+        method: Method.get,
+        uri: _resolveUri(path),
+        headers: _mergeHeaders(headers),
+        queryParameters: queryParameters ?? const {},
+        recall: recall,
+        receiveTimeout: receiveTimeout ?? this.receiveTimeout,
+        responseType: ResponseType.bytes,
+        onReceiveProgress: onProgress,
+        extra: extra ?? const {},
+      ),
+    );
+  }
+
+  /// Sends a request and returns the response body as a byte stream.
+  ///
+  /// The returned [Dispatch.data] will be a [Stream<List<int>>] that
+  /// you can pipe to a file or process incrementally.
+  ///
+  /// ```dart
+  /// final dispatch = await envoy.stream('/files/large.zip');
+  /// final stream = dispatch.data as Stream<List<int>>;
+  /// final file = File('large.zip').openWrite();
+  /// await stream.pipe(file);
+  /// ```
+  Future<Dispatch> stream(
+    String path, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParameters,
+    Recall? recall,
+    Duration? receiveTimeout,
+    Map<String, Object?>? extra,
+  }) {
+    return send(
+      Missive(
+        method: Method.get,
+        uri: _resolveUri(path),
+        headers: _mergeHeaders(headers),
+        queryParameters: queryParameters ?? const {},
+        recall: recall,
+        receiveTimeout: receiveTimeout ?? this.receiveTimeout,
+        responseType: ResponseType.stream,
+        extra: extra ?? const {},
+      ),
+    );
+  }
+
   // ── Courier Management ───────────────────────────────────────────
 
   /// Adds a [Courier] to the interceptor chain.
@@ -393,7 +486,46 @@ class Envoy {
         );
       }
 
-      // Read response body
+      // For stream response type, return the stream directly
+      if (missive.responseType == ResponseType.stream) {
+        stopwatch.stop();
+
+        // Build response headers map
+        final responseHeaders = <String, String>{};
+        response.headers.forEach((name, values) {
+          responseHeaders[name] = values.join(', ');
+        });
+
+        // Wrap with cancellation support if recall
+        Stream<List<int>> bodyStream = response;
+        if (missive.recall != null) {
+          final controller = StreamController<List<int>>();
+          StreamSubscription<List<int>>? sub;
+          sub = response.listen(
+            controller.add,
+            onDone: controller.close,
+            onError: controller.addError,
+          );
+          missive.recall!.whenCancelled.then((_) {
+            sub?.cancel();
+            if (!controller.isClosed) {
+              controller.addError(EnvoyError.cancelled(missive: missive));
+              controller.close();
+            }
+          });
+          bodyStream = controller.stream;
+        }
+
+        return Dispatch(
+          statusCode: response.statusCode,
+          data: bodyStream,
+          headers: responseHeaders,
+          missive: missive,
+          duration: stopwatch.elapsed,
+        );
+      }
+
+      // Read response body with progress
       final rawBody = await _readResponse(response, missive);
       stopwatch.stop();
 
@@ -416,7 +548,7 @@ class Envoy {
       final dispatch = Dispatch(
         statusCode: response.statusCode,
         data: data,
-        rawBody: rawBody,
+        rawBody: rawBody is String ? rawBody : '',
         headers: responseHeaders,
         missive: missive,
         duration: stopwatch.elapsed,
@@ -497,16 +629,23 @@ class Envoy {
         );
         final body = data.buildMultipartBody(boundary);
         request.contentLength = body.length;
-        request.add(body);
+        _writeWithProgress(request, body, missive.onSendProgress);
       } else {
         request.headers.contentType = ContentType(
           'application',
           'x-www-form-urlencoded',
         );
         final encoded = data.toUrlEncoded();
-        request.contentLength = utf8.encode(encoded).length;
-        request.write(encoded);
+        final bytes = utf8.encode(encoded);
+        request.contentLength = bytes.length;
+        _writeWithProgress(request, bytes, missive.onSendProgress);
       }
+    } else if (data is Stream<List<int>>) {
+      // Stream body — pipe directly
+      await data.forEach(request.add);
+    } else if (data is Uint8List) {
+      request.contentLength = data.length;
+      _writeWithProgress(request, data, missive.onSendProgress);
     } else {
       final encoded = missive.encodedBody;
       if (encoded != null) {
@@ -516,8 +655,31 @@ class Envoy {
         }
         final bytes = utf8.encode(encoded);
         request.contentLength = bytes.length;
-        request.add(bytes);
+        _writeWithProgress(request, bytes, missive.onSendProgress);
       }
+    }
+  }
+
+  void _writeWithProgress(
+    HttpClientRequest request,
+    List<int> bytes,
+    void Function(int sent, int total)? onProgress,
+  ) {
+    if (onProgress == null) {
+      request.add(bytes);
+      return;
+    }
+
+    // Report progress in chunks for large bodies
+    const chunkSize = 8192;
+    final total = bytes.length;
+    var sent = 0;
+
+    while (sent < total) {
+      final end = (sent + chunkSize).clamp(0, total);
+      request.add(bytes.sublist(sent, end));
+      sent = end;
+      onProgress(sent, total);
     }
   }
 
@@ -539,18 +701,72 @@ class Envoy {
     return result;
   }
 
-  Future<String> _readResponse(
+  /// Reads the response body, supporting progress tracking.
+  ///
+  /// For [ResponseType.bytes], collects raw bytes with progress.
+  /// For other types, decodes to a string with progress.
+  Future<Object> _readResponse(
     HttpClientResponse response,
     Missive missive,
   ) async {
+    final total = response.contentLength;
+    final onProgress = missive.onReceiveProgress;
+
+    if (missive.responseType == ResponseType.bytes) {
+      // Collect raw bytes with progress
+      final completer = Completer<Uint8List>();
+      final chunks = <List<int>>[];
+      var received = 0;
+
+      final subscription = response.listen(
+        (chunk) {
+          chunks.add(chunk);
+          received += chunk.length;
+          onProgress?.call(received, total);
+        },
+        onDone: () {
+          final bytes = Uint8List(received);
+          var offset = 0;
+          for (final chunk in chunks) {
+            bytes.setRange(offset, offset + chunk.length, chunk);
+            offset += chunk.length;
+          }
+          completer.complete(bytes);
+        },
+        onError: (Object e, StackTrace st) {
+          if (!completer.isCompleted) completer.completeError(e, st);
+        },
+      );
+
+      if (missive.recall != null) {
+        missive.recall!.whenCancelled.then((_) {
+          subscription.cancel();
+          if (!completer.isCompleted) {
+            completer.completeError(EnvoyError.cancelled(missive: missive));
+          }
+        });
+      }
+
+      return completer.future;
+    }
+
+    // Text-based response (json / plain)
     final completer = Completer<String>();
-
     final body = StringBuffer();
-    final subscription = response
-        .transform(utf8.decoder)
-        .listen(body.write, onDone: () => completer.complete(body.toString()));
+    var received = 0;
 
-    // Support cancellation during response reading
+    final subscription = response.listen(
+      (chunk) {
+        received += chunk.length;
+        body.write(utf8.decode(chunk, allowMalformed: true));
+        onProgress?.call(received, total);
+      },
+      onDone: () => completer.complete(body.toString()),
+      onError: (Object e, StackTrace st) {
+        if (!completer.isCompleted) completer.completeError(e, st);
+      },
+    );
+
     if (missive.recall != null) {
       missive.recall!.whenCancelled.then((_) {
         subscription.cancel();
@@ -563,16 +779,19 @@ class Envoy {
     return completer.future;
   }
 
+  /// Parses the raw response body according to [responseType].
   Object? _parseResponse(
-    String rawBody,
+    Object rawBody,
     ResponseType responseType,
     HttpClientResponse response,
   ) {
+    if (responseType == ResponseType.bytes) return rawBody;
+    final text = rawBody as String;
     return switch (responseType) {
-      ResponseType.json => rawBody.isEmpty ? null : jsonDecode(rawBody),
-      ResponseType.plain => rawBody,
-      ResponseType.bytes => utf8.encode(rawBody),
-      ResponseType.stream => null, // stream handled separately
+      ResponseType.json => text.isEmpty ? null : jsonDecode(text),
+      ResponseType.plain => text,
+      ResponseType.bytes => rawBody, // already handled above
+      ResponseType.stream => null, // stream handled before _readResponse
     };
   }
 

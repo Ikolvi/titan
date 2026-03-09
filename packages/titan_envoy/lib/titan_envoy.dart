@@ -14,6 +14,12 @@
 /// | Cache | **EnvoyCache** | `EnvoyCache` |
 /// | Form Data | **Parcel** | `Parcel` |
 /// | Metrics | **EnvoyMetric** | `EnvoyMetric` |
+/// | Throttle Gate | **Gate** | `Gate` |
+/// | WebSocket | **EnvoySocket** | `EnvoySocket` |
+/// | SSE | **EnvoySse** | `EnvoySse` |
+/// | SSL Pinning | **EnvoyPin** | `EnvoyPin` |
+/// | Proxy Config | **EnvoyProxy** | `EnvoyProxy` |
+/// | Cookie Jar | **CookieCourier** | `CookieCourier` |
 ///
 /// ## Quick Start
 ///
@@ -64,6 +70,17 @@ export 'src/couriers/auth_courier.dart';
 export 'src/couriers/cache_courier.dart';
 export 'src/couriers/metrics_courier.dart';
 export 'src/couriers/dedup_courier.dart';
+export 'src/couriers/cookie_courier.dart';
+
+// Throttling
+export 'src/gate.dart';
+
+// WebSocket & SSE
+export 'src/envoy_socket.dart';
+export 'src/envoy_sse.dart';
+
+// Security
+export 'src/security.dart';
 
 // Cache system
 export 'src/cache/envoy_cache.dart';
