@@ -12,10 +12,10 @@
     // Streamable HTTP transport — for VS Code Web / Codespaces / remote
     // Start the server first:
     //   cd packages/titan_colossus
-    //   dart run bin/blueprint_mcp_server.dart --transport auto --port 3000
+    //   dart run bin/blueprint_mcp_server.dart --transport auto --port 3001
     "titan-blueprint-web": {
       "type": "http",
-      "url": "http://localhost:3000/mcp"
+      "url": "http://localhost:3001/mcp"
     }
   }
 }
