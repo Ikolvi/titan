@@ -1,11 +1,11 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:titan_basalt/titan_basalt.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 
 import '../pillars/enterprise_demo_pillar.dart';
+import '../utils/platform_dirs.dart';
 
 /// Enterprise Demo Screen — showcases enterprise features.
 ///
@@ -1895,18 +1895,26 @@ class _ToolkitTab extends StatelessWidget {
                             icon: const Icon(Icons.save_alt),
                             label: const Text('Export to File'),
                             onPressed: () {
-                              try {
-                                final dir = Directory.systemTemp.createTempSync(
-                                  'annals_',
+                              if (kIsWeb) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'File export unavailable on web',
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
                                 );
-                                final file = File('${dir.path}/annals.json');
-                                final sink = file.openWrite();
-                                Annals.exportToBuffer(sink);
-                                sink.close();
+                                return;
+                              }
+                              try {
+                                final filePath = exportAnnalsToFile(
+                                  Annals.exportToBuffer,
+                                );
+                                if (filePath == null) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      'Annals exported to ${file.path}',
+                                      'Annals exported to $filePath',
                                     ),
                                     behavior: SnackBarBehavior.floating,
                                   ),

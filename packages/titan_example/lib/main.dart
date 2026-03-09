@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:titan_argus/titan_argus.dart';
@@ -22,6 +20,7 @@ import 'screens/spark_demo_screen.dart';
 import 'screens/tale_detail_screen.dart';
 import 'screens/tavern_screen.dart';
 import 'pillars/tavern_pillar.dart';
+import 'utils/platform_dirs.dart';
 
 // ---------------------------------------------------------------------------
 // Questboard -- The Titan Example App
@@ -82,8 +81,8 @@ void main() {
   // Colossus is now integrated via ColossusPlugin — see the Beacon
   // in runApp() below. All performance monitoring configuration is
   // centralized in a single plugin declaration.
-  final shadeDir = '${Directory.systemTemp.path}/questboard_shade';
-  final exportDir = _getExportDirectory();
+  final shadeDir = getShadeDirectory();
+  final exportDir = getExportDirectory();
 
   // Register AuthPillar globally for Sentinel access during Atlas construction
   Titan.put(AuthPillar());
@@ -308,23 +307,4 @@ class _QuestboardShell extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Returns a user-accessible directory for exporting reports.
-///
-/// On macOS/Linux: `~/Downloads/colossus_reports`
-/// On other platforms: falls back to system temp.
-String _getExportDirectory() {
-  try {
-    final home =
-        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-    if (home != null) {
-      final downloads = '$home/Downloads/colossus_reports';
-      Directory(downloads).createSync(recursive: true);
-      return downloads;
-    }
-  } catch (_) {
-    // Fall back to temp
-  }
-  return '${Directory.systemTemp.path}/colossus_reports';
 }

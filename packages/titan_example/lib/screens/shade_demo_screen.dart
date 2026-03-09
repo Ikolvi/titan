@@ -1,10 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:titan_bastion/titan_bastion.dart';
 import 'package:titan_colossus/titan_colossus.dart';
+
+import '../utils/platform_dirs.dart';
 
 /// Shade Demo Screen — gesture recording & macro replay.
 ///
@@ -885,11 +886,7 @@ class _ShadeDemoScreenState extends State<ShadeDemoScreen> {
   }
 
   String _getOutputDir() {
-    try {
-      return '${Directory.systemTemp.path}/questboard_blueprint';
-    } catch (_) {
-      return '';
-    }
+    return getBlueprintOutputDirectory() ?? '';
   }
 
   Widget _buildPlayground(ThemeData theme, ColorScheme colors) {
