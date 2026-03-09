@@ -12,6 +12,10 @@ topics:
   - dart
   - interceptors
 
+screenshots:
+  - description: 'Envoy — HTTP client & API layer for Titan'
+    path: assets/titan_banner.webp
+
 resolution: workspace
 
 environment:
