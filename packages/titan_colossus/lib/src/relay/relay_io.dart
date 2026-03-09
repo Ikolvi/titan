@@ -248,6 +248,9 @@ class RelayPlatform {
         case ('GET', '/di'):
           _handleInspectDi(request);
 
+        case ('GET', '/envoy/inspect'):
+          _handleInspectEnvoy(request);
+
         default:
           _sendError(
             request.response,
@@ -1082,5 +1085,19 @@ class RelayPlatform {
     }
 
     _sendJson(request.response, handler.inspectDi());
+  }
+
+  void _handleInspectEnvoy(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    _sendJson(request.response, handler.inspectEnvoy());
   }
 }

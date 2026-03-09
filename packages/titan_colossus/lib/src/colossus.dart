@@ -12,6 +12,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart' show Element, WidgetsBinding;
 import 'package:titan_atlas/titan_atlas.dart' show Atlas;
 import 'package:titan_bastion/titan_bastion.dart';
+import 'package:titan_envoy/titan_envoy.dart';
 
 import 'alerts/tremor.dart';
 import 'framework_error.dart';
@@ -2575,5 +2576,82 @@ class _ColossusRelayHandler implements RelayHandler {
       'pillarCount': entries.where((e) => e['isPillar'] == true).length,
       'entries': entries,
     };
+  }
+
+  @override
+  Map<String, dynamic> inspectEnvoy() {
+    final envoy = Titan.find<Envoy>();
+    if (envoy == null) {
+      return {
+        'success': false,
+        'error':
+            'No Envoy instance registered in Titan DI. '
+            'Register with Titan.put(Envoy(baseUrl: ...)).',
+      };
+    }
+
+    final couriers = <Map<String, dynamic>>[];
+    for (var i = 0; i < envoy.couriers.length; i++) {
+      couriers.add(_serializeCourier(envoy.couriers[i], i));
+    }
+
+    return {
+      'success': true,
+      'baseUrl': envoy.baseUrl,
+      'connectTimeout': envoy.connectTimeout?.inMilliseconds,
+      'sendTimeout': envoy.sendTimeout?.inMilliseconds,
+      'receiveTimeout': envoy.receiveTimeout?.inMilliseconds,
+      'followRedirects': envoy.followRedirects,
+      'maxRedirects': envoy.maxRedirects,
+      'defaultHeaders': envoy.defaultHeaders,
+      'courierCount': envoy.couriers.length,
+      'couriers': couriers,
+    };
+  }
+
+  /// Serialize a [Courier] to a JSON-friendly map based on its runtime type.
+  Map<String, dynamic> _serializeCourier(Courier courier, int index) {
+    final type = courier.runtimeType.toString();
+    final config = <String, dynamic>{};
+
+    switch (courier) {
+      case LogCourier c:
+        config['logHeaders'] = c.logHeaders;
+        config['logBody'] = c.logBody;
+        config['logErrors'] = c.logErrors;
+      case RetryCourier c:
+        config['maxRetries'] = c.maxRetries;
+        config['retryDelayMs'] = c.retryDelay.inMilliseconds;
+        config['backoffMultiplier'] = c.backoffMultiplier;
+        config['maxDelayMs'] = c.maxDelay.inMilliseconds;
+        config['addJitter'] = c.addJitter;
+        config['retryOn'] = c.retryOn.toList()..sort();
+        config['retryOnTimeout'] = c.retryOnTimeout;
+        config['retryOnConnectionError'] = c.retryOnConnectionError;
+        config['hasCustomShouldRetry'] = c.shouldRetry != null;
+      case AuthCourier c:
+        config['headerName'] = c.headerName;
+        config['tokenPrefix'] = c.tokenPrefix;
+        config['maxRefreshAttempts'] = c.maxRefreshAttempts;
+        config['hasOnUnauthorized'] = c.onUnauthorized != null;
+      case CacheCourier c:
+        config['strategy'] = c.defaultPolicy.strategy.name;
+        config['ttlMs'] = c.defaultPolicy.ttl?.inMilliseconds;
+        config['cacheableMethods'] = c.cacheableMethods
+            .map((m) => m.name)
+            .toList();
+      case MetricsCourier _:
+        config['note'] = 'Forwards metrics via onMetric callback';
+      case DedupCourier c:
+        config['ttlMs'] = c.ttl.inMilliseconds;
+        config['inFlightCount'] = c.inFlightCount;
+      case CookieCourier c:
+        config['persistCookies'] = c.persistCookies;
+        config['cookieCount'] = c.cookieCount;
+      default:
+        config['note'] = 'Custom courier — no detailed config available';
+    }
+
+    return {'type': type, 'index': index, 'config': config};
   }
 }

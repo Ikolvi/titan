@@ -1057,6 +1057,15 @@ class _BlueprintMcpServer {
                 'subclasses. Useful for debugging dependency wiring.',
             'inputSchema': {'type': 'object', 'properties': {}},
           },
+          {
+            'name': 'inspect_envoy',
+            'description':
+                'Inspect the Envoy HTTP client configuration and active '
+                'courier (interceptor) chain. Shows base URL, timeouts, '
+                'default headers, and detailed per-courier configuration '
+                '(retry policy, auth settings, cache strategy, etc.).',
+            'inputSchema': {'type': 'object', 'properties': {}},
+          },
         ],
       },
       'id': id,
@@ -1109,6 +1118,7 @@ class _BlueprintMcpServer {
       'capture_screenshot',
       'audit_accessibility',
       'inspect_di',
+      'inspect_envoy',
     };
 
     if (relayOnlyTools.contains(toolName)) {
@@ -1147,6 +1157,7 @@ class _BlueprintMcpServer {
         'capture_screenshot' => await _captureScreenshot(toolArgs),
         'audit_accessibility' => await _auditAccessibility(),
         'inspect_di' => await _inspectDi(),
+        'inspect_envoy' => await _inspectEnvoy(),
         _ => 'Unknown tool: $toolName',
       };
 
@@ -4370,6 +4381,11 @@ class _BlueprintMcpServer {
     return _fetchAndFormat('/di', _formatDiInspection);
   }
 
+  /// Inspect Envoy HTTP client via GET from Relay.
+  Future<String> _inspectEnvoy() async {
+    return _fetchAndFormat('/envoy/inspect', _formatEnvoyInspection);
+  }
+
   /// Format screenshot capture result.
   String _formatScreenshot(Map<String, dynamic> data) {
     final buf = StringBuffer();
@@ -4500,6 +4516,70 @@ class _BlueprintMcpServer {
       buf.writeln();
     } else {
       buf.writeln('No types registered in the DI container.');
+    }
+
+    return buf.toString();
+  }
+
+  /// Format Envoy HTTP client inspection result.
+  String _formatEnvoyInspection(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+
+    if (data['success'] != true) {
+      buf.writeln('# Envoy HTTP Client Unavailable');
+      buf.writeln();
+      buf.writeln('**Error:** ${data['error'] ?? 'Unknown'}');
+      return buf.toString();
+    }
+
+    buf.writeln('# Envoy HTTP Client');
+    buf.writeln();
+    buf.writeln('## Configuration');
+    buf.writeln();
+    buf.writeln('| Setting | Value |');
+    buf.writeln('|---------|-------|');
+    buf.writeln('| Base URL | `${data['baseUrl'] ?? '—'}` |');
+    buf.writeln('| Connect Timeout | ${data['connectTimeout'] ?? '—'} ms |');
+    buf.writeln('| Send Timeout | ${data['sendTimeout'] ?? '—'} ms |');
+    buf.writeln('| Receive Timeout | ${data['receiveTimeout'] ?? '—'} ms |');
+    buf.writeln('| Follow Redirects | ${data['followRedirects'] ?? '—'} |');
+    buf.writeln('| Max Redirects | ${data['maxRedirects'] ?? '—'} |');
+    buf.writeln();
+
+    final headers = data['defaultHeaders'] as Map<String, dynamic>? ?? {};
+    if (headers.isNotEmpty) {
+      buf.writeln('## Default Headers');
+      buf.writeln();
+      buf.writeln('| Header | Value |');
+      buf.writeln('|--------|-------|');
+      for (final entry in headers.entries) {
+        buf.writeln('| `${entry.key}` | `${entry.value}` |');
+      }
+      buf.writeln();
+    }
+
+    final couriers = data['couriers'] as List<dynamic>? ?? [];
+    buf.writeln('## Courier Chain (${couriers.length} interceptors)');
+    buf.writeln();
+
+    if (couriers.isEmpty) {
+      buf.writeln('No couriers configured.');
+    } else {
+      buf.writeln('| # | Courier | Configuration |');
+      buf.writeln('|---|---------|---------------|');
+      for (final c in couriers) {
+        final courier = c as Map<String, dynamic>;
+        final index = courier['index'] ?? '';
+        final type = courier['type'] ?? 'Unknown';
+        final config = courier['config'] as Map<String, dynamic>? ?? {};
+        final configStr = config.entries
+            .map((e) => '${e.key}: ${e.value}')
+            .join(', ');
+        buf.writeln(
+          '| $index | **$type** | ${configStr.isEmpty ? '—' : configStr} |',
+        );
+      }
+      buf.writeln();
     }
 
     return buf.toString();

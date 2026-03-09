@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:titan/titan.dart' show Titan;
 import 'package:titan_colossus/titan_colossus.dart';
+import 'package:titan_envoy/titan_envoy.dart';
 
 void main() {
   // ---------------------------------------------------------
@@ -274,6 +275,65 @@ void main() {
       // The relay handler is internal, so we test the behaviour indirectly.
       // For a unit test, we can verify the handler returns expected shape.
       expect(colossus, isNotNull); // sanity
+    });
+  });
+
+  group('Envoy inspection via RelayHandler', () {
+    late Colossus colossus;
+
+    setUp(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      colossus = Colossus.init(enableLensTab: false);
+    });
+
+    tearDown(() {
+      Titan.reset();
+      colossus.dispose();
+    });
+
+    test('Titan.find<Envoy> returns null when no Envoy registered', () {
+      Titan.reset();
+
+      final envoy = Titan.find<Envoy>();
+      expect(envoy, isNull);
+    });
+
+    test('Envoy couriers are inspectable after registration', () {
+      final envoy = Envoy(
+        baseUrl: 'https://api.example.com',
+        headers: {'Authorization': 'Bearer token123'},
+        connectTimeout: const Duration(seconds: 10),
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        followRedirects: true,
+        maxRedirects: 3,
+      );
+      envoy.addCourier(LogCourier());
+      envoy.addCourier(RetryCourier(maxRetries: 3));
+
+      Titan.put(envoy);
+
+      final resolved = Titan.find<Envoy>();
+      expect(resolved, isNotNull);
+      expect(resolved!.baseUrl, 'https://api.example.com');
+      expect(resolved.couriers, hasLength(2));
+      expect(resolved.couriers[0], isA<LogCourier>());
+      expect(resolved.couriers[1], isA<RetryCourier>());
+      expect((resolved.couriers[1] as RetryCourier).maxRetries, 3);
+    });
+
+    test('Envoy defaultHeaders accessible for inspection', () {
+      final envoy = Envoy(
+        baseUrl: 'https://api.test.com',
+        headers: {'X-Custom': 'value', 'Accept': 'application/json'},
+      );
+
+      Titan.put(envoy);
+
+      final resolved = Titan.find<Envoy>()!;
+      expect(resolved.defaultHeaders, hasLength(2));
+      expect(resolved.defaultHeaders['X-Custom'], 'value');
+      expect(resolved.defaultHeaders['Accept'], 'application/json');
     });
   });
 }

@@ -297,6 +297,13 @@ abstract interface class RelayHandler {
   /// Returns all registered types, which are instantiated vs lazy,
   /// and which are Pillar subclasses.
   Map<String, dynamic> inspectDi();
+
+  /// Inspect the Envoy HTTP client configuration and couriers.
+  ///
+  /// Returns base URL, timeouts, headers, and a serialized list
+  /// of active couriers with their per-type configuration.
+  /// Looks up Envoy from [Titan] DI container.
+  Map<String, dynamic> inspectEnvoy();
 }
 
 // ---------------------------------------------------------------------------

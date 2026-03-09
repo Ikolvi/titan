@@ -637,6 +637,26 @@ void main() {
       expect(errors[0]['statusCode'], 500);
     });
 
+    // -- Envoy inspect --
+
+    test('GET /envoy/inspect returns envoy config', () async {
+      await startRelay();
+
+      final request = await client.get('127.0.0.1', port, '/envoy/inspect');
+      final response = await request.close();
+      final body = await _readBody(response);
+
+      expect(response.statusCode, 200);
+      expect(body['success'], isTrue);
+      expect(body['baseUrl'], 'https://api.example.com');
+      expect(body['courierCount'], 2);
+      expect(body['couriers'], isList);
+      final couriers = body['couriers'] as List;
+      expect(couriers.length, 2);
+      expect(couriers[0]['type'], 'LogCourier');
+      expect(couriers[1]['type'], 'RetryCourier');
+    });
+
     // -- Unknown endpoint --
 
     test('unknown endpoint returns 404', () async {
@@ -1417,6 +1437,37 @@ class _MockRelayHandler implements RelayHandler {
           'instantiated': true,
           'lazy': false,
           'isPillar': true,
+        },
+      ],
+    };
+  }
+
+  @override
+  Map<String, dynamic> inspectEnvoy() {
+    return {
+      'success': true,
+      'baseUrl': 'https://api.example.com',
+      'connectTimeout': 5000,
+      'sendTimeout': null,
+      'receiveTimeout': 30000,
+      'followRedirects': true,
+      'maxRedirects': 5,
+      'defaultHeaders': {'Accept': 'application/json'},
+      'courierCount': 2,
+      'couriers': [
+        {
+          'type': 'LogCourier',
+          'index': 0,
+          'config': {'logHeaders': false, 'logBody': false, 'logErrors': true},
+        },
+        {
+          'type': 'RetryCourier',
+          'index': 1,
+          'config': {
+            'maxRetries': 3,
+            'retryDelayMs': 300,
+            'backoffMultiplier': 2.0,
+          },
         },
       ],
     };
