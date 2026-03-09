@@ -1569,7 +1569,8 @@ class Scry {
         '${si.contentMaxY.toStringAsFixed(0)}px '
         '(viewport: ${si.viewportHeight.toStringAsFixed(0)}px). '
         '${si.belowFoldCount} element(s) below fold. '
-        'Scroll down for more.',
+        'Use `scry_act(action: "scroll", direction: "down")` '
+        'to reveal more content.',
       );
     }
 
@@ -1860,6 +1861,8 @@ class Scry {
     int timeout = 5000,
     double? dragToX,
     double? dragToY,
+    String? direction,
+    double? scrollAmount,
   }) {
     final target = <String, dynamic>{};
     if (key != null) {
@@ -1905,6 +1908,20 @@ class Scry {
       }
     }
 
+    // For scroll actions, resolve direction to scrollDelta.
+    // In Flutter's PointerScrollEvent, positive dy = scroll DOWN
+    // (content moves up, revealing content below). Default: down.
+    Map<String, double>? scrollDelta;
+    if (action == 'scroll') {
+      final amount = scrollAmount ?? 300.0;
+      scrollDelta = switch (direction?.toLowerCase()) {
+        'up' => {'dx': 0, 'dy': -amount},
+        'left' => {'dx': -amount, 'dy': 0},
+        'right' => {'dx': amount, 'dy': 0},
+        _ => {'dx': 0, 'dy': amount}, // default: down
+      };
+    }
+
     final step = <String, dynamic>{
       'id': stepId++,
       'action': action,
@@ -1918,6 +1935,8 @@ class Scry {
           resolvedDragToX != null &&
           resolvedDragToY != null)
         'dragTo': {'x': resolvedDragToX, 'y': resolvedDragToY},
+      // ignore: use_null_aware_elements
+      if (scrollDelta != null) 'scrollDelta': scrollDelta,
     };
 
     // For back/navigate, add route
@@ -1975,6 +1994,8 @@ class Scry {
       final key = entry['key'] as String?;
       final dragToX = (entry['dragToX'] as num?)?.toDouble();
       final dragToY = (entry['dragToY'] as num?)?.toDouble();
+      final entryDirection = entry['direction'] as String?;
+      final entryAmount = (entry['scrollAmount'] as num?)?.toDouble();
 
       final target = <String, dynamic>{};
       if (key != null) {
@@ -2011,6 +2032,18 @@ class Scry {
         }
       }
 
+      // For scroll actions, resolve direction to scrollDelta.
+      Map<String, double>? scrollDelta;
+      if (action == 'scroll') {
+        final amount = entryAmount ?? 300.0;
+        scrollDelta = switch (entryDirection?.toLowerCase()) {
+          'up' => {'dx': 0, 'dy': -amount},
+          'left' => {'dx': -amount, 'dy': 0},
+          'right' => {'dx': amount, 'dy': 0},
+          _ => {'dx': 0, 'dy': amount}, // default: down
+        };
+      }
+
       final step = <String, dynamic>{
         'id': stepId++,
         'action': action,
@@ -2024,6 +2057,8 @@ class Scry {
             resolvedDragToX != null &&
             resolvedDragToY != null)
           'dragTo': {'x': resolvedDragToX, 'y': resolvedDragToY},
+        // ignore: use_null_aware_elements
+        if (scrollDelta != null) 'scrollDelta': scrollDelta,
       };
 
       if (action == 'navigate' && value != null) {

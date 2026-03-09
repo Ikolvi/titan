@@ -971,6 +971,102 @@ void main() {
       expect(steps, hasLength(1));
       expect((steps[0] as Map)['action'], 'tap');
     });
+
+    test('scroll defaults to direction down', () {
+      final campaign = scry.buildActionCampaign(action: 'scroll');
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+      final step = steps[0] as Map<String, dynamic>;
+
+      expect(step['action'], 'scroll');
+      final scrollDelta = step['scrollDelta'] as Map<String, dynamic>;
+      expect(scrollDelta['dx'], 0);
+      expect(scrollDelta['dy'], 300); // positive dy = scroll down
+    });
+
+    test('scroll with direction up', () {
+      final campaign = scry.buildActionCampaign(
+        action: 'scroll',
+        direction: 'up',
+      );
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+      final step = steps[0] as Map<String, dynamic>;
+
+      final scrollDelta = step['scrollDelta'] as Map<String, dynamic>;
+      expect(scrollDelta['dx'], 0);
+      expect(scrollDelta['dy'], -300); // negative dy = scroll up
+    });
+
+    test('scroll with direction left', () {
+      final campaign = scry.buildActionCampaign(
+        action: 'scroll',
+        direction: 'left',
+      );
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+      final step = steps[0] as Map<String, dynamic>;
+
+      final scrollDelta = step['scrollDelta'] as Map<String, dynamic>;
+      expect(scrollDelta['dx'], -300);
+      expect(scrollDelta['dy'], 0);
+    });
+
+    test('scroll with direction right', () {
+      final campaign = scry.buildActionCampaign(
+        action: 'scroll',
+        direction: 'right',
+      );
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+      final step = steps[0] as Map<String, dynamic>;
+
+      final scrollDelta = step['scrollDelta'] as Map<String, dynamic>;
+      expect(scrollDelta['dx'], 300);
+      expect(scrollDelta['dy'], 0);
+    });
+
+    test('scroll with custom amount', () {
+      final campaign = scry.buildActionCampaign(
+        action: 'scroll',
+        direction: 'down',
+        scrollAmount: 500,
+      );
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+      final step = steps[0] as Map<String, dynamic>;
+
+      final scrollDelta = step['scrollDelta'] as Map<String, dynamic>;
+      expect(scrollDelta['dx'], 0);
+      expect(scrollDelta['dy'], 500);
+    });
+
+    test('non-scroll action does not include scrollDelta', () {
+      final campaign = scry.buildActionCampaign(action: 'tap', label: 'OK');
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+      final step = steps[0] as Map<String, dynamic>;
+
+      expect(step.containsKey('scrollDelta'), isFalse);
+    });
   });
 
   // ===================================================================
@@ -1288,6 +1384,30 @@ void main() {
       expect(steps, hasLength(1));
       expect(steps[0]['action'], 'back');
       expect(steps[0].containsKey('target'), isFalse);
+    });
+
+    test('scroll action includes direction in multi-action', () {
+      final campaign = scry.buildMultiActionCampaign([
+        {'action': 'scroll', 'direction': 'down'},
+        {'action': 'scroll', 'direction': 'up', 'scrollAmount': 500},
+      ]);
+
+      final entries = campaign['entries'] as List;
+      final stratagem =
+          (entries[0] as Map)['stratagem'] as Map<String, dynamic>;
+      final steps = stratagem['steps'] as List;
+
+      expect(steps, hasLength(2));
+
+      final step1 = steps[0] as Map<String, dynamic>;
+      final delta1 = step1['scrollDelta'] as Map<String, dynamic>;
+      expect(delta1['dx'], 0);
+      expect(delta1['dy'], 300); // down
+
+      final step2 = steps[1] as Map<String, dynamic>;
+      final delta2 = step2['scrollDelta'] as Map<String, dynamic>;
+      expect(delta2['dx'], 0);
+      expect(delta2['dy'], -500); // up with custom amount
     });
   });
 
@@ -4446,7 +4566,7 @@ void main() {
       final gaze = scry.observe(glyphs);
       final md = scry.formatGaze(gaze);
       expect(md, contains('📜 **Scrollable**'));
-      expect(md, contains('Scroll down for more'));
+      expect(md, contains('scry_act(action: "scroll", direction: "down")'));
     });
 
     test('no scroll banner when not scrollable', () {

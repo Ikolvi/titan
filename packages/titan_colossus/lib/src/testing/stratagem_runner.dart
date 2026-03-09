@@ -418,7 +418,9 @@ class StratagemRunner {
         );
 
       case StratagemAction.scroll:
-        final delta = step.scrollDelta ?? const Offset(0, -300);
+        // Default: scroll DOWN (positive dy in PointerScrollEvent =
+        // increase scroll offset = content moves up = see below content).
+        final delta = step.scrollDelta ?? const Offset(0, 300);
         // Scroll at center of screen if no target
         final center = screenCenter;
         final x = target?.centerX ?? center.dx;
@@ -428,7 +430,7 @@ class StratagemRunner {
       case StratagemAction.scrollUntilVisible:
         await _scrollUntilVisible(
           step.target!,
-          step.scrollDelta ?? const Offset(0, -300),
+          step.scrollDelta ?? const Offset(0, 300),
           maxAttempts: step.repeatCount ?? 10,
         );
 

@@ -1817,7 +1817,20 @@ class _BlueprintMcpServer {
                 'real-time agent loop: observe → decide → act → '
                 'observe again. No pre-recorded stratagems needed — '
                 'interact with the live app directly.',
-            'inputSchema': {'type': 'object', 'properties': {}},
+            'inputSchema': {
+              'type': 'object',
+              'properties': {
+                'fullScroll': {
+                  'type': 'boolean',
+                  'description':
+                      'When true, automatically scrolls through all '
+                      'below-fold content and returns a combined '
+                      'observation of everything on the page. '
+                      'Useful for pages with long scrollable content. '
+                      'Default: false.',
+                },
+              },
+            },
           },
           {
             'name': 'scry_act',
@@ -1918,6 +1931,21 @@ class _BlueprintMcpServer {
                       'the targeted element (by label/key). '
                       'Example: "50".',
                 },
+                'direction': {
+                  'type': 'string',
+                  'description':
+                      'Scroll direction: "down" (default), "up", '
+                      '"left", or "right". Only used with '
+                      'action="scroll".',
+                  'enum': ['down', 'up', 'left', 'right'],
+                },
+                'scrollAmount': {
+                  'type': 'number',
+                  'description':
+                      'Scroll distance in logical pixels '
+                      '(default: 300). Only used with '
+                      'action="scroll".',
+                },
                 'actions': {
                   'type': 'array',
                   'description':
@@ -1966,6 +1994,19 @@ class _BlueprintMcpServer {
                         'type': 'string',
                         'description':
                             'Destination Y (pixels) for drag action.',
+                      },
+                      'direction': {
+                        'type': 'string',
+                        'description':
+                            'Scroll direction: down (default), '
+                            'up, left, right.',
+                        'enum': ['down', 'up', 'left', 'right'],
+                      },
+                      'scrollAmount': {
+                        'type': 'number',
+                        'description':
+                            'Scroll distance in pixels '
+                            '(default: 300).',
                       },
                     },
                   },
@@ -2483,7 +2524,7 @@ class _BlueprintMcpServer {
         'generate_auth_stratagem' => await _generateAuthStratagem(toolArgs),
         'generate_campaign' => await _generateCampaign(toolArgs),
         'audit_screen' => await _auditScreen(toolArgs),
-        'scry' => await _scry(),
+        'scry' => await _scry(toolArgs),
         'scry_act' => await _scryAct(toolArgs),
         'scry_diff' => await _scryDiff(),
         'start_recording' => await _startRecording(toolArgs),
@@ -5241,7 +5282,9 @@ class _BlueprintMcpServer {
   // -----------------------------------------------------------------------
 
   /// Observe the current screen state.
-  Future<String> _scry() async {
+  Future<String> _scry(Map<String, dynamic> args) async {
+    final fullScroll = args['fullScroll'] == true;
+
     try {
       final blueprint = await _fetchBlueprintData();
       if (blueprint == null) {
@@ -5263,12 +5306,111 @@ class _BlueprintMcpServer {
 
       final gaze = _scryEngine.observe(glyphs, route: route);
       _lastGaze = gaze;
+
+      // If fullScroll is requested and content is scrollable, auto-scroll
+      // through all below-fold content and combine observations.
+      if (fullScroll &&
+          gaze.scrollInfo != null &&
+          gaze.scrollInfo!.canScrollDown) {
+        return await _scryFullScroll(gaze, route);
+      }
+
       return _scryEngine.formatGaze(gaze);
     } on SocketException {
       return '# Scry Failed\n\nCannot connect to Relay.';
     } on TimeoutException {
       return '# Scry Failed\n\nRelay did not respond (timeout).';
     }
+  }
+
+  /// Perform a full-scroll observation: scroll through all content
+  /// and return a combined observation.
+  Future<String> _scryFullScroll(ScryGaze initialGaze, String? route) async {
+    final buf = StringBuffer();
+    buf.writeln('# Scry — Full Page Observation (auto-scrolled)');
+    buf.writeln();
+
+    // Track all unique elements across scroll positions
+    final allLabels = <String>{};
+    var scrollPosition = 0;
+
+    // Format initial (top) observation
+    buf.writeln('## Viewport 1 (top)');
+    buf.writeln();
+    buf.write(_scryEngine.formatGaze(initialGaze));
+
+    // Collect initial labels
+    for (final e in initialGaze.elements) {
+      if (e.label.isNotEmpty) allLabels.add(e.label);
+    }
+
+    // Scroll through remaining content
+    final si = initialGaze.scrollInfo!;
+    final maxScrolls = ((si.contentMaxY - si.viewportHeight) / 300)
+        .ceil()
+        .clamp(1, 10);
+
+    for (var i = 0; i < maxScrolls; i++) {
+      // Execute scroll down
+      final campaign = _scryEngine.buildActionCampaign(
+        action: 'scroll',
+        direction: 'down',
+      );
+      await _executeRawCampaign(campaign);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      // Observe new viewport
+      final newGaze = await _observeCurrentScreen();
+      scrollPosition++;
+
+      // Check for new elements
+      final newElements = <String>[];
+      for (final e in newGaze.elements) {
+        if (e.label.isNotEmpty && !allLabels.contains(e.label)) {
+          allLabels.add(e.label);
+          newElements.add(e.label);
+        }
+      }
+
+      if (newElements.isNotEmpty) {
+        buf.writeln();
+        buf.writeln('---');
+        buf.writeln();
+        buf.writeln(
+          '## Viewport ${scrollPosition + 1} '
+          '(scrolled ${(scrollPosition) * 300}px)',
+        );
+        buf.writeln();
+        buf.writeln('**New elements revealed**: ${newElements.join(', ')}');
+        buf.writeln();
+        buf.write(_scryEngine.formatGaze(newGaze));
+      }
+
+      _lastGaze = newGaze;
+
+      // Check if we've reached the bottom
+      if (newGaze.scrollInfo == null || !newGaze.scrollInfo!.canScrollDown) {
+        break;
+      }
+    }
+
+    // Scroll back to top
+    for (var i = 0; i < scrollPosition; i++) {
+      final campaign = _scryEngine.buildActionCampaign(
+        action: 'scroll',
+        direction: 'up',
+      );
+      await _executeRawCampaign(campaign);
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    buf.writeln();
+    buf.writeln('---');
+    buf.writeln();
+    buf.writeln('**Total unique elements found**: ${allLabels.length}');
+    buf.writeln('**Scroll positions observed**: ${scrollPosition + 1}');
+
+    return buf.toString();
   }
 
   /// Execute one or more actions on the live app.
@@ -5297,6 +5439,8 @@ class _BlueprintMcpServer {
     final key = args['key'] as String?;
     final dragToX = _parseDouble(args['dragToX']);
     final dragToY = _parseDouble(args['dragToY']);
+    final direction = args['direction'] as String?;
+    final scrollAmount = _parseDouble(args['scrollAmount']);
 
     if (label == null &&
         fieldId == null &&
@@ -5331,6 +5475,8 @@ class _BlueprintMcpServer {
         key: key,
         dragToX: dragToX,
         dragToY: dragToY,
+        direction: direction,
+        scrollAmount: scrollAmount,
       );
 
       final result = await _executeRawCampaign(campaign);
@@ -5377,6 +5523,8 @@ class _BlueprintMcpServer {
         final key = entry['key'] as String?;
         final entryDragToX = _parseDouble(entry['dragToX']);
         final entryDragToY = _parseDouble(entry['dragToY']);
+        final entryDirection = entry['direction'] as String?;
+        final entryScrollAmount = _parseDouble(entry['scrollAmount']);
 
         // Resolve fieldId → label
         if (label == null && fieldId != null) {
@@ -5420,6 +5568,10 @@ class _BlueprintMcpServer {
           if (entryDragToX != null) 'dragToX': entryDragToX,
           // ignore: use_null_aware_elements
           if (entryDragToY != null) 'dragToY': entryDragToY,
+          // ignore: use_null_aware_elements
+          if (entryDirection != null) 'direction': entryDirection,
+          // ignore: use_null_aware_elements
+          if (entryScrollAmount != null) 'scrollAmount': entryScrollAmount,
         });
       }
 
