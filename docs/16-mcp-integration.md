@@ -32,6 +32,10 @@ Titan provides a Model Context Protocol (MCP) server that gives AI assistants re
   - [Session & Recording](#session--recording)
   - [Error Detection](#error-detection)
   - [Relay Bridge](#relay-bridge)
+  - [API Monitoring (Envoy)](#api-monitoring-envoy)
+  - [Tremor Management](#tremor-management)
+  - [App Introspection](#app-introspection)
+  - [UI Control](#ui-control)
 - [Usage Examples](#usage-examples)
 - [Physical Device & Emulator Setup](#physical-device--emulator-setup)
 - [Troubleshooting](#troubleshooting)
@@ -40,7 +44,7 @@ Titan provides a Model Context Protocol (MCP) server that gives AI assistants re
 
 ## Overview
 
-The **Titan Blueprint MCP Server** (`titan-blueprint`) is a stdio-based JSON-RPC 2.0 server that exposes 31 tools to AI assistants. It connects to your running Flutter app through the **Relay** HTTP bridge (port 8642) and reads static blueprint data from `.titan/blueprint.json`.
+The **Titan Blueprint MCP Server** (`titan-blueprint`) is a stdio-based JSON-RPC 2.0 server that exposes **48 tools** to AI assistants. It connects to your running Flutter app through the **Relay** HTTP bridge (port 8642) and reads static blueprint data from `.titan/blueprint.json`.
 
 ### Architecture
 
@@ -86,7 +90,7 @@ On web, browsers cannot host HTTP servers. The connection direction is **reverse
 
 1. **Static mode** — Read pre-exported blueprint data (`.titan/blueprint.json`). Works without a running app. Tools: `get_terrain`, `get_stratagems`, `get_ai_prompt`, `get_dead_ends`, `get_unreliable_routes`, `get_route_patterns`.
 
-2. **Live mode** — Connect to a running app via the Relay HTTP bridge. Required for real-time screen observation, action execution, and performance monitoring. Tools: `scry`, `scry_act`, `scry_diff`, `execute_campaign`, `relay_status`, `relay_terrain`, `generate_auth_stratagem`, `generate_campaign`, `audit_screen`, `get_performance`, `get_frame_history`, `get_page_loads`, `get_memory_snapshot`, `get_alerts`, `list_sessions`, `get_recording_status`, `get_framework_errors`.
+2. **Live mode** — Connect to a running app via the Relay HTTP bridge. Required for real-time screen observation, action execution, and performance monitoring. Tools: `scry`, `scry_act`, `scry_diff`, `execute_campaign`, `relay_status`, `relay_terrain`, `generate_auth_stratagem`, `generate_campaign`, `audit_screen`, `get_performance`, `get_frame_history`, `get_page_loads`, `get_memory_snapshot`, `get_alerts`, `list_sessions`, `get_recording_status`, `get_framework_errors`, `get_api_metrics`, `get_api_errors`, `get_tremors`, `add_tremor`, `remove_tremor`, `reset_tremors`, `reload_page`, `get_widget_tree`, `get_events`, `replay_session`, `get_route_history`, `capture_screenshot`, `audit_accessibility`, `inspect_di`, `inspect_envoy`, `configure_envoy`, `toggle_lens`.
 
 ---
 
@@ -441,7 +445,7 @@ await client.close();
 
 1. Open the Copilot Chat panel
 2. Click the **Tools** icon (🔧) in the chat input area
-3. You should see `titan-blueprint` listed with 20 tools
+3. You should see `titan-blueprint` listed with 48 tools
 4. Type: *"Use relay_status to check if my app's relay is running"*
 
 ---
@@ -953,7 +957,7 @@ dart run titan_colossus:blueprint_mcp_server \
 
 ## Tool Reference
 
-The server exposes **31 tools** organized into seven categories.
+The server exposes **48 tools** organized into eleven categories.
 
 ### Screen Observation (Scry)
 
@@ -1046,6 +1050,49 @@ These tools provide detailed access to Colossus performance monitors in the runn
 | Tool | Description |
 |------|-------------|
 | **`get_framework_errors`** | Captured Flutter framework errors (overflow, build, layout, paint, gesture). Shows errors from `FlutterError.onError` — including RenderFlex overflow, red error screen exceptions, and layout failures. Returns error category, message, library, truncated stack trace, and category breakdown. |
+
+### API Monitoring (Envoy)
+
+These tools require the Envoy HTTP client to be connected via `MetricsCourier` → `Colossus.trackApiMetric`.
+
+| Tool | Description |
+|------|-------------|
+| **`get_api_metrics`** | Get tracked API metrics from Envoy HTTP client with latency percentiles (p50/p95/p99), success rate, and endpoint grouping. Shows all HTTP requests made through Envoy, including method, URL, status code, duration, success/failure, and caching status. Endpoints are auto-grouped by URL pattern (numeric IDs and UUIDs normalized). |
+| **`get_api_errors`** | Get only failed API requests from Envoy HTTP client. Filters API metrics to show non-successful calls for quick error triage. Shows method, URL, status code, duration, and error message for each failed request. |
+
+### Tremor Management
+
+Manage Colossus performance alert thresholds at runtime.
+
+| Tool | Description |
+|------|-------------|
+| **`get_tremors`** | Get the currently configured Tremor performance alert thresholds. Shows each tremor name, category (frame, pageLoad, memory, rebuild, api, custom), severity, and once-mode setting. Also reports the alert history count. |
+| **`add_tremor`** | Add a new Tremor performance alert at runtime. Types: `fps` (threshold), `jankRate` (threshold), `pageLoad` (thresholdMs), `memory` (maxPillars), `rebuilds` (threshold + widget), `leaks`, `apiLatency` (thresholdMs), `apiErrorRate` (threshold). All accept optional `severity` (info/warning/error) and `once` (bool). |
+| **`remove_tremor`** | Remove a Tremor performance alert by name. Use `get_tremors` first to see available names. Common names: `fps_low`, `jank_rate`, `page_load_slow`, `memory_high`, `excessive_rebuilds`, `leak_detected`, `api_latency_high`, `api_error_rate`. |
+| **`reset_tremors`** | Reset all Tremor fired states, allowing once-mode tremors to fire again. Optionally clears the alert history. Params: `clearHistory` (bool, default false). |
+
+### App Introspection
+
+Tools for inspecting the running app's internals — widget tree, DI container, Envoy configuration, navigation history, and integration events.
+
+| Tool | Description |
+|------|-------------|
+| **`get_widget_tree`** | Get a statistical summary of the current widget tree. Returns element count, max depth, unique widget types, and the top 20 most frequent widget types. Useful for understanding app structure and detecting bloat. |
+| **`get_events`** | Get integration events from Colossus bridges (atlas, basalt, argus, bastion, custom). Events include route changes, circuit trips, auth state changes, and more. Params: `source` (optional filter). |
+| **`get_route_history`** | Get the navigation route history from integration events. Shows all route changes (navigate, pop, replace, redirect) in chronological order, plus the current route. |
+| **`replay_session`** | Replay a previously recorded Shade session from the ShadeVault. Loads the session by ID and replays all recorded gestures using Phantom. Returns replay stats including events dispatched, duration, and route changes. Params: `sessionId` (required), `speedMultiplier` (default 1.0). |
+| **`capture_screenshot`** | Capture a screenshot of the running Flutter app. Returns both a saved PNG file and the image content inline (base64 PNG), allowing AI agents to visually inspect the screen. The `pixelRatio` controls resolution: 0.5 = half (default, smaller payload), 1.0 = full logical, 2.0 = retina. Screenshots are saved to `.titan/screenshots/`. |
+| **`audit_accessibility`** | Audit the current screen for accessibility issues. Detects: interactive elements without semantic labels, touch targets smaller than 48×48 dp, and missing semantic roles. Returns a summary with issue count and detailed issue list. |
+| **`inspect_di`** | Inspect the Titan DI container (Vault). Lists all registered types, showing which are instantiated vs lazy (unresolved factories), and which are Pillar subclasses. Useful for debugging dependency wiring. |
+| **`inspect_envoy`** | Inspect the Envoy HTTP client configuration and active courier (interceptor) chain. Shows base URL, timeouts, default headers, and per-courier configuration. |
+| **`configure_envoy`** | Configure the Envoy HTTP client at runtime. Can change base URL, timeouts, redirect settings, add/remove default headers, add/remove couriers (interceptors), or clear all couriers. Returns applied changes and the resulting configuration. |
+| **`reload_page`** | Reload the current page. By default, re-navigates to the current route (like a browser refresh — re-triggers guards, builders, and data loading). With `fullRebuild: true`, triggers `reassembleApplication()` for a full widget tree rebuild. |
+
+### UI Control
+
+| Tool | Description |
+|------|-------------|
+| **`toggle_lens`** | Show or hide the Lens debug FAB (floating action button) in the running app. Use `visible=false` to hide the FAB when AI agents are in control — the manual debug button is unnecessary during MCP sessions. The Lens panel can still be opened programmatically. Call with `visible=true` to restore. |
 
 ---
 
@@ -1144,6 +1191,48 @@ The AI will:
 1. Call `get_framework_errors` to check for captured `FlutterError.onError` reports
 2. Report overflow, build, layout, paint, and gesture errors by category
 3. Call `scry` to check for any `ErrorWidget` (red error screen) on the current view
+
+### Take a screenshot and analyze visually
+
+> "Capture a screenshot of the current screen"
+
+The AI will:
+1. Call `capture_screenshot` with a pixel ratio of 0.5
+2. Receive both a saved PNG file path and the image content inline
+3. Visually analyze the screenshot to describe what's on screen
+
+### API performance analysis
+
+> "Show me API errors and slow endpoints"
+
+The AI will:
+1. Call `get_api_metrics` for a full breakdown of HTTP requests
+2. Call `get_api_errors` to isolate failed requests
+3. Report latency percentiles, error rates, and slow endpoints
+
+### Accessibility audit
+
+> "Check this screen for accessibility problems"
+
+The AI will:
+1. Call `audit_accessibility` to scan the widget tree
+2. Report missing semantic labels, undersized touch targets, and missing roles
+
+### Runtime configuration
+
+> "Hide the debug FAB and set up a performance alert for slow pages"
+
+The AI will:
+1. Call `toggle_lens` with `visible=false` to hide the FAB
+2. Call `add_tremor` with `type=pageLoad` and `thresholdMs=3000` to alert on slow page loads
+
+### Inspect app internals
+
+> "What's registered in the DI container? What routes has the user visited?"
+
+The AI will:
+1. Call `inspect_di` to list all Vault registrations
+2. Call `get_route_history` to show the navigation path
 
 ---
 
@@ -1399,11 +1488,11 @@ Now use default MCP configuration — `localhost:8642` reaches the device over W
 | Android Emulator | `adb forward` | `adb forward tcp:8642 tcp:8642` | `127.0.0.1` (default) |
 | Android Device (USB) | `adb forward` | `adb forward tcp:8642 tcp:8642` | `127.0.0.1` (default) |
 | Android Device (Wi-Fi) | Device IP | — | Device IP |
-| Web | **Not supported** | — | — |
+| Web | MCP `--relay-ws-port` | `--relay-ws-port 8643` | WebSocket via MCP server |
 
-### Web (not supported)
+### Web
 
-The Relay uses `dart:io` HTTP server, which is not available on web platforms. For web apps, use the Lens debug overlay to manually paste Campaign JSON, or export blueprint data for static analysis.
+On web, browsers cannot host HTTP servers. The connection direction is **reversed** — the web app connects **to** the MCP server's WebSocket relay endpoint. See [Web Relay Setup](#web-relay-setup) above for configuration details. All 48 tools work identically on both native and web platforms.
 
 ---
 
