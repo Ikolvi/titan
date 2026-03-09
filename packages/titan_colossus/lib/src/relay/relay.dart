@@ -275,6 +275,28 @@ abstract interface class RelayHandler {
   ///
   /// Returns atlas events in chronological order with current route.
   Map<String, dynamic> getRouteHistory();
+
+  /// Capture a screenshot of the running Flutter app.
+  ///
+  /// Uses [Fresco] to capture a PNG image of the current screen.
+  /// Returns base64-encoded PNG bytes. [pixelRatio] controls
+  /// resolution (default 0.5).
+  Future<Map<String, dynamic>> captureScreenshot({double pixelRatio});
+
+  /// Audit the current screen for accessibility issues.
+  ///
+  /// Walks the widget tree and semantics data to detect:
+  /// - Interactive elements missing semantic labels
+  /// - Touch targets smaller than 48×48 dp
+  /// - Missing semantic roles on interactive widgets
+  /// Returns structured results with issue list and summary.
+  Map<String, dynamic> auditAccessibility();
+
+  /// Inspect the Titan DI container (Vault).
+  ///
+  /// Returns all registered types, which are instantiated vs lazy,
+  /// and which are Pillar subclasses.
+  Map<String, dynamic> inspectDi();
 }
 
 // ---------------------------------------------------------------------------

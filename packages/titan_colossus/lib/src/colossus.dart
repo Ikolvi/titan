@@ -28,6 +28,7 @@ import 'metrics/mark.dart';
 import 'monitors/pulse.dart';
 import 'monitors/stride.dart';
 import 'monitors/vessel.dart';
+import 'recording/fresco.dart';
 import 'export/blueprint_export.dart';
 import 'recording/imprint.dart';
 import 'recording/phantom.dart';
@@ -335,6 +336,44 @@ class Colossus extends Pillar {
       'routes': routeEvents,
       'currentRoute': shade.getCurrentRoute?.call(),
     };
+  }
+
+  // -----------------------------------------------------------------------
+  // Screenshot capture
+  // -----------------------------------------------------------------------
+
+  /// Capture a screenshot of the current screen as PNG bytes.
+  ///
+  /// Uses [Fresco] internally. Returns base64-encoded PNG in a
+  /// structured result map. [pixelRatio] controls resolution
+  /// (default 0.5 — half resolution for smaller payloads).
+  ///
+  /// ```dart
+  /// final result = await Colossus.instance.captureScreenshot();
+  /// if (result['success'] == true) {
+  ///   final base64Png = result['base64'] as String;
+  /// }
+  /// ```
+  Future<Map<String, dynamic>> captureScreenshot({
+    double pixelRatio = 0.5,
+  }) async {
+    try {
+      final bytes = await Fresco.capture(pixelRatio: pixelRatio);
+      if (bytes == null) {
+        return {
+          'success': false,
+          'error': 'Capture failed — no RenderRepaintBoundary found',
+        };
+      }
+      return {
+        'success': true,
+        'sizeBytes': bytes.length,
+        'pixelRatio': pixelRatio,
+        'base64': base64Encode(bytes),
+      };
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -2368,5 +2407,173 @@ class _ColossusRelayHandler implements RelayHandler {
   @override
   Map<String, dynamic> getRouteHistory() {
     return _colossus.getRouteHistory();
+  }
+
+  @override
+  Future<Map<String, dynamic>> captureScreenshot({double pixelRatio = 0.5}) {
+    return _colossus.captureScreenshot(pixelRatio: pixelRatio);
+  }
+
+  @override
+  Map<String, dynamic> auditAccessibility() {
+    final rootElement = WidgetsBinding.instance.rootElement;
+    if (rootElement == null) {
+      return {'success': false, 'error': 'No root element available'};
+    }
+
+    final issues = <Map<String, dynamic>>[];
+    var totalElements = 0;
+    var interactiveCount = 0;
+    var withLabels = 0;
+    var withRoles = 0;
+    var touchTargetViolations = 0;
+
+    void walk(Element element) {
+      if (totalElements > 2000) return; // Safety limit
+      totalElements++;
+
+      final widget = element.widget;
+      final typeName = widget.runtimeType.toString();
+
+      // Check if interactive
+      final isInteractive =
+          typeName.contains('Button') ||
+          typeName == 'GestureDetector' ||
+          typeName == 'InkWell' ||
+          typeName == 'InkResponse' ||
+          typeName == 'IconButton' ||
+          typeName == 'TextButton' ||
+          typeName == 'ElevatedButton' ||
+          typeName == 'OutlinedButton' ||
+          typeName == 'FloatingActionButton' ||
+          typeName == 'TextField' ||
+          typeName == 'TextFormField' ||
+          typeName == 'Checkbox' ||
+          typeName == 'Switch' ||
+          typeName == 'Radio' ||
+          typeName == 'Slider' ||
+          typeName == 'DropdownButton' ||
+          typeName == 'PopupMenuButton';
+
+      if (isInteractive) {
+        interactiveCount++;
+
+        // Check for semantic label via ancestor Semantics widget
+        String? semanticLabel;
+        String? semanticRole;
+        element.visitAncestorElements((ancestor) {
+          if (ancestor.widget.runtimeType.toString() == 'Semantics') {
+            try {
+              // ignore: avoid_dynamic_calls
+              final props = (ancestor.widget as dynamic).properties;
+              if (props != null) {
+                // ignore: avoid_dynamic_calls
+                final label = props.label as String?;
+                if (label != null && label.isNotEmpty) {
+                  semanticLabel = label;
+                }
+                // ignore: avoid_dynamic_calls
+                if (props.button == true) semanticRole = 'button';
+                // ignore: avoid_dynamic_calls
+                if (props.textField == true) semanticRole = 'textField';
+                // ignore: avoid_dynamic_calls
+                if (props.header == true) semanticRole = 'header';
+              }
+            } catch (_) {
+              // Semantics access not available — skip
+            }
+            return false; // Stop walking
+          }
+          return true;
+        });
+
+        if (semanticLabel != null) withLabels++;
+        if (semanticRole != null) withRoles++;
+
+        // Check for missing semantic label
+        if (semanticLabel == null) {
+          issues.add({
+            'type': 'missing_label',
+            'severity': 'warning',
+            'widget': typeName,
+            'message':
+                '$typeName is interactive but has no Semantics label. '
+                'Wrap with Semantics(label: ...) for screen reader support.',
+          });
+        }
+
+        // Check touch target size
+        final renderObject = element.renderObject;
+        if (renderObject != null && renderObject.paintBounds.isFinite) {
+          final bounds = renderObject.paintBounds;
+          final width = bounds.width;
+          final height = bounds.height;
+          if (width < 48 || height < 48) {
+            touchTargetViolations++;
+            issues.add({
+              'type': 'small_touch_target',
+              'severity': 'warning',
+              'widget': typeName,
+              'size':
+                  '${width.toStringAsFixed(1)}×${height.toStringAsFixed(1)}',
+              'message':
+                  '$typeName has touch target '
+                  '${width.toStringAsFixed(1)}×${height.toStringAsFixed(1)} dp. '
+                  'Minimum recommended is 48×48 dp.',
+            });
+          }
+        }
+      }
+
+      element.visitChildren(walk);
+    }
+
+    walk(rootElement);
+
+    return {
+      'success': true,
+      'summary': {
+        'totalElements': totalElements,
+        'interactiveElements': interactiveCount,
+        'withLabels': withLabels,
+        'withRoles': withRoles,
+        'touchTargetViolations': touchTargetViolations,
+        'issueCount': issues.length,
+      },
+      'issues': issues.length > 50 ? issues.sublist(0, 50) : issues,
+    };
+  }
+
+  @override
+  Map<String, dynamic> inspectDi() {
+    final registeredTypes = Titan.registeredTypes;
+    final instances = Titan.instances;
+    final lazyTypes = Titan.lazyTypes;
+
+    final entries = <Map<String, dynamic>>[];
+
+    for (final type in registeredTypes) {
+      final isInstantiated = instances.containsKey(type);
+      final isLazy = lazyTypes.contains(type);
+      final instance = isInstantiated ? instances[type] : null;
+      final isPillar = instance is Pillar;
+
+      entries.add({
+        'type': type.toString(),
+        'instantiated': isInstantiated,
+        'lazy': isLazy,
+        'isPillar': isPillar,
+        if (isPillar) 'disposed': instance.isDisposed,
+      });
+    }
+
+    return {
+      'success': true,
+      'registeredCount': registeredTypes.length,
+      'instantiatedCount': instances.length,
+      'lazyCount': lazyTypes.length,
+      'pillarCount': entries.where((e) => e['isPillar'] == true).length,
+      'entries': entries,
+    };
   }
 }

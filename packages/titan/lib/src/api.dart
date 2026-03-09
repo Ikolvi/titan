@@ -312,4 +312,13 @@ abstract final class Titan {
   ///
   /// Useful for debug tools like [Lens] to inspect active Pillars.
   static Map<Type, dynamic> get instances => Map.unmodifiable(_instances);
+
+  /// Returns types registered as lazy factories that have NOT yet been
+  /// instantiated.
+  ///
+  /// Once a lazy factory is resolved via [get], it moves from
+  /// [lazyTypes] to [instances]. This getter never triggers resolution.
+  ///
+  /// Useful for debug tools like [Lens] to distinguish eager vs lazy.
+  static Set<Type> get lazyTypes => Set<Type>.of(_factories.keys);
 }

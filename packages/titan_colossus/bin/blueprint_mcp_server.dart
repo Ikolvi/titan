@@ -1017,6 +1017,46 @@ class _BlueprintMcpServer {
                 'understanding user flow and debugging navigation issues.',
             'inputSchema': {'type': 'object', 'properties': {}},
           },
+          {
+            'name': 'capture_screenshot',
+            'description':
+                'Capture a screenshot of the running Flutter app as a '
+                'base64-encoded PNG image. Uses the Fresco engine internally. '
+                'The pixelRatio controls resolution: 0.5 = half (default, '
+                'smaller payload), 1.0 = full logical, 2.0 = retina.',
+            'inputSchema': {
+              'type': 'object',
+              'properties': {
+                'pixelRatio': {
+                  'type': 'number',
+                  'description':
+                      'Image resolution multiplier. '
+                      '0.5 = half resolution (default), '
+                      '1.0 = logical resolution, '
+                      '2.0 = retina resolution.',
+                },
+              },
+            },
+          },
+          {
+            'name': 'audit_accessibility',
+            'description':
+                'Audit the current screen for accessibility issues. '
+                'Walks the widget tree to detect: interactive elements '
+                'without semantic labels, touch targets smaller than '
+                '48×48 dp, and missing semantic roles. Returns a summary '
+                'with issue count and detailed issue list.',
+            'inputSchema': {'type': 'object', 'properties': {}},
+          },
+          {
+            'name': 'inspect_di',
+            'description':
+                'Inspect the Titan DI container (Vault). Lists all '
+                'registered types, showing which are instantiated vs '
+                'lazy (unresolved factories), and which are Pillar '
+                'subclasses. Useful for debugging dependency wiring.',
+            'inputSchema': {'type': 'object', 'properties': {}},
+          },
         ],
       },
       'id': id,
@@ -1066,6 +1106,9 @@ class _BlueprintMcpServer {
       'get_events',
       'replay_session',
       'get_route_history',
+      'capture_screenshot',
+      'audit_accessibility',
+      'inspect_di',
     };
 
     if (relayOnlyTools.contains(toolName)) {
@@ -1101,6 +1144,9 @@ class _BlueprintMcpServer {
         'get_events' => await _getEvents(toolArgs),
         'replay_session' => await _replaySession(toolArgs),
         'get_route_history' => await _getRouteHistory(),
+        'capture_screenshot' => await _captureScreenshot(toolArgs),
+        'audit_accessibility' => await _auditAccessibility(),
+        'inspect_di' => await _inspectDi(),
         _ => 'Unknown tool: $toolName',
       };
 
@@ -4299,6 +4345,164 @@ class _BlueprintMcpServer {
   /// Get navigation route history via GET from Relay.
   Future<String> _getRouteHistory() async {
     return _fetchAndFormat('/route-history', _formatRouteHistory);
+  }
+
+  // -----------------------------------------------------------------------
+  // Enterprise MCP tools (screenshot, accessibility, DI inspection)
+  // -----------------------------------------------------------------------
+
+  /// Capture a screenshot via GET from Relay.
+  Future<String> _captureScreenshot(Map<String, dynamic> args) async {
+    final pixelRatio = args['pixelRatio'] as num?;
+    final path = pixelRatio != null
+        ? '/screenshot?pixelRatio=$pixelRatio'
+        : '/screenshot';
+    return _fetchAndFormat(path, _formatScreenshot);
+  }
+
+  /// Audit accessibility via GET from Relay.
+  Future<String> _auditAccessibility() async {
+    return _fetchAndFormat('/accessibility', _formatAccessibilityAudit);
+  }
+
+  /// Inspect DI container via GET from Relay.
+  Future<String> _inspectDi() async {
+    return _fetchAndFormat('/di', _formatDiInspection);
+  }
+
+  /// Format screenshot capture result.
+  String _formatScreenshot(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+    final success = data['success'] as bool? ?? false;
+
+    buf.writeln('# Screenshot Capture');
+    buf.writeln();
+
+    if (!success) {
+      buf.writeln('**Failed:** ${data['error'] ?? 'Unknown error'}');
+      return buf.toString();
+    }
+
+    buf.writeln('| Property | Value |');
+    buf.writeln('|----------|-------|');
+    buf.writeln('| Size | ${data['sizeBytes']} bytes |');
+    buf.writeln('| Pixel Ratio | ${data['pixelRatio']} |');
+    buf.writeln();
+
+    final base64 = data['base64'] as String?;
+    if (base64 != null) {
+      buf.writeln('## Image (base64 PNG)');
+      buf.writeln();
+      buf.writeln('```');
+      // Show first 200 chars to avoid flooding the context
+      if (base64.length > 200) {
+        buf.writeln('${base64.substring(0, 200)}...');
+        buf.writeln('(${base64.length} total characters)');
+      } else {
+        buf.writeln(base64);
+      }
+      buf.writeln('```');
+      buf.writeln();
+    }
+
+    return buf.toString();
+  }
+
+  /// Format accessibility audit result into Markdown.
+  String _formatAccessibilityAudit(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+
+    if (data['success'] != true) {
+      buf.writeln('# Accessibility Audit Unavailable');
+      buf.writeln();
+      buf.writeln('**Error:** ${data['error'] ?? 'Unknown'}');
+      return buf.toString();
+    }
+
+    final summary = data['summary'] as Map<String, dynamic>? ?? {};
+
+    buf.writeln('# Accessibility Audit');
+    buf.writeln();
+    buf.writeln('| Metric | Value |');
+    buf.writeln('|--------|-------|');
+    buf.writeln('| Total Elements | ${summary['totalElements']} |');
+    buf.writeln('| Interactive Elements | ${summary['interactiveElements']} |');
+    buf.writeln('| With Labels | ${summary['withLabels']} |');
+    buf.writeln('| With Roles | ${summary['withRoles']} |');
+    buf.writeln(
+      '| Touch Target Violations | ${summary['touchTargetViolations']} |',
+    );
+    buf.writeln('| Total Issues | ${summary['issueCount']} |');
+    buf.writeln();
+
+    final issues = data['issues'] as List<dynamic>? ?? [];
+    if (issues.isNotEmpty) {
+      buf.writeln('## Issues');
+      buf.writeln();
+      for (var i = 0; i < issues.length; i++) {
+        final issue = issues[i] as Map<String, dynamic>;
+        final severity = issue['severity'] ?? 'info';
+        final type = issue['type'] ?? '';
+        final widget = issue['widget'] ?? '';
+        final message = issue['message'] ?? '';
+        buf.writeln('${i + 1}. **[$severity]** `$widget` — $type');
+        buf.writeln('   $message');
+        if (issue['size'] != null) {
+          buf.writeln('   Size: ${issue['size']}');
+        }
+        buf.writeln();
+      }
+    } else {
+      buf.writeln('No accessibility issues detected.');
+    }
+
+    return buf.toString();
+  }
+
+  /// Format DI container inspection into Markdown.
+  String _formatDiInspection(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+
+    if (data['success'] != true) {
+      buf.writeln('# DI Container Unavailable');
+      buf.writeln();
+      buf.writeln('**Error:** ${data['error'] ?? 'Unknown'}');
+      return buf.toString();
+    }
+
+    buf.writeln('# Titan DI Container (Vault)');
+    buf.writeln();
+    buf.writeln('| Metric | Value |');
+    buf.writeln('|--------|-------|');
+    buf.writeln('| Registered Types | ${data['registeredCount']} |');
+    buf.writeln('| Instantiated | ${data['instantiatedCount']} |');
+    buf.writeln('| Lazy (unresolved) | ${data['lazyCount']} |');
+    buf.writeln('| Pillars | ${data['pillarCount']} |');
+    buf.writeln();
+
+    final entries = data['entries'] as List<dynamic>? ?? [];
+    if (entries.isNotEmpty) {
+      buf.writeln('## Registered Types');
+      buf.writeln();
+      buf.writeln('| Type | Instantiated | Lazy | Pillar | Disposed |');
+      buf.writeln('|------|-------------|------|--------|----------|');
+      for (final e in entries) {
+        final entry = e as Map<String, dynamic>;
+        final type = entry['type'] ?? '';
+        final inst = entry['instantiated'] == true ? 'Yes' : 'No';
+        final lazy = entry['lazy'] == true ? 'Yes' : 'No';
+        final pillar = entry['isPillar'] == true ? 'Yes' : 'No';
+        final disposed = entry['disposed'] != null
+            ? (entry['disposed'] == true ? 'Yes' : 'No')
+            : '—';
+        buf.writeln('| $type | $inst | $lazy | $pillar | $disposed |');
+      }
+      buf.writeln();
+    } else {
+      buf.writeln('No types registered in the DI container.');
+    }
+
+    return buf.toString();
   }
 
   /// Format page reload result.

@@ -239,6 +239,15 @@ class RelayPlatform {
         case ('GET', '/route-history'):
           _handleGetRouteHistory(request);
 
+        case ('GET', '/screenshot'):
+          await _handleCaptureScreenshot(request);
+
+        case ('GET', '/accessibility'):
+          _handleAuditAccessibility(request);
+
+        case ('GET', '/di'):
+          _handleInspectDi(request);
+
         default:
           _sendError(
             request.response,
@@ -1028,5 +1037,50 @@ class RelayPlatform {
     }
 
     _sendJson(request.response, handler.getRouteHistory());
+  }
+
+  Future<void> _handleCaptureScreenshot(HttpRequest request) async {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    final pixelRatio =
+        double.tryParse(request.uri.queryParameters['pixelRatio'] ?? '') ?? 0.5;
+    final result = await handler.captureScreenshot(pixelRatio: pixelRatio);
+    _sendJson(request.response, result);
+  }
+
+  void _handleAuditAccessibility(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    _sendJson(request.response, handler.auditAccessibility());
+  }
+
+  void _handleInspectDi(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    _sendJson(request.response, handler.inspectDi());
   }
 }

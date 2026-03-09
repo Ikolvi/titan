@@ -1367,4 +1367,58 @@ class _MockRelayHandler implements RelayHandler {
       'currentRoute': '/settings',
     };
   }
+
+  @override
+  Future<Map<String, dynamic>> captureScreenshot({
+    double pixelRatio = 0.5,
+  }) async {
+    return {
+      'success': true,
+      'sizeBytes': 1024,
+      'pixelRatio': pixelRatio,
+      'base64': 'iVBORw0KGgo=',
+    };
+  }
+
+  @override
+  Map<String, dynamic> auditAccessibility() {
+    return {
+      'success': true,
+      'summary': {
+        'totalElements': 50,
+        'interactiveElements': 5,
+        'withLabels': 3,
+        'withRoles': 4,
+        'touchTargetViolations': 1,
+        'issueCount': 2,
+      },
+      'issues': [
+        {
+          'type': 'missing_label',
+          'severity': 'warning',
+          'widget': 'IconButton',
+          'message': 'IconButton is interactive but has no Semantics label.',
+        },
+      ],
+    };
+  }
+
+  @override
+  Map<String, dynamic> inspectDi() {
+    return {
+      'success': true,
+      'registeredCount': 2,
+      'instantiatedCount': 2,
+      'lazyCount': 0,
+      'pillarCount': 1,
+      'entries': [
+        {
+          'type': 'Colossus',
+          'instantiated': true,
+          'lazy': false,
+          'isPillar': true,
+        },
+      ],
+    };
+  }
 }
