@@ -1,6 +1,7 @@
 {
   "servers": {
-    // Stdio transport — default for local VS Code (auto-spawns the server)
+    // Stdio transport — works for all Flutter targets (web, mobile, desktop)
+    // VS Code spawns the MCP server process and communicates via stdin/stdout
     "titan-blueprint": {
       "command": "dart",
       "args": [
@@ -8,14 +9,6 @@
         "bin/blueprint_mcp_server.dart"
       ],
       "cwd": "${workspaceFolder}/packages/titan_colossus"
-    },
-    // Streamable HTTP transport — for VS Code Web / Codespaces / remote
-    // Start the server first:
-    //   cd packages/titan_colossus
-    //   dart run bin/blueprint_mcp_server.dart --transport auto --port 3001
-    "titan-blueprint-web": {
-      "type": "http",
-      "url": "http://localhost:3001/mcp"
     }
   }
 }
