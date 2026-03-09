@@ -19,6 +19,7 @@ environment:
 
 dependencies:
   titan: ^1.1.3
+  titan_basalt: ^1.0.0
   meta: ^1.16.0
 
 dev_dependencies:

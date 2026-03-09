@@ -20,6 +20,9 @@
 /// | SSL Pinning | **EnvoyPin** | `EnvoyPin` |
 /// | Proxy Config | **EnvoyProxy** | `EnvoyProxy` |
 /// | Cookie Jar | **CookieCourier** | `CookieCourier` |
+/// | Pillar Base | **EnvoyPillar** | `EnvoyPillar` |
+/// | DI Module | **EnvoyModule** | `EnvoyModule` |
+/// | Quarry/Codex | **EnvoyPillarExtension** | `envoyQuarry`, `envoyCodex` |
 ///
 /// ## Quick Start
 ///
@@ -89,3 +92,8 @@ export 'src/cache/memory_cache.dart';
 
 // Metrics
 export 'src/metrics.dart';
+
+// Titan ecosystem integration
+export 'src/envoy_pillar.dart';
+export 'src/envoy_module.dart';
+export 'src/envoy_extension.dart';
