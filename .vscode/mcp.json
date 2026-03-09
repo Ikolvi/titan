@@ -1,12 +1,15 @@
 {
   "servers": {
-    // Stdio transport — works for all Flutter targets (web, mobile, desktop)
-    // VS Code spawns the MCP server process and communicates via stdin/stdout
+    // Stdio transport — works for all Flutter targets (web, mobile, desktop).
+    // VS Code spawns the MCP server process and communicates via stdin/stdout.
+    // --relay-ws-port enables web apps to connect via WebSocket relay.
     "titan-blueprint": {
       "command": "dart",
       "args": [
         "run",
-        "bin/blueprint_mcp_server.dart"
+        "bin/blueprint_mcp_server.dart",
+        "--relay-ws-port",
+        "8643"
       ],
       "cwd": "${workspaceFolder}/packages/titan_colossus"
     }

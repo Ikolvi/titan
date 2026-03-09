@@ -27,6 +27,7 @@ dependencies:
   titan_basalt: ^1.12.6
   titan_argus: ^1.0.3
   titan_envoy: ^1.0.0
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

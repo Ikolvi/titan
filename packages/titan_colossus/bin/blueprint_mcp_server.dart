@@ -126,6 +126,8 @@ Future<void> main(List<String> args) async {
           server._relayPort = int.parse(args[i + 1]);
         case '--relay-token':
           server._relayAuthToken = args[i + 1];
+        case '--relay-ws-port':
+          server._relayWsPort = int.parse(args[i + 1]);
         case '--transport':
           transport = args[i + 1];
         case '--sse-port':
@@ -184,6 +186,23 @@ class _BlueprintMcpServer {
   String _relayHost = '127.0.0.1';
   int _relayPort = 8642;
   String? _relayAuthToken;
+
+  /// Port for the WebSocket relay endpoint (for web apps).
+  /// When set, the MCP server starts a WebSocket server on this port
+  /// that accepts connections from Flutter web apps.
+  int? _relayWsPort;
+
+  /// Connected web app WebSocket for relay commands.
+  WebSocket? _relayWebSocket;
+
+  /// Pending relay-over-WebSocket requests waiting for responses.
+  final Map<String, Completer<Map<String, dynamic>>> _relayPendingRequests = {};
+
+  /// HTTP server hosting the WebSocket relay endpoint.
+  HttpServer? _relayWsServer;
+
+  /// Counter for generating unique relay request IDs.
+  int _relayRequestCounter = 0;
   int _ssePort = 3000;
   String _sseHost = '127.0.0.1';
   int _wsPort = 3001;
@@ -365,6 +384,11 @@ class _BlueprintMcpServer {
 
   /// Runs the MCP server over stdio (default transport).
   Future<void> run() async {
+    // Start WebSocket relay server for web app connections (if configured).
+    if (_relayWsPort != null) {
+      await _startRelayWsServer();
+    }
+
     // Read JSON-RPC messages from stdin, write responses to stdout
     final lines = stdin.transform(utf8.decoder).transform(const LineSplitter());
 
@@ -402,6 +426,11 @@ class _BlueprintMcpServer {
   /// Per the MCP spec (2024-11-05), the SSE transport enables browser-based
   /// and remote AI clients to connect without stdio.
   Future<void> runSse() async {
+    // Start WebSocket relay server for web app connections (if configured).
+    if (_relayWsPort != null) {
+      await _startRelayWsServer();
+    }
+
     final httpServer = await _bindServer(_sseHost, _ssePort);
     stderr.writeln(
       'MCP SSE server listening on $_scheme://$_sseHost:$_ssePort',
@@ -556,6 +585,11 @@ class _BlueprintMcpServer {
   /// provides full-duplex communication on a single connection. Each
   /// message is a complete JSON-RPC request or response.
   Future<void> runWs() async {
+    // Start WebSocket relay server for web app connections (if configured).
+    if (_relayWsPort != null) {
+      await _startRelayWsServer();
+    }
+
     final httpServer = await _bindServer(_wsHost, _wsPort);
     stderr.writeln(
       'MCP WebSocket server listening on $_scheme://$_wsHost:$_wsPort',
@@ -686,6 +720,11 @@ class _BlueprintMcpServer {
   ///
   /// Session management uses the `Mcp-Session-Id` header per the spec.
   Future<void> runStreamable() async {
+    // Start WebSocket relay server for web app connections (if configured).
+    if (_relayWsPort != null) {
+      await _startRelayWsServer();
+    }
+
     final httpServer = await _bindServer(_streamableHost, _streamablePort);
     stderr.writeln(
       'MCP Streamable HTTP server listening on '
@@ -950,6 +989,11 @@ class _BlueprintMcpServer {
   /// - `DELETE /mcp` — Terminate session (Streamable HTTP)
   /// - `GET /health` — Health check
   Future<void> runAuto() async {
+    // Start WebSocket relay server for web app connections (if configured).
+    if (_relayWsPort != null) {
+      await _startRelayWsServer();
+    }
+
     final httpServer = await _bindServer(_autoHost, _autoPort);
     stderr.writeln(
       'MCP auto-detect server listening on $_scheme://$_autoHost:$_autoPort',
@@ -1328,6 +1372,7 @@ class _BlueprintMcpServer {
       case 'tools/call':
         return _handleToolsCall(id, request);
       case 'shutdown':
+        await _stopRelayWsServer();
         return {'jsonrpc': '2.0', 'result': null, 'id': id};
       default:
         return {
@@ -3194,6 +3239,281 @@ class _BlueprintMcpServer {
     if (_relayAuthToken != null) 'Authorization': 'Bearer $_relayAuthToken',
   };
 
+  /// Whether a web app is connected via the WebSocket relay.
+  bool get _hasWebRelay =>
+      _relayWebSocket != null && _relayWebSocket!.readyState == WebSocket.open;
+
+  // -----------------------------------------------------------------------
+  // WebSocket Relay server (for web apps)
+  // -----------------------------------------------------------------------
+
+  /// Start the WebSocket relay server for web app connections.
+  ///
+  /// This allows Flutter web apps to connect as WebSocket clients
+  /// instead of hosting their own HTTP server (which browsers can't do).
+  Future<void> _startRelayWsServer() async {
+    final port = _relayWsPort;
+    if (port == null) return;
+
+    final server = await _bindServer('127.0.0.1', port);
+    _relayWsServer = server;
+
+    stderr.writeln(
+      'Relay WebSocket server listening on '
+      '$_scheme://127.0.0.1:$port/relay',
+    );
+
+    // Process incoming connections.
+    unawaited(_handleRelayWsConnections(server));
+  }
+
+  Future<void> _handleRelayWsConnections(HttpServer server) async {
+    await for (final request in server) {
+      final path = request.uri.path;
+
+      // CORS preflight
+      if (request.method == 'OPTIONS') {
+        request.response
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+          ..headers.add(
+            'Access-Control-Allow-Headers',
+            'Content-Type, Authorization',
+          )
+          ..statusCode = HttpStatus.noContent;
+        await request.response.close();
+        continue;
+      }
+
+      if (path == '/relay') {
+        // Auth check for WebSocket upgrade
+        if (_authEnabled) {
+          final token =
+              request.uri.queryParameters['token'] ??
+              _extractBearerToken(request.headers);
+          if (token == null || !_authTokens.contains(token)) {
+            request.response
+              ..statusCode = HttpStatus.unauthorized
+              ..write('Unauthorized');
+            await request.response.close();
+            continue;
+          }
+        }
+
+        // Upgrade to WebSocket
+        try {
+          final ws = await WebSocketTransformer.upgrade(request);
+          _onRelayWsConnected(ws);
+        } catch (e) {
+          stderr.writeln('WebSocket relay upgrade failed: $e');
+          request.response
+            ..statusCode = HttpStatus.badRequest
+            ..write('WebSocket upgrade failed');
+          await request.response.close();
+        }
+      } else if (path == '/health') {
+        request.response
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode({'status': 'ok', 'webRelay': _hasWebRelay}));
+        await request.response.close();
+      } else {
+        request.response
+          ..statusCode = HttpStatus.notFound
+          ..write('Not found. Connect via WebSocket to /relay');
+        await request.response.close();
+      }
+    }
+  }
+
+  void _onRelayWsConnected(WebSocket ws) {
+    // Replace any existing connection (single web app at a time).
+    final old = _relayWebSocket;
+    if (old != null && old.readyState == WebSocket.open) {
+      old.close(1000, 'Replaced by new connection');
+    }
+
+    _relayWebSocket = ws;
+    stderr.writeln('Web app connected to Relay WebSocket');
+
+    ws.listen(
+      (data) {
+        if (data is String) {
+          _onRelayWsResponse(data);
+        }
+      },
+      onDone: () {
+        stderr.writeln('Web app disconnected from Relay WebSocket');
+        if (_relayWebSocket == ws) {
+          _relayWebSocket = null;
+        }
+        // Complete any pending requests with an error.
+        for (final entry in _relayPendingRequests.entries) {
+          if (!entry.value.isCompleted) {
+            entry.value.completeError(
+              const SocketException('Web app disconnected'),
+            );
+          }
+        }
+        _relayPendingRequests.clear();
+      },
+      onError: (Object error) {
+        stderr.writeln('Relay WebSocket error: $error');
+      },
+    );
+  }
+
+  void _onRelayWsResponse(String data) {
+    try {
+      final message = jsonDecode(data) as Map<String, dynamic>;
+      final id = message['id'] as String?;
+      if (id == null) return;
+
+      final completer = _relayPendingRequests.remove(id);
+      if (completer == null || completer.isCompleted) return;
+
+      final status = message['status'] as int? ?? 200;
+      if (status >= 200 && status < 300) {
+        final body =
+            message['body'] as Map<String, dynamic>? ?? <String, dynamic>{};
+        completer.complete(body);
+      } else {
+        final error = message['error'] as String? ?? 'Unknown error';
+        completer.completeError(
+          HttpException('Relay returned $status: $error'),
+        );
+      }
+    } catch (e) {
+      stderr.writeln('Relay WebSocket response parse error: $e');
+    }
+  }
+
+  /// Extract Bearer token from Authorization header.
+  String? _extractBearerToken(HttpHeaders headers) {
+    final auth = headers.value('authorization');
+    if (auth != null && auth.startsWith('Bearer ')) {
+      return auth.substring(7);
+    }
+    return null;
+  }
+
+  /// Send a relay request over WebSocket and wait for the response.
+  ///
+  /// Returns the parsed response body as a JSON map.
+  /// Throws [SocketException] if no web app is connected.
+  /// Throws [TimeoutException] if the request times out.
+  Future<Map<String, dynamic>> _relayWsRequest(
+    String method,
+    String path, [
+    Map<String, dynamic>? body,
+    Duration timeout = const Duration(seconds: 30),
+  ]) async {
+    final ws = _relayWebSocket;
+    if (ws == null || ws.readyState != WebSocket.open) {
+      throw const SocketException('No web app connected to Relay WebSocket');
+    }
+
+    final id = 'relay-${++_relayRequestCounter}';
+    final completer = Completer<Map<String, dynamic>>();
+    _relayPendingRequests[id] = completer;
+
+    final request = <String, dynamic>{'id': id, 'method': method, 'path': path};
+    if (body != null) {
+      request['body'] = body;
+    }
+
+    ws.add(jsonEncode(request));
+
+    try {
+      return await completer.future.timeout(timeout);
+    } on TimeoutException {
+      _relayPendingRequests.remove(id);
+      rethrow;
+    }
+  }
+
+  /// Stop the WebSocket relay server.
+  Future<void> _stopRelayWsServer() async {
+    final ws = _relayWebSocket;
+    if (ws != null && ws.readyState == WebSocket.open) {
+      await ws.close(1000, 'MCP server shutting down');
+    }
+    _relayWebSocket = null;
+    await _relayWsServer?.close();
+    _relayWsServer = null;
+  }
+
+  /// Generic relay GET request — tries WebSocket first, falls back to HTTP.
+  ///
+  /// Returns the parsed JSON response body.
+  /// Throws [SocketException] if no relay is available.
+  /// Throws [TimeoutException] if the request times out.
+  /// Throws [HttpException] if the relay returns an error status.
+  Future<Map<String, dynamic>> _relayGet(
+    String path, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (_hasWebRelay) {
+      return _relayWsRequest('GET', path, null, timeout);
+    }
+
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 5);
+
+      final request = await client.getUrl(_relayUri(path));
+      _relayHeaders.forEach(request.headers.set);
+
+      final response = await request.close().timeout(timeout);
+      final body = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        throw HttpException('Relay returned ${response.statusCode}: $body');
+      }
+
+      return jsonDecode(body) as Map<String, dynamic>;
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Generic relay POST request — tries WebSocket first, falls back to HTTP.
+  ///
+  /// Returns the parsed JSON response body.
+  /// Throws [SocketException] if no relay is available.
+  /// Throws [TimeoutException] if the request times out.
+  /// Throws [HttpException] if the relay returns an error status.
+  Future<Map<String, dynamic>> _relayPost(
+    String path,
+    Map<String, dynamic> body, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (_hasWebRelay) {
+      return _relayWsRequest('POST', path, body, timeout);
+    }
+
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 5);
+
+      final request = await client.postUrl(_relayUri(path));
+      _relayHeaders.forEach(request.headers.set);
+      request.add(utf8.encode(jsonEncode(body)));
+
+      final response = await request.close().timeout(timeout);
+      final responseBody = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        throw HttpException(
+          'Relay returned ${response.statusCode}: $responseBody',
+        );
+      }
+
+      return jsonDecode(responseBody) as Map<String, dynamic>;
+    } finally {
+      client.close();
+    }
+  }
+
   /// Execute a Campaign on the running app via the Relay HTTP bridge.
   ///
   /// POST /campaign with the full Campaign JSON body. The Relay runs the
@@ -3210,6 +3530,24 @@ class _BlueprintMcpServer {
           'Call get_campaign_template to see the schema.';
     }
 
+    // Try WebSocket relay first (for web apps).
+    if (_hasWebRelay) {
+      try {
+        final result = await _relayWsRequest(
+          'POST',
+          '/campaign',
+          campaign,
+          const Duration(minutes: 10),
+        );
+        return _formatCampaignResult(result);
+      } on SocketException catch (e) {
+        return 'Web app disconnected from Relay WebSocket.\nError: $e';
+      } on TimeoutException catch (e) {
+        return 'Campaign execution timed out: $e';
+      }
+    }
+
+    // Fall back to HTTP relay (for native apps).
     final client = HttpClient();
     try {
       client.connectionTimeout = const Duration(seconds: 10);
@@ -3315,6 +3653,24 @@ class _BlueprintMcpServer {
 
   /// Check whether the Relay HTTP bridge is running in the app.
   Future<String> _relayStatus() async {
+    // Check WebSocket relay first.
+    if (_hasWebRelay) {
+      try {
+        final data = await _relayWsRequest('GET', '/health');
+        final buf = StringBuffer();
+        buf.writeln('Relay is RUNNING (WebSocket)');
+        buf.writeln('- Transport: WebSocket');
+        buf.writeln('- Status: ${data['status'] ?? 'ok'}');
+        buf.writeln('- Uptime: ${data['uptime'] ?? 'unknown'}s');
+        return buf.toString();
+      } on SocketException {
+        // Fall through to HTTP check.
+      } on TimeoutException {
+        // Fall through to HTTP check.
+      }
+    }
+
+    // Check HTTP relay.
     final client = HttpClient();
     try {
       client.connectionTimeout = const Duration(seconds: 5);
@@ -3348,12 +3704,16 @@ class _BlueprintMcpServer {
         return 'Relay returned ${response.statusCode}: $body';
       }
     } on SocketException {
+      final wsInfo = _relayWsPort != null
+          ? '\n3. For web apps: configure '
+                'RelayConfig(targetUrl: "ws://localhost:$_relayWsPort/relay")'
+          : '';
       return 'Relay is NOT RUNNING at '
           'http://$_relayHost:$_relayPort\n\n'
           'To start:\n'
           '1. Launch your app with '
           'ColossusPlugin(enableRelay: true)\n'
-          '2. Or call Colossus.instance.startRelay()';
+          '2. Or call Colossus.instance.startRelay()$wsInfo';
     } on TimeoutException {
       return 'Relay at http://$_relayHost:$_relayPort '
           'did not respond (timeout)';
@@ -3821,123 +4181,91 @@ class _BlueprintMcpServer {
     final name = args['name'] as String?;
     final description = args['description'] as String?;
 
-    final client = HttpClient();
     try {
-      client.connectionTimeout = const Duration(seconds: 5);
-
-      final request = await client.postUrl(_relayUri('/recording/start'));
-      _relayHeaders.forEach(request.headers.set);
       final startBody = <String, dynamic>{};
       if (name != null) startBody['name'] = name;
       if (description != null) startBody['description'] = description;
-      request.add(utf8.encode(jsonEncode(startBody)));
 
-      final response = await request.close().timeout(
-        const Duration(seconds: 5),
-      );
-
-      final body = await response.transform(utf8.decoder).join();
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(body) as Map<String, dynamic>;
-        final success = data['success'] as bool? ?? false;
-        final buf = StringBuffer();
-        buf.writeln('# Shade Recording');
+      final data = await _relayPost('/recording/start', startBody);
+      final success = data['success'] as bool? ?? false;
+      final buf = StringBuffer();
+      buf.writeln('# Shade Recording');
+      buf.writeln();
+      if (success) {
+        buf.writeln('**Recording started** ✅');
         buf.writeln();
-        if (success) {
-          buf.writeln('**Recording started** ✅');
-          buf.writeln();
-          buf.writeln('- **Name**: ${data['name'] ?? 'session'}');
-          buf.writeln();
-          buf.writeln(
-            'Navigate the app to record interactions. '
-            'Call `stop_recording` when done.',
-          );
-        } else {
-          buf.writeln('**Could not start recording**');
-          buf.writeln();
-          buf.writeln('Reason: ${data['error'] ?? 'Unknown'}');
-          if (data['currentEventCount'] != null) {
-            buf.writeln('- Current events: ${data['currentEventCount']}');
-            buf.writeln(
-              '- Elapsed: '
-              '${((data['elapsedMs'] as int? ?? 0) / 1000).toStringAsFixed(1)}s',
-            );
-          }
-        }
-        return buf.toString();
+        buf.writeln('- **Name**: ${data['name'] ?? 'session'}');
+        buf.writeln();
+        buf.writeln(
+          'Navigate the app to record interactions. '
+          'Call `stop_recording` when done.',
+        );
       } else {
-        return 'Relay returned ${response.statusCode}: $body';
+        buf.writeln('**Could not start recording**');
+        buf.writeln();
+        buf.writeln('Reason: ${data['error'] ?? 'Unknown'}');
+        if (data['currentEventCount'] != null) {
+          buf.writeln('- Current events: ${data['currentEventCount']}');
+          buf.writeln(
+            '- Elapsed: '
+            '${((data['elapsedMs'] as int? ?? 0) / 1000).toStringAsFixed(1)}s',
+          );
+        }
       }
+      return buf.toString();
     } on SocketException {
       return '# Start Recording Failed\n\n'
           'Cannot connect to Relay — is the app running?';
     } on TimeoutException {
       return '# Start Recording Failed\n\n'
           'Relay did not respond (timeout).';
-    } finally {
-      client.close();
+    } on HttpException catch (e) {
+      return 'Relay error: $e';
     }
   }
 
   /// Stop the active Shade recording session via Relay.
   Future<String> _stopRecording() async {
-    final client = HttpClient();
     try {
-      client.connectionTimeout = const Duration(seconds: 5);
-
-      final request = await client.postUrl(_relayUri('/recording/stop'));
-      _relayHeaders.forEach(request.headers.set);
-
-      final response = await request.close().timeout(
-        const Duration(seconds: 5),
-      );
-
-      final body = await response.transform(utf8.decoder).join();
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(body) as Map<String, dynamic>;
-        final success = data['success'] as bool? ?? false;
-        final buf = StringBuffer();
-        buf.writeln('# Shade Recording');
+      final data = await _relayPost('/recording/stop', <String, dynamic>{});
+      final success = data['success'] as bool? ?? false;
+      final buf = StringBuffer();
+      buf.writeln('# Shade Recording');
+      buf.writeln();
+      if (success) {
+        buf.writeln('**Recording stopped** ✅');
         buf.writeln();
-        if (success) {
-          buf.writeln('**Recording stopped** ✅');
-          buf.writeln();
-          buf.writeln('| Property | Value |');
-          buf.writeln('|----------|-------|');
-          buf.writeln('| Session ID | ${data['sessionId']} |');
-          buf.writeln('| Name | ${data['name']} |');
-          buf.writeln('| Events | ${data['eventCount']} |');
-          final durationMs = data['durationMs'] as int? ?? 0;
-          buf.writeln(
-            '| Duration | ${(durationMs / 1000).toStringAsFixed(1)}s |',
-          );
-          if (data['description'] != null) {
-            buf.writeln('| Description | ${data['description']} |');
-          }
-          buf.writeln();
-          buf.writeln(
-            'Session analyzed by Scout. Call `export_blueprint` to '
-            'save Terrain + Stratagems to disk.',
-          );
-        } else {
-          buf.writeln('**Could not stop recording**');
-          buf.writeln();
-          buf.writeln('Reason: ${data['error'] ?? 'Unknown'}');
+        buf.writeln('| Property | Value |');
+        buf.writeln('|----------|-------|');
+        buf.writeln('| Session ID | ${data['sessionId']} |');
+        buf.writeln('| Name | ${data['name']} |');
+        buf.writeln('| Events | ${data['eventCount']} |');
+        final durationMs = data['durationMs'] as int? ?? 0;
+        buf.writeln(
+          '| Duration | ${(durationMs / 1000).toStringAsFixed(1)}s |',
+        );
+        if (data['description'] != null) {
+          buf.writeln('| Description | ${data['description']} |');
         }
-        return buf.toString();
+        buf.writeln();
+        buf.writeln(
+          'Session analyzed by Scout. Call `export_blueprint` to '
+          'save Terrain + Stratagems to disk.',
+        );
       } else {
-        return 'Relay returned ${response.statusCode}: $body';
+        buf.writeln('**Could not stop recording**');
+        buf.writeln();
+        buf.writeln('Reason: ${data['error'] ?? 'Unknown'}');
       }
+      return buf.toString();
     } on SocketException {
       return '# Stop Recording Failed\n\n'
           'Cannot connect to Relay — is the app running?';
     } on TimeoutException {
       return '# Stop Recording Failed\n\n'
           'Relay did not respond (timeout).';
-    } finally {
-      client.close();
+    } on HttpException catch (e) {
+      return 'Relay error: $e';
     }
   }
 
@@ -3945,9 +4273,96 @@ class _BlueprintMcpServer {
   Future<String> _exportBlueprint(Map<String, dynamic> args) async {
     final directory = args['directory'] as String? ?? _blueprintDir;
 
-    // Fetch blueprint data from Relay (in-memory, no disk I/O in the app).
-    // This avoids macOS/iOS sandbox issues where the app cannot write outside
-    // its container.
+    // For WebSocket relay (web apps), use the non-streaming endpoint.
+    if (_hasWebRelay) {
+      return _exportBlueprintViaWs(directory);
+    }
+
+    // For HTTP relay (native apps), use streaming endpoints.
+    return _exportBlueprintViaHttp(directory);
+  }
+
+  /// Export blueprint via WebSocket relay (non-streaming).
+  Future<String> _exportBlueprintViaWs(String directory) async {
+    try {
+      final data = await _relayWsRequest(
+        'GET',
+        '/blueprint/data',
+        null,
+        const Duration(seconds: 60),
+      );
+
+      // Write files locally from the MCP process.
+      final dir = Directory(directory);
+      if (!dir.existsSync()) {
+        dir.createSync(recursive: true);
+      }
+
+      final jsonPath = '${dir.path}/blueprint.json';
+      final promptPath = '${dir.path}/blueprint-prompt.md';
+
+      // Write JSON.
+      final blueprint = data['blueprint'] as Map<String, dynamic>?;
+      if (blueprint != null) {
+        File(jsonPath).writeAsStringSync(
+          const JsonEncoder.withIndent('  ').convert(blueprint),
+        );
+      } else {
+        File(jsonPath).writeAsStringSync(jsonEncode(data));
+      }
+
+      // Write prompt if available.
+      final prompt = data['prompt'] as String?;
+      if (prompt != null) {
+        File(promptPath).writeAsStringSync(prompt);
+      }
+
+      // Invalidate cache.
+      _cachedBlueprint = null;
+      _lastModified = null;
+
+      // Extract summary info.
+      final terrain = blueprint?['terrain'] as Map<String, dynamic>?;
+      final screens = (terrain?['screens'] as List?)?.length.toString() ?? '0';
+      final transitions =
+          (terrain?['transitions'] as List?)?.length.toString() ?? '0';
+      final stratagems =
+          (blueprint?['stratagems'] as List?)?.length.toString() ?? '0';
+
+      final buf = StringBuffer();
+      buf.writeln('# Blueprint Export');
+      buf.writeln();
+      buf.writeln('**Blueprint exported** ✅');
+      buf.writeln();
+      buf.writeln('| File | Path |');
+      buf.writeln('|------|------|');
+      buf.writeln('| JSON | `$jsonPath` |');
+      if (prompt != null) {
+        buf.writeln('| Prompt | `$promptPath` |');
+      }
+      buf.writeln();
+      buf.writeln('## Terrain Summary');
+      buf.writeln();
+      buf.writeln('- **Screens**: $screens');
+      buf.writeln('- **Transitions**: $transitions');
+      buf.writeln('- **Stratagems generated**: $stratagems');
+      buf.writeln();
+      buf.writeln(
+        'Blueprint data is now available for `get_terrain`, '
+        '`get_stratagems`, and other blueprint-dependent tools.',
+      );
+      return buf.toString();
+    } on SocketException {
+      return '# Blueprint Export Failed\n\n'
+          'Web app disconnected from Relay WebSocket.';
+    } on TimeoutException {
+      return '# Blueprint Export Failed\n\n'
+          'Web app Relay did not respond (timeout).';
+    }
+  }
+
+  /// Export blueprint via HTTP relay (streaming).
+  Future<String> _exportBlueprintViaHttp(String directory) async {
     final client = HttpClient();
     try {
       client.connectionTimeout = const Duration(seconds: 10);
@@ -4143,6 +4558,24 @@ class _BlueprintMcpServer {
     String path,
     String Function(Map<String, dynamic>) formatter,
   ) async {
+    // Try WebSocket relay first (for web apps).
+    if (_hasWebRelay) {
+      try {
+        final data = await _relayWsRequest('GET', path);
+        return formatter(data);
+      } on SocketException {
+        return '# ${path.substring(1).replaceFirst(path[1], path[1].toUpperCase())} Unavailable\n\n'
+            'Web app disconnected from Relay WebSocket.\n\n'
+            'Ensure the Flutter web app is running with '
+            '`ColossusPlugin(enableRelay: true, '
+            'relayConfig: RelayConfig(targetUrl: "ws://localhost:${_relayWsPort ?? 8643}/relay"))`.';
+      } on TimeoutException {
+        return '# ${path.substring(1)} Unavailable\n\n'
+            'Web app Relay did not respond (timeout).';
+      }
+    }
+
+    // Fall back to HTTP relay (for native apps).
     final client = HttpClient();
     try {
       client.connectionTimeout = const Duration(seconds: 5);
@@ -4192,24 +4625,8 @@ class _BlueprintMcpServer {
   Future<String> _generateAuthStratagem(Map<String, dynamic> args) async {
     final defaultValue = args['defaultValue'] as String? ?? '<fill_in_value>';
 
-    final client = HttpClient();
     try {
-      client.connectionTimeout = const Duration(seconds: 5);
-
-      final request = await client.getUrl(_relayUri('/blueprint'));
-      _relayHeaders.forEach(request.headers.set);
-
-      final response = await request.close().timeout(
-        const Duration(seconds: 5),
-      );
-
-      final body = await response.transform(utf8.decoder).join();
-
-      if (response.statusCode != 200) {
-        return 'Relay returned ${response.statusCode}: $body';
-      }
-
-      final data = jsonDecode(body) as Map<String, dynamic>;
+      final data = await _relayGet('/blueprint');
       final tableau =
           data['currentTableau'] as Map<String, dynamic>? ?? const {};
       final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
@@ -4275,8 +4692,8 @@ class _BlueprintMcpServer {
           'with ColossusPlugin(enableRelay: true)?';
     } on TimeoutException {
       return 'Relay did not respond (timeout)';
-    } finally {
-      client.close();
+    } on HttpException catch (e) {
+      return 'Relay returned error: $e';
     }
   }
 
@@ -4292,24 +4709,8 @@ class _BlueprintMcpServer {
     final defaultValue = args['defaultValue'] as String? ?? '<fill_in_value>';
     final includeAuth = args['includeAuth'] as bool? ?? true;
 
-    final client = HttpClient();
     try {
-      client.connectionTimeout = const Duration(seconds: 5);
-
-      final request = await client.getUrl(_relayUri('/blueprint'));
-      _relayHeaders.forEach(request.headers.set);
-
-      final response = await request.close().timeout(
-        const Duration(seconds: 5),
-      );
-
-      final body = await response.transform(utf8.decoder).join();
-
-      if (response.statusCode != 200) {
-        return 'Relay returned ${response.statusCode}: $body';
-      }
-
-      final data = jsonDecode(body) as Map<String, dynamic>;
+      final data = await _relayGet('/blueprint');
       final tableau =
           data['currentTableau'] as Map<String, dynamic>? ?? const {};
       final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
@@ -4470,8 +4871,8 @@ class _BlueprintMcpServer {
           'with ColossusPlugin(enableRelay: true)?';
     } on TimeoutException {
       return 'Relay did not respond (timeout)';
-    } finally {
-      client.close();
+    } on HttpException catch (e) {
+      return 'Relay returned error: $e';
     }
   }
 
@@ -5016,53 +5417,21 @@ class _BlueprintMcpServer {
 
   /// Fetch the full blueprint data from Relay (includes tableau + route).
   Future<Map<String, dynamic>?> _fetchBlueprintData() async {
-    final client = HttpClient();
     try {
-      client.connectionTimeout = const Duration(seconds: 5);
-
-      final request = await client.getUrl(_relayUri('/blueprint'));
-      _relayHeaders.forEach(request.headers.set);
-
-      final response = await request.close().timeout(
-        const Duration(seconds: 5),
-      );
-
-      if (response.statusCode != 200) {
-        await response.drain<void>();
-        return null;
-      }
-
-      final body = await response.transform(utf8.decoder).join();
-      return jsonDecode(body) as Map<String, dynamic>;
+      return await _relayGet('/blueprint');
     } on SocketException {
       return null;
     } on TimeoutException {
       return null;
-    } finally {
-      client.close();
+    } on HttpException {
+      return null;
     }
   }
 
   /// Fetch current screen glyphs from Relay.
   Future<List<dynamic>?> _fetchGlyphs() async {
-    final client = HttpClient();
     try {
-      client.connectionTimeout = const Duration(seconds: 5);
-
-      final request = await client.getUrl(_relayUri('/blueprint'));
-      _relayHeaders.forEach(request.headers.set);
-
-      final response = await request.close().timeout(
-        const Duration(seconds: 5),
-      );
-
-      if (response.statusCode != 200) {
-        await response.drain<void>();
-        return null;
-      }
-
-      final body = await response.transform(utf8.decoder).join();
-      final data = jsonDecode(body) as Map<String, dynamic>;
+      final data = await _relayGet('/blueprint');
       final tableau =
           data['currentTableau'] as Map<String, dynamic>? ?? const {};
       return tableau['glyphs'] as List<dynamic>? ?? [];
@@ -5070,8 +5439,8 @@ class _BlueprintMcpServer {
       return null;
     } on TimeoutException {
       return null;
-    } finally {
-      client.close();
+    } on HttpException {
+      return null;
     }
   }
 
@@ -5079,30 +5448,18 @@ class _BlueprintMcpServer {
   Future<Map<String, dynamic>?> _executeRawCampaign(
     Map<String, dynamic> campaign,
   ) async {
-    final client = HttpClient();
     try {
-      client.connectionTimeout = const Duration(seconds: 10);
-
-      final request = await client.postUrl(_relayUri('/campaign'));
-      _relayHeaders.forEach(request.headers.set);
-      request.add(utf8.encode(jsonEncode(campaign)));
-
-      final response = await request.close().timeout(
-        const Duration(minutes: 5),
+      return await _relayPost(
+        '/campaign',
+        campaign,
+        timeout: const Duration(minutes: 5),
       );
-
-      final body = await response.transform(utf8.decoder).join();
-
-      if (response.statusCode == 200) {
-        return jsonDecode(body) as Map<String, dynamic>;
-      }
-      return null;
     } on SocketException {
       return null;
     } on TimeoutException {
       return null;
-    } finally {
-      client.close();
+    } on HttpException {
+      return null;
     }
   }
 
@@ -5197,69 +5554,49 @@ class _BlueprintMcpServer {
 
   /// Get the live Terrain from the running app (not from static file).
   Future<String> _relayTerrain() async {
-    final client = HttpClient();
     try {
-      client.connectionTimeout = const Duration(seconds: 5);
+      final data = await _relayGet('/terrain');
+      final buf = StringBuffer();
+      buf.writeln('# Live Terrain (from running app)');
+      buf.writeln();
 
-      final request = await client.getUrl(_relayUri('/terrain'));
-      _relayHeaders.forEach(request.headers.set);
+      final outposts = data['outposts'] as List<dynamic>? ?? [];
+      final marches = data['marches'] as List<dynamic>? ?? [];
+      buf.writeln('**Screens**: ${outposts.length}');
+      buf.writeln('**Transitions**: ${marches.length}');
+      buf.writeln();
 
-      final response = await request.close().timeout(
-        const Duration(seconds: 5),
-      );
-
-      final body = await response.transform(utf8.decoder).join();
-
-      if (response.statusCode == 200) {
-        try {
-          final data = jsonDecode(body) as Map<String, dynamic>;
-          final buf = StringBuffer();
-          buf.writeln('# Live Terrain (from running app)');
-          buf.writeln();
-
-          final outposts = data['outposts'] as List<dynamic>? ?? [];
-          final marches = data['marches'] as List<dynamic>? ?? [];
-          buf.writeln('**Screens**: ${outposts.length}');
-          buf.writeln('**Transitions**: ${marches.length}');
-          buf.writeln();
-
-          if (outposts.isNotEmpty) {
-            buf.writeln('## Screens');
-            for (final o in outposts) {
-              final map = o as Map<String, dynamic>;
-              buf.writeln(
-                '- `${map['route']}` '
-                '(${map['visitCount'] ?? 0} visits)',
-              );
-            }
-            buf.writeln();
-          }
-
-          if (marches.isNotEmpty) {
-            buf.writeln('## Transitions');
-            for (final m in marches) {
-              final map = m as Map<String, dynamic>;
-              buf.writeln(
-                '- `${map['from']}` \u2192 `${map['to']}` '
-                '(${map['count'] ?? 0}x, '
-                '${((map['reliability'] ?? 1.0) * 100).toStringAsFixed(0)}%)',
-              );
-            }
-          }
-
-          return buf.toString();
-        } catch (_) {
-          return body;
+      if (outposts.isNotEmpty) {
+        buf.writeln('## Screens');
+        for (final o in outposts) {
+          final map = o as Map<String, dynamic>;
+          buf.writeln(
+            '- `${map['route']}` '
+            '(${map['visitCount'] ?? 0} visits)',
+          );
         }
-      } else {
-        return 'Relay returned ${response.statusCode}: $body';
+        buf.writeln();
       }
+
+      if (marches.isNotEmpty) {
+        buf.writeln('## Transitions');
+        for (final m in marches) {
+          final map = m as Map<String, dynamic>;
+          buf.writeln(
+            '- `${map['from']}` \u2192 `${map['to']}` '
+            '(${map['count'] ?? 0}x, '
+            '${((map['reliability'] ?? 1.0) * 100).toStringAsFixed(0)}%)',
+          );
+        }
+      }
+
+      return buf.toString();
     } on SocketException {
       return 'Cannot connect to Relay — is the app running?';
     } on TimeoutException {
       return 'Relay did not respond (timeout)';
-    } finally {
-      client.close();
+    } on HttpException catch (e) {
+      return 'Relay returned error: $e';
     }
   }
 
@@ -5450,6 +5787,21 @@ class _BlueprintMcpServer {
     Map<String, dynamic> body,
     String Function(Map<String, dynamic>) formatter,
   ) async {
+    // Try WebSocket relay first (for web apps).
+    if (_hasWebRelay) {
+      try {
+        final data = await _relayWsRequest('POST', path, body);
+        return formatter(data);
+      } on SocketException {
+        return '# Action Unavailable\n\n'
+            'Web app disconnected from Relay WebSocket.';
+      } on TimeoutException {
+        return '# Action Unavailable\n\n'
+            'Web app Relay did not respond (timeout).';
+      }
+    }
+
+    // Fall back to HTTP relay (for native apps).
     final client = HttpClient();
     try {
       client.connectionTimeout = const Duration(seconds: 5);
@@ -5471,13 +5823,13 @@ class _BlueprintMcpServer {
       final data = jsonDecode(responseBody) as Map<String, dynamic>;
       return formatter(data);
     } on SocketException {
-      return '# Tremor Action Unavailable\n\n'
+      return '# Action Unavailable\n\n'
           'Relay is not running at '
           'http://$_relayHost:$_relayPort\n\n'
           'Start your app with `ColossusPlugin(enableRelay: true)` '
           'first.';
     } on TimeoutException {
-      return '# Tremor Action Unavailable\n\n'
+      return '# Action Unavailable\n\n'
           'Relay did not respond (timeout).';
     } finally {
       client.close();

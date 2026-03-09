@@ -3,14 +3,14 @@
 /// This file defines the [Relay] interface and [RelayConfig].
 /// The actual implementation is provided by conditional imports:
 /// - `relay_io.dart` for non-web platforms (dart:io HttpServer)
-/// - `relay_stub.dart` for web (graceful no-op)
+/// - `relay_web.dart` for web (WebSocket client connecting to MCP server)
 ///
 /// See [RelayConfig] for configuration options.
 library;
 
 import 'dart:async';
 
-import 'relay_io.dart' if (dart.library.html) 'relay_stub.dart' as platform;
+import 'relay_io.dart' if (dart.library.html) 'relay_web.dart' as platform;
 
 // ---------------------------------------------------------------------------
 // RelayConfig — Configuration
@@ -18,33 +18,62 @@ import 'relay_io.dart' if (dart.library.html) 'relay_stub.dart' as platform;
 
 /// Configuration for the [Relay] HTTP bridge.
 ///
+/// On native platforms, Relay starts an HTTP server on [host]:[port].
+/// On web, Relay connects as a WebSocket client to [targetUrl]
+/// (typically the MCP server's `/relay` endpoint).
+///
 /// ```dart
+/// // Native — starts HTTP server
 /// const config = RelayConfig(
 ///   port: 8642,
 ///   host: '0.0.0.0',
 ///   authToken: 'my-secret-token',
 /// );
+///
+/// // Web — connects to MCP server
+/// const config = RelayConfig(
+///   targetUrl: 'ws://localhost:8643/relay',
+///   authToken: 'my-secret-token',
+/// );
 /// ```
 class RelayConfig {
-  /// TCP port to listen on.
+  /// TCP port to listen on (native only).
   ///
   /// Defaults to `8642`. Choose a port that doesn't conflict with
   /// other services on the target platform.
+  /// Ignored on web — use [targetUrl] instead.
   final int port;
 
-  /// Network interface to bind to.
+  /// Network interface to bind to (native only).
   ///
   /// - `'0.0.0.0'` — all interfaces (reachable from other devices)
   /// - `'127.0.0.1'` — localhost only (desktop/emulator testing)
   ///
   /// Defaults to `'0.0.0.0'` for maximum reach (mobile device testing).
+  /// Ignored on web — use [targetUrl] instead.
   final String host;
+
+  /// WebSocket URL to connect to (web only).
+  ///
+  /// On web, Relay acts as a WebSocket **client** connecting to
+  /// the MCP server's `/relay` endpoint. The MCP server forwards
+  /// tool commands over this WebSocket instead of using HTTP.
+  ///
+  /// Example: `'ws://localhost:8643/relay'`
+  ///
+  /// When null on web, Relay is silently disabled (same as the
+  /// old stub behavior).
+  /// Ignored on native — use [host] and [port] instead.
+  final String? targetUrl;
 
   /// Bearer token for request authentication.
   ///
   /// When non-null, every request (except `GET /health`) must include
   /// `Authorization: Bearer <token>`. Requests without a valid token
   /// receive HTTP 401.
+  ///
+  /// On web, sent as a query parameter (`?token=<value>`) during the
+  /// WebSocket handshake.
   ///
   /// When null, authentication is disabled (development convenience).
   final String? authToken;
@@ -58,13 +87,20 @@ class RelayConfig {
   /// Whether to log relay events to Chronicle.
   final bool enableLogging;
 
+  /// Reconnect delay after WebSocket disconnection (web only).
+  ///
+  /// Defaults to 2 seconds. Uses exponential backoff up to 30 seconds.
+  final Duration reconnectDelay;
+
   /// Creates a [RelayConfig].
   const RelayConfig({
     this.port = 8642,
     this.host = '0.0.0.0',
+    this.targetUrl,
     this.authToken,
     this.requestTimeout = const Duration(minutes: 10),
     this.enableLogging = true,
+    this.reconnectDelay = const Duration(seconds: 2),
   });
 }
 
@@ -325,12 +361,11 @@ abstract interface class RelayHandler {
 // Relay — Public API
 // ---------------------------------------------------------------------------
 
-/// **Relay** — Embedded HTTP server for AI-driven campaign execution.
+/// **Relay** — Embedded bridge for AI-driven campaign execution.
 ///
-/// Relay is a cross-platform HTTP bridge that runs inside the Flutter
-/// app. It exposes endpoints for AI assistants to execute Campaigns,
-/// query Terrain, and retrieve Debrief reports — enabling fully
-/// automated testing without human interaction.
+/// Relay is a cross-platform bridge that connects AI assistants
+/// to the running Flutter app. It exposes endpoints for executing
+/// Campaigns, querying Terrain, capturing screenshots, and more.
 ///
 /// ## Quick Start
 ///
@@ -345,8 +380,9 @@ abstract interface class RelayHandler {
 /// ## Platform Behavior
 ///
 /// On non-web platforms, starts a real `dart:io` `HttpServer`.
-/// On web, `start()` completes immediately as a no-op (browsers
-/// cannot host HTTP servers).
+/// On web, connects to the MCP server's `/relay` WebSocket endpoint
+/// as a client — reversing the connection direction since browsers
+/// cannot host HTTP servers.
 ///
 /// ## Security
 ///

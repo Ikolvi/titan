@@ -46,6 +46,34 @@ void main() {
       ];
       expect(configs, hasLength(3));
     });
+
+    test('web relay fields have correct defaults', () {
+      const config = RelayConfig();
+      expect(config.targetUrl, isNull);
+      expect(config.reconnectDelay, const Duration(seconds: 2));
+    });
+
+    test('accepts web relay configuration', () {
+      const config = RelayConfig(
+        targetUrl: 'ws://localhost:8643/relay',
+        reconnectDelay: Duration(seconds: 5),
+        authToken: 'web-token',
+      );
+      expect(config.targetUrl, 'ws://localhost:8643/relay');
+      expect(config.reconnectDelay, const Duration(seconds: 5));
+      expect(config.authToken, 'web-token');
+    });
+
+    test('native and web configs are independent', () {
+      // Native config — port/host, no targetUrl.
+      const native = RelayConfig(port: 8642, host: '0.0.0.0');
+      expect(native.targetUrl, isNull);
+
+      // Web config — targetUrl, port/host ignored.
+      const web = RelayConfig(targetUrl: 'ws://localhost:8643/relay');
+      expect(web.targetUrl, 'ws://localhost:8643/relay');
+      expect(web.port, 8642); // still default, but unused on web
+    });
   });
 
   // -----------------------------------------------------------------------

@@ -189,35 +189,59 @@ class ColossusPlugin extends TitanPlugin {
   /// ```
   final String? blueprintExportDirectory;
 
-  /// Whether to start the [Relay] HTTP server for AI-driven
-  /// campaign execution.
+  /// Whether to start the [Relay] for AI-driven campaign execution.
   ///
-  /// When `true`, an embedded HTTP server starts on
-  /// [relayConfig.port] (default 8642) allowing AI assistants
-  /// to execute Campaigns, query Terrain, and receive Debrief
-  /// reports — all without human interaction.
+  /// When `true`:
+  /// - **Native** (Android, iOS, macOS, Windows, Linux): Starts an
+  ///   embedded HTTP server on [relayConfig.port] (default 8642).
+  /// - **Web**: Connects via WebSocket to the MCP server's relay
+  ///   endpoint at [relayConfig.targetUrl]. The MCP server must be
+  ///   started with `--relay-ws-port <port>`.
   ///
-  /// Supported on Android, iOS, macOS, Windows, and Linux.
-  /// Silently disabled on web (browsers cannot host servers).
+  /// Allows AI assistants to execute Campaigns, query Terrain, and
+  /// receive Debrief reports — all without human interaction.
   ///
   /// ```dart
+  /// // Native:
   /// ColossusPlugin(
   ///   enableRelay: true,
   ///   relayConfig: RelayConfig(port: 8642),
   /// )
+  ///
+  /// // Web:
+  /// ColossusPlugin(
+  ///   enableRelay: true,
+  ///   relayConfig: RelayConfig(
+  ///     targetUrl: 'ws://localhost:8643/relay',
+  ///   ),
+  /// )
   /// ```
   final bool enableRelay;
 
-  /// Configuration for the [Relay] HTTP server.
+  /// Configuration for the [Relay] server/client.
   ///
   /// Only used when [enableRelay] is `true`.
   ///
+  /// On native platforms, [RelayConfig.port] and [RelayConfig.host]
+  /// control the HTTP server bind address. On web, [RelayConfig.targetUrl]
+  /// specifies the MCP server's WebSocket relay endpoint.
+  ///
   /// ```dart
+  /// // Native — HTTP server on port 8642:
   /// ColossusPlugin(
   ///   enableRelay: true,
   ///   relayConfig: RelayConfig(
   ///     port: 8642,
   ///     host: '0.0.0.0',
+  ///     authToken: 'my-secret-token',
+  ///   ),
+  /// )
+  ///
+  /// // Web — WebSocket client connecting to MCP server:
+  /// ColossusPlugin(
+  ///   enableRelay: true,
+  ///   relayConfig: RelayConfig(
+  ///     targetUrl: 'ws://localhost:8643/relay',
   ///     authToken: 'my-secret-token',
   ///   ),
   /// )

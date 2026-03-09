@@ -44,6 +44,8 @@ The **Titan Blueprint MCP Server** (`titan-blueprint`) is a stdio-based JSON-RPC
 
 ### Architecture
 
+**Native** (Android, iOS, macOS, Windows, Linux):
+
 ```
 ┌──────────────┐    stdio/JSON-RPC    ┌─────────────────────────┐
 │   AI Agent   │◄────────────────────►│  Blueprint MCP Server   │
@@ -59,6 +61,26 @@ The **Titan Blueprint MCP Server** (`titan-blueprint`) is a stdio-based JSON-RPC
                                       │  (enableRelay: true)    │
                                       └─────────────────────────┘
 ```
+
+**Web** (Chrome, Firefox, Edge):
+
+```
+┌──────────────┐    stdio/JSON-RPC    ┌─────────────────────────┐
+│   AI Agent   │◄────────────────────►│  Blueprint MCP Server   │
+│  (Copilot,   │                      │  (dart process)         │
+│   Cursor,    │                      │                         │
+│   Claude)    │                      │  Hosts WS relay server  │
+└──────────────┘                      │  on --relay-ws-port     │
+                                      └───────────▲─────────────┘
+                                                  │ WebSocket (localhost:8643)
+                                      ┌───────────┴─────────────┐
+                                      │  Flutter Web App        │
+                                      │  (browser tab)          │
+                                      │  Connects TO MCP server │
+                                      └─────────────────────────┘
+```
+
+On web, browsers cannot host HTTP servers. The connection direction is **reversed**: the web app connects to the MCP server's WebSocket relay endpoint as a client. All 36 Relay routes work identically on both platforms.
 
 ### Two Modes of Operation
 
@@ -740,10 +762,48 @@ ColossusPlugin(
 ### What happens on app startup
 
 1. `Colossus.init()` initializes monitors (Pulse, Stride, Vessel)
-2. `Relay.start()` binds an HTTP server on port **8642**
-3. The Relay takes approximately **12 seconds** to fully initialize
-4. Shade recording becomes available for gesture capture
-5. Scry becomes available for screen observation
+2. **Native**: `Relay.start()` binds an HTTP server on port **8642**
+3. **Web**: `Relay.start()` connects via WebSocket to the MCP server's relay endpoint
+4. The Relay takes approximately **12 seconds** to fully initialize
+5. Shade recording becomes available for gesture capture
+6. Scry becomes available for screen observation
+
+### Web Relay Setup
+
+On web, browsers cannot host HTTP servers. Instead, the connection direction is reversed — the web app connects **to** the MCP server's WebSocket relay endpoint.
+
+**1. Configure the MCP server** with `--relay-ws-port`:
+
+```jsonc
+// .vscode/mcp.json
+{
+  "servers": {
+    "titan-blueprint": {
+      "command": "dart",
+      "args": [
+        "run", "bin/blueprint_mcp_server.dart",
+        "--relay-ws-port", "8643"
+      ],
+      "cwd": "${workspaceFolder}/packages/titan_colossus"
+    }
+  }
+}
+```
+
+**2. Configure your Flutter app** with `targetUrl`:
+
+```dart
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+ColossusPlugin(
+  enableRelay: true,
+  relayConfig: kIsWeb
+      ? const RelayConfig(targetUrl: 'ws://localhost:8643/relay')
+      : const RelayConfig(),
+)
+```
+
+**3. Run the app on web** — the Relay automatically connects to the MCP server's WebSocket endpoint with auto-reconnect and exponential backoff. All 36 Relay routes (scry, campaigns, recording, etc.) work identically.
 
 ### Blueprint auto-export
 
@@ -764,6 +824,7 @@ The MCP server reads these files for static analysis tools (`get_terrain`, `get_
 | `--relay-host` | `127.0.0.1` | Relay HTTP server hostname |
 | `--relay-port` | `8642` | Relay HTTP server port |
 | `--relay-token` | *(none)* | Optional auth token for Relay requests |
+| `--relay-ws-port` | *(none)* | WebSocket relay port for web apps. When set, the MCP server hosts a WebSocket endpoint on this port that web apps connect to |
 | `--transport` | `stdio` | Transport type: `stdio`, `sse`, `ws`, `streamable`, or `auto` |
 | `--tls-cert` | *(none)* | Path to TLS certificate chain (PEM). Enables HTTPS/WSS when paired with `--tls-key` |
 | `--tls-key` | *(none)* | Path to TLS private key (PEM). Enables HTTPS/WSS when paired with `--tls-cert` |

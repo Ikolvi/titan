@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:titan_argus/titan_argus.dart';
@@ -172,7 +173,10 @@ void main() {
           tremors: [Tremor.fps(), Tremor.jankRate(), Tremor.leaks()],
           enableLensTab: true,
           enableChronicle: true,
-          enableRelay: true, // Enable HTTP bridge for AI-driven testing
+          enableRelay: true, // AI-driven testing bridge
+          relayConfig: kIsWeb
+              ? const RelayConfig(targetUrl: 'ws://localhost:8643/relay')
+              : const RelayConfig(),
           shadeStoragePath: shadeDir,
           exportDirectory: exportDir,
           blueprintExportDirectory: '.titan',
