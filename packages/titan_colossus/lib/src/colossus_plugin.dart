@@ -390,9 +390,16 @@ class ColossusPlugin extends TitanPlugin {
       result = Lens(enabled: true, child: result);
     }
 
-    // ShadeListener (inside Lens — captures gestures on the app content)
+    // ShadeListener (inside Lens — captures gestures on the app content).
+    // Hide the recording indicator when the Relay is connected (MCP
+    // controls recording — the status pill would be distracting).
     if (enableShade && Colossus.isActive) {
-      result = ShadeListener(shade: Colossus.instance.shade, child: result);
+      final relayRunning = Colossus.instance.relay.status.isRunning;
+      result = ShadeListener(
+        shade: Colossus.instance.shade,
+        showIndicator: !relayRunning,
+        child: result,
+      );
     }
 
     return result;

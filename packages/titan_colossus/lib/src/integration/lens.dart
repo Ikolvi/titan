@@ -320,30 +320,32 @@ class _LensState extends State<Lens> {
           widget.child,
           // Draggable floating action button — toggles Lens or stops recording.
           // Position persists across Lens open/close cycles via static fields.
-          Positioned(
-            right: Lens._fabRight,
-            bottom: Lens._fabBottom,
-            child: GestureDetector(
-              onPanUpdate: (details) {
-                setState(() {
-                  Lens._fabRight -= details.delta.dx;
-                  Lens._fabBottom -= details.delta.dy;
-                  // Clamp to screen bounds (account for FAB size of 48)
-                  final size = MediaQuery.sizeOf(context);
-                  Lens._fabRight = Lens._fabRight.clamp(0, size.width - 48);
-                  Lens._fabBottom = Lens._fabBottom.clamp(0, size.height - 48);
-                });
-              },
-              child: _LensFab(
-                onPressed: () {
-                  // If recording, stop recording instead of toggling
-                  if (Lens.activeRecording.value) {
-                    Lens.onStopRecording?.call();
-                  } else {
-                    _toggle();
-                  }
+          // Hidden entirely during active Shade recording — the ShadeListener
+          // recording indicator (top-left status pill) is sufficient feedback.
+          ValueListenableBuilder<bool>(
+            valueListenable: Lens.activeRecording,
+            builder: (context, isRecording, child) {
+              if (isRecording) return const SizedBox.shrink();
+              return child!;
+            },
+            child: Positioned(
+              right: Lens._fabRight,
+              bottom: Lens._fabBottom,
+              child: GestureDetector(
+                onPanUpdate: (details) {
+                  setState(() {
+                    Lens._fabRight -= details.delta.dx;
+                    Lens._fabBottom -= details.delta.dy;
+                    // Clamp to screen bounds (account for FAB size of 48)
+                    final size = MediaQuery.sizeOf(context);
+                    Lens._fabRight = Lens._fabRight.clamp(0, size.width - 48);
+                    Lens._fabBottom = Lens._fabBottom.clamp(
+                      0,
+                      size.height - 48,
+                    );
+                  });
                 },
-                isOpen: _visible,
+                child: _LensFab(onPressed: _toggle, isOpen: _visible),
               ),
             ),
           ),
@@ -397,32 +399,12 @@ class _LensFab extends StatefulWidget {
 
 class _LensFabState extends State<_LensFab> {
   @override
-  void initState() {
-    super.initState();
-    Lens.activeRecording.addListener(_onRecordingChanged);
-  }
-
-  void _onRecordingChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    Lens.activeRecording.removeListener(_onRecordingChanged);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final isRecording = Lens.activeRecording.value;
-
-    // Three states: recording (red pulse), open (close icon), idle (bug icon)
+    // Two states: open (close icon) or idle (bug icon).
+    // Recording state is handled by hiding the FAB entirely.
     final Color fabColor;
     final IconData fabIcon;
-    if (isRecording) {
-      fabColor = Colors.redAccent;
-      fabIcon = Icons.stop_circle;
-    } else if (widget.isOpen) {
+    if (widget.isOpen) {
       fabColor = Colors.redAccent;
       fabIcon = Icons.close;
     } else {
@@ -431,87 +413,32 @@ class _LensFabState extends State<_LensFab> {
     }
 
     final String tooltip;
-    if (isRecording) {
-      tooltip = 'Stop Recording';
-    } else if (widget.isOpen) {
+    if (widget.isOpen) {
       tooltip = 'Close Debug Menu';
     } else {
       tooltip = 'Debug Menu';
     }
 
-    return Tooltip(
-      message: tooltip,
-      child: Semantics(
-        label: tooltip,
-        button: true,
-        child: Material(
-          elevation: 6,
-          shape: const CircleBorder(),
-          color: fabColor,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: widget.onPressed,
-            child: Container(
-              width: 48,
-              height: 48,
-              alignment: Alignment.center,
-              child: isRecording
-                  ? const _PulsingIcon(
-                      icon: Icons.stop_circle,
-                      color: Colors.white,
-                      size: 24,
-                    )
-                  : Icon(fabIcon, color: Colors.white, size: 24),
-            ),
+    // Use Semantics instead of Tooltip to avoid requiring an Overlay
+    // ancestor — Lens wraps above MaterialApp so no Overlay exists.
+    return Semantics(
+      label: tooltip,
+      button: true,
+      child: Material(
+        elevation: 6,
+        shape: const CircleBorder(),
+        color: fabColor,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: widget.onPressed,
+          child: Container(
+            width: 48,
+            height: 48,
+            alignment: Alignment.center,
+            child: Icon(fabIcon, color: Colors.white, size: 24),
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Animated pulsing icon for the recording state.
-class _PulsingIcon extends StatefulWidget {
-  final IconData icon;
-  final Color color;
-  final double size;
-
-  const _PulsingIcon({
-    required this.icon,
-    required this.color,
-    required this.size,
-  });
-
-  @override
-  State<_PulsingIcon> createState() => _PulsingIconState();
-}
-
-class _PulsingIconState extends State<_PulsingIcon>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) =>
-          Opacity(opacity: 0.5 + 0.5 * _controller.value, child: child),
-      child: Icon(widget.icon, color: widget.color, size: widget.size),
     );
   }
 }

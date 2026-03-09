@@ -1866,9 +1866,9 @@ class _BlueprintMcpServer {
                       'doubleTap, swipe, drag, navigate, '
                       'waitForElement, waitForElementGone, pressKey, '
                       'submitField, toggleSwitch, toggleCheckbox, '
-                      'selectDropdown. For drag: specify the '
-                      'element to drag via label/key and the '
-                      'destination via dragToX/dragToY. '
+                      'selectDropdown. For drag: target element via '
+                      'label/key and pass destination as '
+                      'value="x,y" (pixels). '
                       'Use this OR actions array, not both.',
                 },
                 'label': {
@@ -1897,22 +1897,26 @@ class _BlueprintMcpServer {
                 'value': {
                   'type': 'string',
                   'description':
-                      'Value to enter (for enterText) or route path '
-                      '(for navigate). Used in single action mode.',
+                      'Value to enter (for enterText), route path '
+                      '(for navigate), or drag destination as '
+                      '"x,y" pixel coordinates (for drag). '
+                      'Example drag: value="200,50".',
                 },
                 'dragToX': {
-                  'type': 'number',
+                  'type': 'string',
                   'description':
-                      'Destination X coordinate for drag action. '
-                      'The drag starts from the center of the '
-                      'targeted element (by label/key).',
+                      'Destination X coordinate (pixels) for drag '
+                      'action. The drag starts from the center of '
+                      'the targeted element (by label/key). '
+                      'Example: "200".',
                 },
                 'dragToY': {
-                  'type': 'number',
+                  'type': 'string',
                   'description':
-                      'Destination Y coordinate for drag action. '
-                      'The drag starts from the center of the '
-                      'targeted element (by label/key).',
+                      'Destination Y coordinate (pixels) for drag '
+                      'action. The drag starts from the center of '
+                      'the targeted element (by label/key). '
+                      'Example: "50".',
                 },
                 'actions': {
                   'type': 'array',
@@ -1949,15 +1953,19 @@ class _BlueprintMcpServer {
                       },
                       'value': {
                         'type': 'string',
-                        'description': 'Text to enter or route to navigate to.',
+                        'description':
+                            'Text to enter, route to navigate to, '
+                            'or drag destination as "x,y" pixels.',
                       },
                       'dragToX': {
-                        'type': 'number',
-                        'description': 'Destination X for drag action.',
+                        'type': 'string',
+                        'description':
+                            'Destination X (pixels) for drag action.',
                       },
                       'dragToY': {
-                        'type': 'number',
-                        'description': 'Destination Y for drag action.',
+                        'type': 'string',
+                        'description':
+                            'Destination Y (pixels) for drag action.',
                       },
                     },
                   },
@@ -5255,8 +5263,8 @@ class _BlueprintMcpServer {
     final fieldId = args['fieldId'] as String?;
     final value = args['value'] as String?;
     final key = args['key'] as String?;
-    final dragToX = (args['dragToX'] as num?)?.toDouble();
-    final dragToY = (args['dragToY'] as num?)?.toDouble();
+    final dragToX = _parseDouble(args['dragToX']);
+    final dragToY = _parseDouble(args['dragToY']);
 
     if (label == null &&
         fieldId == null &&
@@ -5335,8 +5343,8 @@ class _BlueprintMcpServer {
         final fieldId = entry['fieldId'] as String?;
         final value = entry['value'] as String?;
         final key = entry['key'] as String?;
-        final entryDragToX = (entry['dragToX'] as num?)?.toDouble();
-        final entryDragToY = (entry['dragToY'] as num?)?.toDouble();
+        final entryDragToX = _parseDouble(entry['dragToX']);
+        final entryDragToY = _parseDouble(entry['dragToY']);
 
         // Resolve fieldId → label
         if (label == null && fieldId != null) {
@@ -5443,6 +5451,18 @@ class _BlueprintMcpServer {
         blueprint?['currentTableau'] as Map<String, dynamic>? ?? const {};
     final glyphs = tableau['glyphs'] as List<dynamic>? ?? [];
     return _scryEngine.resolveFieldLabel(glyphs, fieldId);
+  }
+
+  /// Parse a value that may be a [num] or a numeric [String] to a [double].
+  ///
+  /// Returns `null` if the value is null or not parseable.
+  /// VS Code's MCP client may send number-type schema properties as strings,
+  /// so this handles both cases.
+  static double? _parseDouble(Object? value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   /// Observe the current screen and return a [ScryGaze].

@@ -407,6 +407,12 @@ class TableauCapture {
       return widget.message;
     }
 
+    // Semantics — label (e.g. Lens FAB uses Semantics instead of Tooltip
+    // to avoid requiring an Overlay ancestor)
+    if (widget is Semantics && widget.properties.label != null) {
+      return widget.properties.label;
+    }
+
     // For buttons and other interactive widgets — find child Text
     if (widget is ButtonStyleButton ||
         widget is InkWell ||
@@ -463,6 +469,11 @@ class TableauCapture {
       // Check tooltip on IconButton
       if (widget is Tooltip) {
         label = widget.message;
+        return;
+      }
+      // Check Semantics label (e.g. Lens FAB)
+      if (widget is Semantics && widget.properties.label != null) {
+        label = widget.properties.label;
         return;
       }
       // Recurse deeper (but only a few levels)

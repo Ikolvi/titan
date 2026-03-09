@@ -160,8 +160,9 @@ class _ShadeLensPillar extends Pillar {
 
   /// Start recording gestures, hiding the Lens overlay first.
   ///
-  /// Activates the Lens FAB recording mode so the user can stop
-  /// recording by tapping the FAB without reopening the Shade tab.
+  /// Hides the Lens FAB during recording — the ShadeListener
+  /// recording indicator (top-left status pill) provides visual
+  /// feedback. To stop, reopen Lens and tap Stop in the Shade tab.
   void startRecording() {
     Lens.hide();
     lastResult.value = null;
@@ -330,19 +331,19 @@ class _ShadeLensPillar extends Pillar {
 
   // -- Private helpers -------------------------------------------------------
 
-  /// Turn the Lens FAB into a "stop recording" button.
+  /// Hide the Lens FAB during recording.
   void _activateFabRecording() {
     Lens.activeRecording.value = true;
     Lens.onStopRecording = _stopAndSaveFromFab;
   }
 
-  /// Reset the Lens FAB to its normal state.
+  /// Restore the Lens FAB after recording ends.
   void _deactivateFabRecording() {
     Lens.activeRecording.value = false;
     Lens.onStopRecording = null;
   }
 
-  /// Called when the user taps the FAB while recording.
+  /// Stop recording and save the session (called internally).
   void _stopAndSaveFromFab() {
     if (!colossus.shade.isRecording) return;
     final session = colossus.shade.stopRecording();

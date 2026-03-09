@@ -280,9 +280,9 @@ void main() {
       expect(Lens.isVisible, false);
       expect(colossus.shade.isRecording, true);
 
-      // Simulate FAB stop (which is what the user taps while Lens
-      // is hidden). This calls the _stopAndSaveFromFab callback set
-      // by _activateFabRecording.
+      // Programmatically stop recording (simulates reopening Lens
+      // and tapping Stop). The FAB is hidden during recording —
+      // only the ShadeListener status pill is shown.
       Lens.onStopRecording?.call();
       await tester.pump();
 
@@ -290,7 +290,7 @@ void main() {
       // The session should be stored on Colossus
       expect(colossus.lastRecordedSession, isNotNull);
 
-      // Lens should auto-show after FAB stop (via post-frame callback)
+      // Lens should auto-show after stop (via post-frame callback)
       await tester.pump();
       expect(Lens.isVisible, true);
 

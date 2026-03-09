@@ -1890,17 +1890,34 @@ class Scry {
       });
     }
 
+    // For drag actions, resolve destination coordinates.
+    // Priority: explicit dragToX/dragToY → value as "x,y" string.
+    var resolvedDragToX = dragToX;
+    var resolvedDragToY = dragToY;
+    if (action == 'drag' &&
+        resolvedDragToX == null &&
+        resolvedDragToY == null &&
+        value != null) {
+      final parts = value.split(',');
+      if (parts.length == 2) {
+        resolvedDragToX = double.tryParse(parts[0].trim());
+        resolvedDragToY = double.tryParse(parts[1].trim());
+      }
+    }
+
     final step = <String, dynamic>{
       'id': stepId++,
       'action': action,
       if (target.isNotEmpty) 'target': target,
       // ignore: use_null_aware_elements
-      if (value != null) 'value': value,
+      if (value != null && action != 'drag') 'value': value,
       if (action == 'enterText') 'clearFirst': true,
       if (action == 'waitForElement' || action == 'waitForElementGone')
         'timeout': timeout,
-      if (action == 'drag' && dragToX != null && dragToY != null)
-        'dragTo': {'x': dragToX, 'y': dragToY},
+      if (action == 'drag' &&
+          resolvedDragToX != null &&
+          resolvedDragToY != null)
+        'dragTo': {'x': resolvedDragToX, 'y': resolvedDragToY},
     };
 
     // For back/navigate, add route
@@ -1980,17 +1997,33 @@ class Scry {
         });
       }
 
+      // For drag actions, resolve destination coordinates.
+      var resolvedDragToX = dragToX;
+      var resolvedDragToY = dragToY;
+      if (action == 'drag' &&
+          resolvedDragToX == null &&
+          resolvedDragToY == null &&
+          value != null) {
+        final parts = value.split(',');
+        if (parts.length == 2) {
+          resolvedDragToX = double.tryParse(parts[0].trim());
+          resolvedDragToY = double.tryParse(parts[1].trim());
+        }
+      }
+
       final step = <String, dynamic>{
         'id': stepId++,
         'action': action,
         if (target.isNotEmpty) 'target': target,
         // ignore: use_null_aware_elements
-        if (value != null) 'value': value,
+        if (value != null && action != 'drag') 'value': value,
         if (action == 'enterText') 'clearFirst': true,
         if (action == 'waitForElement' || action == 'waitForElementGone')
           'timeout': timeout,
-        if (action == 'drag' && dragToX != null && dragToY != null)
-          'dragTo': {'x': dragToX, 'y': dragToY},
+        if (action == 'drag' &&
+            resolvedDragToX != null &&
+            resolvedDragToY != null)
+          'dragTo': {'x': resolvedDragToX, 'y': resolvedDragToY},
       };
 
       if (action == 'navigate' && value != null) {
