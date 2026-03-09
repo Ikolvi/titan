@@ -244,6 +244,37 @@ abstract interface class RelayHandler {
   ///
   /// Returns the reset result.
   Map<String, dynamic> resetTremors({bool clearHistory = false});
+
+  /// Reload the current page.
+  ///
+  /// When [fullRebuild] is `true`, triggers a full widget tree reassembly.
+  /// Otherwise, re-navigates to the current route.
+  Future<Map<String, dynamic>> reloadPage({bool fullRebuild = false});
+
+  /// Get a summary of the widget tree (element count, types, depth).
+  ///
+  /// Returns statistical analysis of the current widget tree.
+  Map<String, dynamic> getWidgetTree();
+
+  /// Get integration events from Colossus bridges.
+  ///
+  /// Returns events from atlas, basalt, argus, bastion, and custom
+  /// bridges. Optionally filter by [source].
+  Map<String, dynamic> getEvents({String? source});
+
+  /// Replay a saved Shade session by ID.
+  ///
+  /// Loads the session from the ShadeVault and replays it using
+  /// Phantom. Returns the replay result.
+  Future<Map<String, dynamic>> replaySession(
+    String sessionId, {
+    double speedMultiplier,
+  });
+
+  /// Get navigation route history from integration events.
+  ///
+  /// Returns atlas events in chronological order with current route.
+  Map<String, dynamic> getRouteHistory();
 }
 
 // ---------------------------------------------------------------------------

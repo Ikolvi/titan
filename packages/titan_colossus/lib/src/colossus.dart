@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart'
 import 'dart:io';
 
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart' show Element, WidgetsBinding;
 import 'package:titan_atlas/titan_atlas.dart' show Atlas;
 import 'package:titan_bastion/titan_bastion.dart';
 
@@ -247,6 +248,93 @@ class Colossus extends Pillar {
   /// ```
   void clearAlertHistory() {
     _alertHistory.clear();
+  }
+
+  // -----------------------------------------------------------------------
+  // Page reload (MCP-accessible)
+  // -----------------------------------------------------------------------
+
+  /// Reload the current page by re-navigating to the active route.
+  ///
+  /// When [fullRebuild] is `false` (default), uses [Atlas.go] to
+  /// navigate to the current route, which re-triggers Sentinel
+  /// guards, page builders, and data-loading logic — equivalent
+  /// to a browser page refresh.
+  ///
+  /// When [fullRebuild] is `true`, calls
+  /// [WidgetsBinding.instance.reassembleApplication] for a full
+  /// widget tree reassembly (like hot reload).
+  ///
+  /// Returns a map with the result:
+  /// - `success`: whether the reload was performed
+  /// - `method`: `'route'` or `'reassemble'`
+  /// - `currentRoute`: the route that was reloaded
+  ///
+  /// ```dart
+  /// await Colossus.instance.reloadPage();
+  /// await Colossus.instance.reloadPage(fullRebuild: true);
+  /// ```
+  Future<Map<String, dynamic>> reloadPage({bool fullRebuild = false}) async {
+    if (fullRebuild) {
+      WidgetsBinding.instance.reassembleApplication();
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      return {
+        'success': true,
+        'method': 'reassemble',
+        'currentRoute': shade.getCurrentRoute?.call(),
+      };
+    }
+
+    final currentRoute = shade.getCurrentRoute?.call();
+    if (currentRoute == null || currentRoute.isEmpty) {
+      return {
+        'success': false,
+        'method': 'route',
+        'error':
+            'Unable to determine current route. '
+            'Configure shade.getCurrentRoute or use fullRebuild: true.',
+      };
+    }
+
+    try {
+      Atlas.go(currentRoute);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      return {'success': true, 'method': 'route', 'currentRoute': currentRoute};
+    } catch (_) {
+      // Atlas not available — fall back to reassemble
+      WidgetsBinding.instance.reassembleApplication();
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      return {
+        'success': true,
+        'method': 'reassemble',
+        'currentRoute': currentRoute,
+        'note': 'Atlas not available — used reassemble fallback',
+      };
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Route history (extracted from integration events)
+  // -----------------------------------------------------------------------
+
+  /// Returns a structured navigation history from integration events.
+  ///
+  /// Filters events by `source == 'atlas'` and returns them in
+  /// chronological order. Includes route, action type (navigate,
+  /// pop, replace, etc.), and timestamp.
+  ///
+  /// ```dart
+  /// final history = Colossus.instance.getRouteHistory();
+  /// print('Routes visited: ${history['routes'].length}');
+  /// ```
+  Map<String, dynamic> getRouteHistory() {
+    final routeEvents = _events.where((e) => e['source'] == 'atlas').toList();
+
+    return {
+      'count': routeEvents.length,
+      'routes': routeEvents,
+      'currentRoute': shade.getCurrentRoute?.call(),
+    };
   }
 
   // -----------------------------------------------------------------------
@@ -2160,5 +2248,125 @@ class _ColossusRelayHandler implements RelayHandler {
       'error' => TremorSeverity.error,
       _ => TremorSeverity.warning,
     };
+  }
+
+  @override
+  Future<Map<String, dynamic>> reloadPage({bool fullRebuild = false}) {
+    return _colossus.reloadPage(fullRebuild: fullRebuild);
+  }
+
+  @override
+  Map<String, dynamic> getWidgetTree() {
+    final rootElement = WidgetsBinding.instance.rootElement;
+    if (rootElement == null) {
+      return {'success': false, 'error': 'No root element available'};
+    }
+
+    var totalElements = 0;
+    var maxDepth = 0;
+    final typeCounts = <String, int>{};
+    var hasText = false;
+    var hasTextField = false;
+    var hasButton = false;
+
+    void walk(Element element, int depth) {
+      if (totalElements > 2000) return; // Safety limit
+      totalElements++;
+      if (depth > maxDepth) maxDepth = depth;
+
+      final typeName = element.widget.runtimeType.toString();
+      typeCounts[typeName] = (typeCounts[typeName] ?? 0) + 1;
+
+      if (typeName == 'Text') hasText = true;
+      if (typeName == 'TextField' || typeName == 'TextFormField') {
+        hasTextField = true;
+      }
+      if (typeName.contains('Button')) hasButton = true;
+
+      element.visitChildren((child) => walk(child, depth + 1));
+    }
+
+    walk(rootElement, 0);
+
+    final sortedTypes = typeCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return {
+      'success': true,
+      'totalElements': totalElements,
+      'maxDepth': maxDepth,
+      'uniqueWidgetTypes': typeCounts.length,
+      'hasText': hasText,
+      'hasTextField': hasTextField,
+      'hasButton': hasButton,
+      'top20WidgetTypes': sortedTypes
+          .take(20)
+          .map((e) => '${e.key}: ${e.value}')
+          .toList(),
+    };
+  }
+
+  @override
+  Map<String, dynamic> getEvents({String? source}) {
+    final events = _colossus.events;
+    final filtered = source != null
+        ? events.where((e) => e['source'] == source).toList()
+        : events.toList();
+
+    // Group by source for summary
+    final bySrc = <String, int>{};
+    for (final e in filtered) {
+      final s = (e['source'] as String?) ?? 'unknown';
+      bySrc[s] = (bySrc[s] ?? 0) + 1;
+    }
+
+    return {
+      'count': filtered.length,
+      'totalEvents': events.length,
+      'filter': source,
+      'bySource': bySrc,
+      'events': filtered.length > 100
+          ? filtered.sublist(filtered.length - 100)
+          : filtered,
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> replaySession(
+    String sessionId, {
+    double speedMultiplier = 1.0,
+  }) async {
+    final session = await _colossus.loadSession(sessionId);
+    if (session == null) {
+      return {
+        'success': false,
+        'error': 'Session "$sessionId" not found in ShadeVault',
+      };
+    }
+
+    try {
+      final result = await _colossus.replaySession(
+        session,
+        speedMultiplier: speedMultiplier,
+      );
+      return {
+        'success': true,
+        'sessionId': sessionId,
+        'sessionName': session.name,
+        'eventsDispatched': result.eventsDispatched,
+        'totalEvents': result.totalEvents,
+        'durationMs': result.actualDuration.inMilliseconds,
+        'wasCancelled': result.wasCancelled,
+        'routeChanged': result.routeChanged,
+        'invalidRoute': result.invalidRoute,
+      };
+    } catch (e) {
+      return {'success': false, 'sessionId': sessionId, 'error': e.toString()};
+    }
+  }
+
+  @override
+  Map<String, dynamic> getRouteHistory() {
+    return _colossus.getRouteHistory();
   }
 }

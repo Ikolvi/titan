@@ -224,6 +224,21 @@ class RelayPlatform {
         case ('POST', '/tremors/reset'):
           await _handleResetTremors(request);
 
+        case ('POST', '/reload'):
+          await _handleReloadPage(request);
+
+        case ('GET', '/widget-tree'):
+          _handleGetWidgetTree(request);
+
+        case ('GET', '/events'):
+          _handleGetEvents(request);
+
+        case ('POST', '/replay'):
+          await _handleReplaySession(request);
+
+        case ('GET', '/route-history'):
+          _handleGetRouteHistory(request);
+
         default:
           _sendError(
             request.response,
@@ -922,5 +937,96 @@ class RelayPlatform {
       request.response,
       handler.resetTremors(clearHistory: clearHistory),
     );
+  }
+
+  Future<void> _handleReloadPage(HttpRequest request) async {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    final body = await _readJsonBody(request);
+    final fullRebuild = body?['fullRebuild'] as bool? ?? false;
+
+    final result = await handler.reloadPage(fullRebuild: fullRebuild);
+    _sendJson(request.response, result);
+  }
+
+  void _handleGetWidgetTree(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    _sendJson(request.response, handler.getWidgetTree());
+  }
+
+  void _handleGetEvents(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    final source = request.uri.queryParameters['source'];
+    _sendJson(request.response, handler.getEvents(source: source));
+  }
+
+  Future<void> _handleReplaySession(HttpRequest request) async {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    final body = await _readJsonBody(request);
+    final sessionId = body?['sessionId'] as String?;
+    if (sessionId == null) {
+      _sendError(
+        request.response,
+        HttpStatus.badRequest,
+        'Missing "sessionId" in request body',
+      );
+      return;
+    }
+
+    final speed = (body?['speedMultiplier'] as num?)?.toDouble() ?? 1.0;
+    final result = await handler.replaySession(
+      sessionId,
+      speedMultiplier: speed,
+    );
+    _sendJson(request.response, result);
+  }
+
+  void _handleGetRouteHistory(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    _sendJson(request.response, handler.getRouteHistory());
   }
 }

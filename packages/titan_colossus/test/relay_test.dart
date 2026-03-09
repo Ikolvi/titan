@@ -1301,4 +1301,70 @@ class _MockRelayHandler implements RelayHandler {
       'alertHistoryCount': 0,
     };
   }
+
+  @override
+  Future<Map<String, dynamic>> reloadPage({bool fullRebuild = false}) async {
+    return {
+      'success': true,
+      'method': fullRebuild ? 'reassemble' : 'route',
+      'currentRoute': '/mock-route',
+    };
+  }
+
+  @override
+  Map<String, dynamic> getWidgetTree() {
+    return {
+      'success': true,
+      'totalElements': 42,
+      'maxDepth': 10,
+      'uniqueWidgetTypes': 8,
+      'hasText': true,
+      'hasTextField': false,
+      'hasButton': true,
+      'top20WidgetTypes': ['Text: 5', 'Container: 3'],
+    };
+  }
+
+  @override
+  Map<String, dynamic> getEvents({String? source}) {
+    return {
+      'count': 2,
+      'totalEvents': 2,
+      'filter': source,
+      'bySource': {'atlas': 1, 'basalt': 1},
+      'events': [
+        {'source': 'atlas', 'type': 'navigate', 'route': '/home'},
+        {'source': 'basalt', 'type': 'circuit_trip', 'name': 'api'},
+      ],
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> replaySession(
+    String sessionId, {
+    double speedMultiplier = 1.0,
+  }) async {
+    return {
+      'success': true,
+      'sessionId': sessionId,
+      'sessionName': 'Mock Session',
+      'eventsDispatched': 10,
+      'totalEvents': 10,
+      'durationMs': 1500,
+      'wasCancelled': false,
+      'routeChanged': false,
+    };
+  }
+
+  @override
+  Map<String, dynamic> getRouteHistory() {
+    return {
+      'count': 2,
+      'routes': [
+        {'source': 'atlas', 'type': 'navigate', 'route': '/home'},
+        {'source': 'atlas', 'type': 'navigate', 'route': '/settings'},
+      ],
+      'currentRoute': '/settings',
+    };
+  }
 }

@@ -935,6 +935,88 @@ class _BlueprintMcpServer {
               },
             },
           },
+          {
+            'name': 'reload_page',
+            'description':
+                'Reload the current page in the running Flutter app. '
+                'By default, re-navigates to the current route '
+                '(like a browser refresh — re-triggers guards, builders, '
+                'and data loading). With fullRebuild: true, triggers a '
+                'full widget tree reassembly (like hot reload).',
+            'inputSchema': {
+              'type': 'object',
+              'properties': {
+                'fullRebuild': {
+                  'type': 'boolean',
+                  'description':
+                      'If true, triggers WidgetsBinding.reassembleApplication() '
+                      'for a full widget tree rebuild. If false (default), '
+                      're-navigates to the current route via Atlas.',
+                },
+              },
+            },
+          },
+          {
+            'name': 'get_widget_tree',
+            'description':
+                'Get a statistical summary of the current widget tree in the '
+                'running Flutter app. Returns element count, max depth, '
+                'unique widget types, and the top 20 most frequent widget types. '
+                'Useful for understanding app structure and detecting bloat.',
+            'inputSchema': {'type': 'object', 'properties': {}},
+          },
+          {
+            'name': 'get_events',
+            'description':
+                'Get integration events from Colossus bridges (atlas, basalt, '
+                'argus, bastion, custom). Events include route changes, circuit '
+                'trips, auth state changes, and more. Optionally filter by '
+                'source to see only events from a specific bridge.',
+            'inputSchema': {
+              'type': 'object',
+              'properties': {
+                'source': {
+                  'type': 'string',
+                  'description':
+                      'Filter events by source bridge. Valid sources: '
+                      'atlas, basalt, argus, bastion, or any custom source.',
+                },
+              },
+            },
+          },
+          {
+            'name': 'replay_session',
+            'description':
+                'Replay a previously recorded Shade session from the '
+                'ShadeVault. Loads the session by ID and replays all '
+                'recorded gestures using Phantom. Returns replay stats '
+                'including events dispatched, duration, and route changes.',
+            'inputSchema': {
+              'type': 'object',
+              'properties': {
+                'sessionId': {
+                  'type': 'string',
+                  'description': 'The unique ID of the saved Shade session.',
+                },
+                'speedMultiplier': {
+                  'type': 'number',
+                  'description':
+                      'Replay speed multiplier. 1.0 = real-time, '
+                      '2.0 = double speed. Default: 1.0.',
+                },
+              },
+              'required': ['sessionId'],
+            },
+          },
+          {
+            'name': 'get_route_history',
+            'description':
+                'Get the navigation route history from integration events. '
+                'Shows all route changes (navigate, pop, replace, redirect) '
+                'in chronological order, plus the current route. Useful for '
+                'understanding user flow and debugging navigation issues.',
+            'inputSchema': {'type': 'object', 'properties': {}},
+          },
         ],
       },
       'id': id,
@@ -979,6 +1061,11 @@ class _BlueprintMcpServer {
       'add_tremor',
       'remove_tremor',
       'reset_tremors',
+      'reload_page',
+      'get_widget_tree',
+      'get_events',
+      'replay_session',
+      'get_route_history',
     };
 
     if (relayOnlyTools.contains(toolName)) {
@@ -1009,6 +1096,11 @@ class _BlueprintMcpServer {
         'add_tremor' => await _addTremor(toolArgs),
         'remove_tremor' => await _removeTremor(toolArgs),
         'reset_tremors' => await _resetTremors(toolArgs),
+        'reload_page' => await _reloadPage(toolArgs),
+        'get_widget_tree' => await _getWidgetTree(),
+        'get_events' => await _getEvents(toolArgs),
+        'replay_session' => await _replaySession(toolArgs),
+        'get_route_history' => await _getRouteHistory(),
         _ => 'Unknown tool: $toolName',
       };
 
@@ -4174,6 +4266,242 @@ class _BlueprintMcpServer {
     if (data.containsKey('alertHistoryCount')) {
       buf.writeln('**Alert history entries:** ${data['alertHistoryCount']}');
     }
+
+    return buf.toString();
+  }
+
+  // -----------------------------------------------------------------------
+  // Enterprise MCP tools (reload, widget tree, events, replay, routes)
+  // -----------------------------------------------------------------------
+
+  /// Reload the current page via POST to Relay.
+  Future<String> _reloadPage(Map<String, dynamic> args) async {
+    return _postAndFormat('/reload', args, _formatReloadResult);
+  }
+
+  /// Get widget tree summary via GET from Relay.
+  Future<String> _getWidgetTree() async {
+    return _fetchAndFormat('/widget-tree', _formatWidgetTree);
+  }
+
+  /// Get integration events via GET from Relay (with optional source).
+  Future<String> _getEvents(Map<String, dynamic> args) async {
+    final source = args['source'] as String?;
+    final path = source != null ? '/events?source=$source' : '/events';
+    return _fetchAndFormat(path, _formatEvents);
+  }
+
+  /// Replay a saved Shade session via POST to Relay.
+  Future<String> _replaySession(Map<String, dynamic> args) async {
+    return _postAndFormat('/replay', args, _formatReplayResult);
+  }
+
+  /// Get navigation route history via GET from Relay.
+  Future<String> _getRouteHistory() async {
+    return _fetchAndFormat('/route-history', _formatRouteHistory);
+  }
+
+  /// Format page reload result.
+  String _formatReloadResult(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+    final success = data['success'] as bool? ?? false;
+
+    buf.writeln('# Page Reload');
+    buf.writeln();
+
+    if (!success) {
+      buf.writeln('**Failed:** ${data['error'] ?? 'Unknown error'}');
+      return buf.toString();
+    }
+
+    buf.writeln('**Method:** ${data['method']}');
+    if (data['currentRoute'] != null) {
+      buf.writeln('**Route:** ${data['currentRoute']}');
+    }
+    if (data['note'] != null) {
+      buf.writeln('**Note:** ${data['note']}');
+    }
+    buf.writeln();
+    buf.writeln('Page reloaded successfully.');
+
+    return buf.toString();
+  }
+
+  /// Format widget tree summary into Markdown.
+  String _formatWidgetTree(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+
+    if (data['success'] != true) {
+      buf.writeln('# Widget Tree Unavailable');
+      buf.writeln();
+      buf.writeln('**Error:** ${data['error'] ?? 'Unknown'}');
+      return buf.toString();
+    }
+
+    buf.writeln('# Widget Tree Summary');
+    buf.writeln();
+    buf.writeln('| Metric | Value |');
+    buf.writeln('|--------|-------|');
+    buf.writeln('| Total Elements | ${data['totalElements']} |');
+    buf.writeln('| Max Depth | ${data['maxDepth']} |');
+    buf.writeln('| Unique Widget Types | ${data['uniqueWidgetTypes']} |');
+    buf.writeln('| Has Text | ${data['hasText']} |');
+    buf.writeln('| Has TextField | ${data['hasTextField']} |');
+    buf.writeln('| Has Button | ${data['hasButton']} |');
+    buf.writeln();
+
+    final top = data['top20WidgetTypes'] as List<dynamic>? ?? [];
+    if (top.isNotEmpty) {
+      buf.writeln('## Top Widget Types');
+      buf.writeln();
+      buf.writeln('| Widget | Count |');
+      buf.writeln('|--------|-------|');
+      for (final entry in top) {
+        final parts = entry.toString().split(': ');
+        if (parts.length == 2) {
+          buf.writeln('| ${parts[0]} | ${parts[1]} |');
+        }
+      }
+      buf.writeln();
+    }
+
+    return buf.toString();
+  }
+
+  /// Format integration events into Markdown.
+  String _formatEvents(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+    final count = data['count'] as int? ?? 0;
+    final total = data['totalEvents'] as int? ?? 0;
+    final filter = data['filter'] as String?;
+
+    buf.writeln('# Integration Events');
+    buf.writeln();
+    buf.writeln(
+      '**Showing:** $count${filter != null ? ' (source: $filter)' : ''} | '
+      '**Total:** $total',
+    );
+    buf.writeln();
+
+    final bySource = data['bySource'] as Map<String, dynamic>? ?? {};
+    if (bySource.isNotEmpty) {
+      buf.writeln('## By Source');
+      buf.writeln();
+      buf.writeln('| Source | Count |');
+      buf.writeln('|--------|-------|');
+      for (final entry in bySource.entries) {
+        buf.writeln('| ${entry.key} | ${entry.value} |');
+      }
+      buf.writeln();
+    }
+
+    final events = data['events'] as List<dynamic>? ?? [];
+    if (events.isNotEmpty) {
+      buf.writeln('## Recent Events');
+      buf.writeln();
+      final recentEvents = events.length > 20
+          ? events.sublist(events.length - 20)
+          : events;
+      for (final e in recentEvents) {
+        final event = e as Map<String, dynamic>;
+        final source = event['source'] ?? '';
+        final type = event['type'] ?? '';
+        final ts = event['timestamp'] ?? '';
+        buf.write('- **[$source]** $type');
+        if (event['route'] != null) buf.write(' → ${event['route']}');
+        if (event['name'] != null) buf.write(' (${event['name']})');
+        if (ts.toString().isNotEmpty) buf.write(' _${ts}_');
+        buf.writeln();
+      }
+      buf.writeln();
+    }
+
+    if (events.isEmpty) {
+      buf.writeln(
+        'No events recorded. Events are populated by Colossus bridges '
+        '(ColossusAtlasObserver, ColossusBasaltBridge, etc.).',
+      );
+    }
+
+    return buf.toString();
+  }
+
+  /// Format session replay result.
+  String _formatReplayResult(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+    final success = data['success'] as bool? ?? false;
+
+    buf.writeln('# Session Replay');
+    buf.writeln();
+
+    if (!success) {
+      buf.writeln('**Failed:** ${data['error'] ?? 'Unknown error'}');
+      if (data['sessionId'] != null) {
+        buf.writeln('**Session ID:** ${data['sessionId']}');
+      }
+      return buf.toString();
+    }
+
+    buf.writeln('| Metric | Value |');
+    buf.writeln('|--------|-------|');
+    buf.writeln('| Session | ${data['sessionName']} |');
+    buf.writeln('| Session ID | ${data['sessionId']} |');
+    buf.writeln(
+      '| Events | ${data['eventsDispatched']}/${data['totalEvents']} |',
+    );
+    buf.writeln('| Duration | ${data['durationMs']}ms |');
+    buf.writeln('| Cancelled | ${data['wasCancelled']} |');
+    buf.writeln('| Route Changed | ${data['routeChanged']} |');
+    if (data['invalidRoute'] != null) {
+      buf.writeln('| Invalid Route | ${data['invalidRoute']} |');
+    }
+    buf.writeln();
+
+    if (data['routeChanged'] == true) {
+      buf.writeln(
+        '⚠ Route changed during replay — some events may not have '
+        'been dispatched.',
+      );
+    } else {
+      buf.writeln('Replay completed successfully.');
+    }
+
+    return buf.toString();
+  }
+
+  /// Format route history into Markdown.
+  String _formatRouteHistory(Map<String, dynamic> data) {
+    final buf = StringBuffer();
+    final count = data['count'] as int? ?? 0;
+    final current = data['currentRoute'] as String?;
+
+    buf.writeln('# Route History');
+    buf.writeln();
+    buf.writeln(
+      '**Transitions:** $count | '
+      '**Current Route:** ${current ?? 'unknown'}',
+    );
+    buf.writeln();
+
+    final routes = data['routes'] as List<dynamic>? ?? [];
+    if (routes.isEmpty) {
+      buf.writeln(
+        'No route history available. Route events are recorded when '
+        'using ColossusAtlasObserver with Atlas routing.',
+      );
+      return buf.toString();
+    }
+
+    buf.writeln('| # | Type | Route | Time |');
+    buf.writeln('|---|------|-------|------|');
+    for (var i = 0; i < routes.length; i++) {
+      final r = routes[i] as Map<String, dynamic>;
+      final type = r['type'] ?? '';
+      final route = r['route'] ?? r['from'] ?? '';
+      final ts = r['timestamp'] ?? '';
+      buf.writeln('| ${i + 1} | $type | $route | $ts |');
+    }
+    buf.writeln();
 
     return buf.toString();
   }
