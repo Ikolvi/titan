@@ -145,6 +145,7 @@ class TitanState<T> extends ReactiveNode implements ReadCore<T> {
   /// Reading this inside a [TitanComputed] or [TitanEffect] automatically
   /// registers a dependency.
   @override
+  @pragma('vm:prefer-inline')
   T get value {
     track();
     return _value;
@@ -161,6 +162,7 @@ class TitanState<T> extends ReactiveNode implements ReadCore<T> {
   /// print(name.previousValue); // 'Alice'
   /// ```
   @override
+  @pragma('vm:prefer-inline')
   T? get previousValue => _previousValue;
 
   /// Sets the value. If Conduits are attached, the value is piped through
@@ -209,6 +211,7 @@ class TitanState<T> extends ReactiveNode implements ReadCore<T> {
   /// Useful when you need to read the value without triggering
   /// a rebuild on change.
   @override
+  @pragma('vm:prefer-inline')
   T peek() => _value;
 
   /// Updates the value using a transformation function.
