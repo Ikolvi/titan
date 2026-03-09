@@ -23,6 +23,12 @@ class RelayPlatform {
   int _requestsHandled = 0;
   int _campaignsExecuted = 0;
 
+  // Cache for blueprint data to avoid recomputing when multiple streaming
+  // endpoints are called in sequence (e.g. JSON then prompt).
+  Map<String, dynamic>? _blueprintCache;
+  DateTime? _blueprintCacheTime;
+  static const _blueprintCacheDuration = Duration(seconds: 10);
+
   /// Current status of the Relay server.
   RelayStatus get status => RelayStatus(
     isRunning: _server != null,
@@ -178,6 +184,24 @@ class RelayPlatform {
 
         case ('GET', '/errors'):
           _handleGetErrors(request);
+
+        case ('POST', '/recording/start'):
+          await _handleStartRecording(request);
+
+        case ('POST', '/recording/stop'):
+          await _handleStopRecording(request);
+
+        case ('POST', '/blueprint/export'):
+          await _handleExportBlueprint(request);
+
+        case ('GET', '/blueprint/data'):
+          _handleGetBlueprintData(request);
+
+        case ('GET', '/blueprint/stream/json'):
+          await _handleStreamBlueprintJson(request);
+
+        case ('GET', '/blueprint/stream/prompt'):
+          await _handleStreamBlueprintPrompt(request);
 
         case ('GET', '/debug/tree'):
           await _handleDebugTree(request);
@@ -420,6 +444,231 @@ class RelayPlatform {
     }
 
     _sendJson(request.response, handler.getFrameworkErrors());
+  }
+
+  Future<void> _handleStartRecording(HttpRequest request) async {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    final body = await _readJsonBody(request);
+    final name = body?['name'] as String?;
+    final description = body?['description'] as String?;
+
+    try {
+      final result = handler.startRecording(
+        name: name,
+        description: description,
+      );
+      _sendJson(request.response, result);
+    } catch (e) {
+      _sendError(
+        request.response,
+        HttpStatus.conflict,
+        'Failed to start recording: $e',
+      );
+    }
+  }
+
+  Future<void> _handleStopRecording(HttpRequest request) async {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    try {
+      final result = handler.stopRecording();
+      _sendJson(request.response, result);
+    } catch (e) {
+      _sendError(
+        request.response,
+        HttpStatus.conflict,
+        'Failed to stop recording: $e',
+      );
+    }
+  }
+
+  Future<void> _handleExportBlueprint(HttpRequest request) async {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    final body = await _readJsonBody(request);
+    final directory = body?['directory'] as String?;
+
+    try {
+      final result = await handler.exportBlueprint(directory: directory);
+      _sendJson(request.response, result);
+    } catch (e) {
+      _sendError(
+        request.response,
+        HttpStatus.internalServerError,
+        'Blueprint export failed: $e',
+      );
+    }
+  }
+
+  void _handleGetBlueprintData(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    try {
+      final result = _getCachedBlueprintData(handler);
+      _sendJson(request.response, result);
+    } catch (e) {
+      _sendError(
+        request.response,
+        HttpStatus.internalServerError,
+        'Blueprint data failed: $e',
+      );
+    }
+  }
+
+  /// Stream blueprint JSON in chunks. Writes the pretty-printed JSON directly
+  /// to the HTTP response without buffering. Summary metadata is sent as
+  /// custom headers so the client can report without parsing.
+  Future<void> _handleStreamBlueprintJson(HttpRequest request) async {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    try {
+      final data = _getCachedBlueprintData(handler);
+      final blueprint = data['blueprint'] as Map<String, dynamic>?;
+      if (blueprint == null) {
+        _sendError(
+          request.response,
+          HttpStatus.notFound,
+          'No blueprint data. Record a session first.',
+        );
+        return;
+      }
+
+      final terrain = data['terrainSummary'] as Map<String, dynamic>? ?? {};
+      final response = request.response;
+      response
+        ..statusCode = HttpStatus.ok
+        ..headers.contentType = ContentType.json
+        ..headers.set('X-Terrain-Screens', '${terrain['screens'] ?? 0}')
+        ..headers.set(
+          'X-Terrain-Transitions',
+          '${terrain['transitions'] ?? 0}',
+        )
+        ..headers.set(
+          'X-Stratagem-Count',
+          '${data['stratagemCount'] ?? 0}',
+        );
+
+      // Serialize and write in chunks to avoid a single large allocation.
+      const encoder = JsonEncoder.withIndent('  ');
+      final jsonStr = encoder.convert(blueprint);
+      const chunkSize = 64 * 1024; // 64 KB
+      for (var i = 0; i < jsonStr.length; i += chunkSize) {
+        final end = i + chunkSize;
+        response.write(
+          jsonStr.substring(i, end > jsonStr.length ? jsonStr.length : end),
+        );
+      }
+      await response.close();
+    } catch (e) {
+      _sendError(
+        request.response,
+        HttpStatus.internalServerError,
+        'Blueprint stream failed: $e',
+      );
+    }
+  }
+
+  /// Stream blueprint AI prompt as plain markdown. Lightweight — just the
+  /// prompt text, no JSON wrapper.
+  Future<void> _handleStreamBlueprintPrompt(HttpRequest request) async {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(
+        request.response,
+        HttpStatus.serviceUnavailable,
+        'Colossus not available',
+      );
+      return;
+    }
+
+    try {
+      final data = _getCachedBlueprintData(handler);
+      final prompt = data['prompt'] as String?;
+      if (prompt == null || prompt.isEmpty) {
+        _sendError(
+          request.response,
+          HttpStatus.notFound,
+          'No prompt data. Record a session first.',
+        );
+        return;
+      }
+
+      final response = request.response;
+      response
+        ..statusCode = HttpStatus.ok
+        ..headers.contentType = ContentType('text', 'plain', charset: 'utf-8');
+
+      // Write in chunks for large prompts.
+      const chunkSize = 64 * 1024; // 64 KB
+      for (var i = 0; i < prompt.length; i += chunkSize) {
+        final end = i + chunkSize;
+        response.write(
+          prompt.substring(i, end > prompt.length ? prompt.length : end),
+        );
+      }
+      await response.close();
+    } catch (e) {
+      _sendError(
+        request.response,
+        HttpStatus.internalServerError,
+        'Prompt stream failed: $e',
+      );
+    }
+  }
+
+  /// Return cached blueprint data, recomputing if stale or absent.
+  Map<String, dynamic> _getCachedBlueprintData(RelayHandler handler) {
+    final now = DateTime.now();
+    if (_blueprintCache != null &&
+        _blueprintCacheTime != null &&
+        now.difference(_blueprintCacheTime!) < _blueprintCacheDuration) {
+      return _blueprintCache!;
+    }
+    final data = handler.getBlueprintData();
+    _blueprintCache = data;
+    _blueprintCacheTime = now;
+    return data;
   }
 
   // -----------------------------------------------------------------------

@@ -101,6 +101,11 @@ class _BlueprintMcpServer {
   int _relayPort = 8642;
   String? _relayAuthToken;
 
+  /// Directory containing the blueprint files, derived from [_blueprintPath].
+  String get _blueprintDir => _blueprintPath.contains('/')
+      ? _blueprintPath.substring(0, _blueprintPath.lastIndexOf('/'))
+      : '.titan';
+
   Future<void> run() async {
     // Read JSON-RPC messages from stdin, write responses to stdout
     final lines = stdin.transform(utf8.decoder).transform(const LineSplitter());
@@ -731,6 +736,73 @@ class _BlueprintMcpServer {
                 'toggle summary, and layout pattern.',
             'inputSchema': {'type': 'object', 'properties': {}},
           },
+          {
+            'name': 'start_recording',
+            'description':
+                'Start a Shade recording session on the running app '
+                'via Relay. Captures all user interactions (taps, '
+                'scrolls, text entry, navigation) for later replay '
+                'or Blueprint generation. Use this before navigating '
+                'the app to record a session, then call '
+                'stop_recording when done. Avoids needing to '
+                'manually tap the record button in the app UI.',
+            'inputSchema': {
+              'type': 'object',
+              'properties': {
+                'name': {
+                  'type': 'string',
+                  'description':
+                      'Session name (e.g., "login_flow", '
+                      '"full_app_exploration"). Defaults to '
+                      '"session_N" if omitted.',
+                },
+                'description': {
+                  'type': 'string',
+                  'description':
+                      'Optional description of what this session '
+                      'captures (e.g., "Complete onboarding flow").',
+                },
+              },
+            },
+          },
+          {
+            'name': 'stop_recording',
+            'description':
+                'Stop the active Shade recording session on the '
+                'running app via Relay. Returns session metadata '
+                'including event count, duration, and session ID. '
+                'The recorded session is automatically fed to Scout '
+                'for terrain analysis. After stopping, call '
+                'export_blueprint to save the navigation graph and '
+                'edge-case test plans to disk.',
+            'inputSchema': {'type': 'object', 'properties': {}},
+          },
+          {
+            'name': 'export_blueprint',
+            'description':
+                'Export the current Blueprint (Terrain + Stratagems) '
+                'to disk as blueprint.json and blueprint-prompt.md. '
+                'Generates the navigation graph from all recorded '
+                'sessions analyzed by Scout and auto-generates '
+                'edge-case test plans via Gauntlet. The exported '
+                'files are saved to .titan/ directory (accessible '
+                'by this MCP server). Use this after stop_recording '
+                'to make Blueprint data available for '
+                'get_terrain, get_stratagems, and other '
+                'blueprint-dependent tools.',
+            'inputSchema': {
+              'type': 'object',
+              'properties': {
+                'directory': {
+                  'type': 'string',
+                  'description':
+                      'Output directory for blueprint files. '
+                      'Defaults to ".titan". The MCP server '
+                      'reads from this path.',
+                },
+              },
+            },
+          },
         ],
       },
       'id': id,
@@ -765,6 +837,10 @@ class _BlueprintMcpServer {
       'audit_screen',
       'scry',
       'scry_act',
+      'scry_diff',
+      'start_recording',
+      'stop_recording',
+      'export_blueprint',
     };
 
     if (relayOnlyTools.contains(toolName)) {
@@ -786,6 +862,9 @@ class _BlueprintMcpServer {
         'scry' => await _scry(),
         'scry_act' => await _scryAct(toolArgs),
         'scry_diff' => await _scryDiff(),
+        'start_recording' => await _startRecording(toolArgs),
+        'stop_recording' => await _stopRecording(),
+        'export_blueprint' => await _exportBlueprint(toolArgs),
         _ => 'Unknown tool: $toolName',
       };
 
@@ -1355,11 +1434,7 @@ class _BlueprintMcpServer {
         return 'Error: Campaign must have an "entries" array.';
       }
 
-      final dir = Directory(
-        _blueprintPath.contains('/')
-            ? _blueprintPath.substring(0, _blueprintPath.lastIndexOf('/'))
-            : '.titan',
-      );
+      final dir = Directory(_blueprintDir);
       if (!dir.existsSync()) {
         await dir.create(recursive: true);
       }
@@ -2196,6 +2271,244 @@ class _BlueprintMcpServer {
   /// Fetch and format framework errors from Relay `/errors` endpoint.
   Future<String> _getFrameworkErrors() async {
     return _fetchAndFormat('/errors', _formatFrameworkErrors);
+  }
+
+  // -----------------------------------------------------------------------
+  // Recording control (start/stop/export)
+  // -----------------------------------------------------------------------
+
+  /// Start a Shade recording session via Relay.
+  Future<String> _startRecording(Map<String, dynamic> args) async {
+    final name = args['name'] as String?;
+    final description = args['description'] as String?;
+
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 5);
+
+      final request = await client.postUrl(_relayUri('/recording/start'));
+      _relayHeaders.forEach(request.headers.set);
+      final startBody = <String, dynamic>{};
+      if (name != null) startBody['name'] = name;
+      if (description != null) startBody['description'] = description;
+      request.add(utf8.encode(jsonEncode(startBody)));
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
+
+      final body = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(body) as Map<String, dynamic>;
+        final success = data['success'] as bool? ?? false;
+        final buf = StringBuffer();
+        buf.writeln('# Shade Recording');
+        buf.writeln();
+        if (success) {
+          buf.writeln('**Recording started** ✅');
+          buf.writeln();
+          buf.writeln('- **Name**: ${data['name'] ?? 'session'}');
+          buf.writeln();
+          buf.writeln(
+            'Navigate the app to record interactions. '
+            'Call `stop_recording` when done.',
+          );
+        } else {
+          buf.writeln('**Could not start recording**');
+          buf.writeln();
+          buf.writeln('Reason: ${data['error'] ?? 'Unknown'}');
+          if (data['currentEventCount'] != null) {
+            buf.writeln('- Current events: ${data['currentEventCount']}');
+            buf.writeln(
+              '- Elapsed: '
+              '${((data['elapsedMs'] as int? ?? 0) / 1000).toStringAsFixed(1)}s',
+            );
+          }
+        }
+        return buf.toString();
+      } else {
+        return 'Relay returned ${response.statusCode}: $body';
+      }
+    } on SocketException {
+      return '# Start Recording Failed\n\n'
+          'Cannot connect to Relay — is the app running?';
+    } on TimeoutException {
+      return '# Start Recording Failed\n\n'
+          'Relay did not respond (timeout).';
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Stop the active Shade recording session via Relay.
+  Future<String> _stopRecording() async {
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 5);
+
+      final request = await client.postUrl(_relayUri('/recording/stop'));
+      _relayHeaders.forEach(request.headers.set);
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
+
+      final body = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(body) as Map<String, dynamic>;
+        final success = data['success'] as bool? ?? false;
+        final buf = StringBuffer();
+        buf.writeln('# Shade Recording');
+        buf.writeln();
+        if (success) {
+          buf.writeln('**Recording stopped** ✅');
+          buf.writeln();
+          buf.writeln('| Property | Value |');
+          buf.writeln('|----------|-------|');
+          buf.writeln('| Session ID | ${data['sessionId']} |');
+          buf.writeln('| Name | ${data['name']} |');
+          buf.writeln('| Events | ${data['eventCount']} |');
+          final durationMs = data['durationMs'] as int? ?? 0;
+          buf.writeln(
+            '| Duration | ${(durationMs / 1000).toStringAsFixed(1)}s |',
+          );
+          if (data['description'] != null) {
+            buf.writeln('| Description | ${data['description']} |');
+          }
+          buf.writeln();
+          buf.writeln(
+            'Session analyzed by Scout. Call `export_blueprint` to '
+            'save Terrain + Stratagems to disk.',
+          );
+        } else {
+          buf.writeln('**Could not stop recording**');
+          buf.writeln();
+          buf.writeln('Reason: ${data['error'] ?? 'Unknown'}');
+        }
+        return buf.toString();
+      } else {
+        return 'Relay returned ${response.statusCode}: $body';
+      }
+    } on SocketException {
+      return '# Stop Recording Failed\n\n'
+          'Cannot connect to Relay — is the app running?';
+    } on TimeoutException {
+      return '# Stop Recording Failed\n\n'
+          'Relay did not respond (timeout).';
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Export Blueprint (Terrain + Stratagems) to disk via Relay.
+  Future<String> _exportBlueprint(Map<String, dynamic> args) async {
+    final directory = args['directory'] as String? ?? _blueprintDir;
+
+    // Fetch blueprint data from Relay (in-memory, no disk I/O in the app).
+    // This avoids macOS/iOS sandbox issues where the app cannot write outside
+    // its container.
+    final client = HttpClient();
+    try {
+      client.connectionTimeout = const Duration(seconds: 10);
+
+      // 1. Stream blueprint JSON directly to file (chunked, no buffering).
+      final jsonRequest = await client.getUrl(
+        _relayUri('/blueprint/stream/json'),
+      );
+      _relayHeaders.forEach(jsonRequest.headers.set);
+
+      final jsonResponse = await jsonRequest.close().timeout(
+        const Duration(seconds: 60),
+      );
+
+      if (jsonResponse.statusCode == 404) {
+        // Drain the response to prevent connection leak.
+        await jsonResponse.drain<void>();
+        return '# Blueprint Export Failed\n\n'
+            'No terrain data available. Record a session first using '
+            '`start_recording`, navigate the app, then `stop_recording`.';
+      }
+
+      if (jsonResponse.statusCode != 200) {
+        final body = await jsonResponse.transform(utf8.decoder).join();
+        return 'Relay returned ${jsonResponse.statusCode}: $body';
+      }
+
+      // Read summary from response headers (avoids parsing the JSON).
+      final screens =
+          jsonResponse.headers.value('X-Terrain-Screens') ?? '0';
+      final transitions =
+          jsonResponse.headers.value('X-Terrain-Transitions') ?? '0';
+      final stratagemCount =
+          jsonResponse.headers.value('X-Stratagem-Count') ?? '0';
+
+      // Write files locally from the MCP process (outside app sandbox).
+      final dir = Directory(directory);
+      if (!dir.existsSync()) {
+        dir.createSync(recursive: true);
+      }
+
+      final jsonPath = '${dir.path}/blueprint.json';
+      final promptPath = '${dir.path}/blueprint-prompt.md';
+
+      // Pipe JSON response stream directly to file — no in-memory buffer.
+      final jsonSink = File(jsonPath).openWrite();
+      await jsonResponse.pipe(jsonSink);
+
+      // 2. Stream prompt markdown to file.
+      final promptRequest = await client.getUrl(
+        _relayUri('/blueprint/stream/prompt'),
+      );
+      _relayHeaders.forEach(promptRequest.headers.set);
+
+      final promptResponse = await promptRequest.close().timeout(
+        const Duration(seconds: 30),
+      );
+
+      if (promptResponse.statusCode == 200) {
+        final promptSink = File(promptPath).openWrite();
+        await promptResponse.pipe(promptSink);
+      } else {
+        // Non-fatal — prompt is optional.
+        await promptResponse.drain<void>();
+      }
+
+      // Invalidate cached blueprint so next read picks up new data.
+      _cachedBlueprint = null;
+      _lastModified = null;
+
+      final buf = StringBuffer();
+      buf.writeln('# Blueprint Export');
+      buf.writeln();
+      buf.writeln('**Blueprint exported** ✅');
+      buf.writeln();
+      buf.writeln('| File | Path |');
+      buf.writeln('|------|------|');
+      buf.writeln('| JSON | `$jsonPath` |');
+      buf.writeln('| Prompt | `$promptPath` |');
+      buf.writeln();
+      buf.writeln('## Terrain Summary');
+      buf.writeln();
+      buf.writeln('- **Screens**: $screens');
+      buf.writeln('- **Transitions**: $transitions');
+      buf.writeln('- **Stratagems generated**: $stratagemCount');
+      buf.writeln();
+      buf.writeln(
+        'Blueprint data is now available for `get_terrain`, '
+        '`get_stratagems`, and other blueprint-dependent tools.',
+      );
+      return buf.toString();
+    } on SocketException {
+      return '# Blueprint Export Failed\n\n'
+          'Cannot connect to Relay — is the app running?';
+    } on TimeoutException {
+      return '# Blueprint Export Failed\n\n'
+          'Relay did not respond (timeout).';
+    } finally {
+      client.close();
+    }
   }
 
   /// Format recording status JSON into Markdown.

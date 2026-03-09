@@ -24,6 +24,7 @@ import 'metrics/mark.dart';
 import 'monitors/pulse.dart';
 import 'monitors/stride.dart';
 import 'monitors/vessel.dart';
+import 'export/blueprint_export.dart';
 import 'recording/imprint.dart';
 import 'recording/phantom.dart';
 import 'recording/shade.dart';
@@ -1638,4 +1639,74 @@ class _ColossusRelayHandler implements RelayHandler {
             .length,
     },
   };
+
+  @override
+  Map<String, dynamic> startRecording({String? name, String? description}) {
+    if (_colossus.shade.isRecording) {
+      return {
+        'success': false,
+        'error': 'Already recording',
+        'currentEventCount': _colossus.shade.currentEventCount,
+        'elapsedMs': _colossus.shade.elapsed.inMilliseconds,
+      };
+    }
+
+    _colossus.shade.startRecording(name: name, description: description);
+    return {'success': true, 'name': name ?? 'session', 'isRecording': true};
+  }
+
+  @override
+  Map<String, dynamic> stopRecording() {
+    if (!_colossus.shade.isRecording) {
+      return {'success': false, 'error': 'Not currently recording'};
+    }
+
+    final session = _colossus.shade.stopRecording();
+
+    // Feed session to Scout for terrain analysis.
+    _colossus.scout.analyzeSession(session);
+
+    return {
+      'success': true,
+      'sessionId': session.id,
+      'name': session.name,
+      'eventCount': session.eventCount,
+      'durationMs': session.duration.inMilliseconds,
+      'description': session.description,
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> exportBlueprint({String? directory}) async {
+    final dir = directory ?? '.titan';
+
+    final export = BlueprintExport.fromScout(scout: _colossus.scout);
+
+    final result = await BlueprintExportIO.saveAll(export, directory: dir);
+
+    return {
+      'success': true,
+      'jsonPath': result.json,
+      'promptPath': result.prompt,
+      'terrainSummary': {
+        'screens': export.terrain.outposts.length,
+        'transitions': export.terrain.marches.length,
+      },
+      'stratagemCount': export.stratagems.length,
+    };
+  }
+
+  @override
+  Map<String, dynamic> getBlueprintData() {
+    final export = BlueprintExport.fromScout(scout: _colossus.scout);
+    return {
+      'blueprint': export.toJson(),
+      'prompt': export.toAiPrompt(),
+      'terrainSummary': {
+        'screens': export.terrain.outposts.length,
+        'transitions': export.terrain.marches.length,
+      },
+      'stratagemCount': export.stratagems.length,
+    };
+  }
 }

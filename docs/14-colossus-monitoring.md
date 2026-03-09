@@ -1127,6 +1127,9 @@ adb forward tcp:8642 tcp:8642
 | `GET` | `/blueprint` | Yes | Full AI Blueprint context |
 | `POST` | `/campaign` | Yes | Execute Campaign JSON, return results |
 | `POST` | `/debrief` | Yes | Analyze Verdicts, return Debrief report |
+| `POST` | `/recording/start` | Yes | Start a Shade recording session |
+| `POST` | `/recording/stop` | Yes | Stop recording, return session metadata |
+| `POST` | `/blueprint/export` | Yes | Export Blueprint (Terrain + Stratagems) to disk |
 
 ### Security
 
@@ -1142,13 +1145,16 @@ CORS headers are included on all responses for web-based MCP clients.
 
 ### MCP Integration
 
-Three new MCP tools connect to the Relay:
+Six MCP tools connect to the Relay:
 
 | Tool | Description |
 |------|-------------|
 | `execute_campaign` | Execute Campaign JSON on the running app — returns pass/fail results, Verdicts, and AI diagnostic |
 | `relay_status` | Check if the Relay is running, show port and stats |
 | `relay_terrain` | Get live Terrain from the running app (not from static file) |
+| `start_recording` | Start a Shade recording session — captures all interactions for Blueprint generation |
+| `stop_recording` | Stop the active recording — session is auto-analyzed by Scout |
+| `export_blueprint` | Export Terrain + Stratagems to `.titan/` as JSON and AI prompt |
 
 Configure the MCP server with Relay connection info:
 
@@ -1183,6 +1189,20 @@ With Relay, the entire test cycle requires zero human interaction:
 6. AI calls get_debrief          → analyzes failures, suggests fixes
 7. AI generates fix code         → commits the fix
 8. AI calls execute_campaign     → re-run to verify the fix
+```
+
+### Zero-Touch Blueprint Generation
+
+AI assistants can create Blueprint data without any manual app interaction:
+
+```
+1. AI calls start_recording      → Shade begins capturing all interactions
+2. AI calls scry                 → observes the current screen
+3. AI calls scry_act             → navigates through the app (tap tabs, fill forms)
+4. Repeat steps 2-3              → cover all screens and flows
+5. AI calls stop_recording       → session analyzed by Scout automatically
+6. AI calls export_blueprint     → saves blueprint.json + blueprint-prompt.md
+7. Blueprint data now available  → get_terrain, get_stratagems, etc.
 ```
 
 ### Programmatic Usage

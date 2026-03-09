@@ -1069,4 +1069,41 @@ class _MockRelayHandler implements RelayHandler {
       },
     };
   }
+
+  @override
+  Map<String, dynamic> startRecording({String? name, String? description}) {
+    return {'success': true, 'name': name ?? 'session', 'isRecording': true};
+  }
+
+  @override
+  Map<String, dynamic> stopRecording() {
+    return {
+      'success': true,
+      'sessionId': 'mock_session_1',
+      'name': 'mock_session',
+      'eventCount': 10,
+      'durationMs': 5000,
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> exportBlueprint({String? directory}) async {
+    return {
+      'success': true,
+      'jsonPath': '${directory ?? '.titan'}/blueprint.json',
+      'promptPath': '${directory ?? '.titan'}/blueprint-prompt.md',
+      'terrainSummary': {'screens': 3, 'transitions': 5},
+      'stratagemCount': 7,
+    };
+  }
+
+  @override
+  Map<String, dynamic> getBlueprintData() {
+    return {
+      'blueprint': {'version': '1.0', 'terrain': {}, 'stratagems': []},
+      'prompt': '# Test Blueprint',
+      'terrainSummary': {'screens': 3, 'transitions': 5},
+      'stratagemCount': 7,
+    };
+  }
 }

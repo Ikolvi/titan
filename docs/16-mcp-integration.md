@@ -38,7 +38,7 @@ Titan provides a Model Context Protocol (MCP) server that gives AI assistants re
 
 ## Overview
 
-The **Titan Blueprint MCP Server** (`titan-blueprint`) is a stdio-based JSON-RPC 2.0 server that exposes 28 tools to AI assistants. It connects to your running Flutter app through the **Relay** HTTP bridge (port 8642) and reads static blueprint data from `.titan/blueprint.json`.
+The **Titan Blueprint MCP Server** (`titan-blueprint`) is a stdio-based JSON-RPC 2.0 server that exposes 31 tools to AI assistants. It connects to your running Flutter app through the **Relay** HTTP bridge (port 8642) and reads static blueprint data from `.titan/blueprint.json`.
 
 ### Architecture
 
@@ -558,7 +558,7 @@ fvm dart run titan_colossus:blueprint_mcp_server \
 
 ## Tool Reference
 
-The server exposes **28 tools** organized into seven categories.
+The server exposes **31 tools** organized into seven categories.
 
 ### Screen Observation (Scry)
 
@@ -642,6 +642,9 @@ These tools provide detailed access to Colossus performance monitors in the runn
 |------|-------------|
 | **`list_sessions`** | List saved Shade recording sessions from ShadeVault. Returns summaries with IDs, names, recording dates, durations, and event counts. Sorted newest first. |
 | **`get_recording_status`** | Current Shade recording/replaying state. Shows whether recording or replaying is active, elapsed time, event count, performance recording state, and last session availability. |
+| **`start_recording`** | Start a Shade recording session on the running app via Relay. Captures all interactions (taps, scrolls, text entry, navigation) for later replay or Blueprint generation. Avoids needing to manually tap the record button in the app UI. Params: `name` (optional), `description` (optional). |
+| **`stop_recording`** | Stop the active Shade recording session. Returns session metadata (event count, duration, session ID). The recorded session is automatically fed to Scout for terrain analysis. Call `export_blueprint` after to save results. |
+| **`export_blueprint`** | Export the current Blueprint (Terrain + Stratagems) to disk as `blueprint.json` and `blueprint-prompt.md`. Generates navigation graph from all recorded sessions and auto-generates edge-case test plans via Gauntlet. Params: `directory` (optional, defaults to `.titan`). |
 
 ### Error Detection
 
@@ -723,6 +726,20 @@ The AI will:
 The AI will:
 1. Call `get_recording_status` to check current state
 2. Call `list_sessions` to list saved ShadeVault recordings
+
+### Zero-touch Blueprint generation
+
+> "Create a blueprint by exploring the app"
+
+The AI will:
+1. Call `start_recording` with a descriptive name (e.g., `"full_app_exploration"`)
+2. Call `scry` to observe the current screen
+3. Call `scry_act` to navigate through the app (tap tabs, open screens, fill forms)
+4. Repeat steps 2–3 to cover all screens and flows
+5. Call `stop_recording` — the session is automatically analyzed by Scout
+6. Call `export_blueprint` — saves `blueprint.json` + `blueprint-prompt.md` to `.titan/`
+
+No manual app interaction needed — the AI records, navigates, and exports autonomously.
 
 ### Error detection
 

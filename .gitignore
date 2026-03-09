@@ -13,6 +13,9 @@ build/
 .flutter-plugins-dependencies
 pubspec.lock
 
+# Blueprint data (regenerated via export_blueprint)
+.titan/
+
 # Benchmark results (local tracking)
 **/benchmark/results/
 demo_auth_campaign.json

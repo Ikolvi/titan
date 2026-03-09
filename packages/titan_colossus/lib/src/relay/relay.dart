@@ -184,6 +184,32 @@ abstract interface class RelayHandler {
   /// Returns overflow, build, layout, paint, and gesture errors
   /// intercepted from [FlutterError.onError] since initialization.
   Map<String, dynamic> getFrameworkErrors();
+
+  /// Start a new Shade recording session.
+  ///
+  /// Returns confirmation with session name and status.
+  /// Optionally accepts a [name] and [description] for the session.
+  Map<String, dynamic> startRecording({String? name, String? description});
+
+  /// Stop the current Shade recording and return session summary.
+  ///
+  /// Returns the session metadata (id, name, duration, event count).
+  /// Throws [StateError] if not currently recording.
+  Map<String, dynamic> stopRecording();
+
+  /// Export the current Blueprint data to disk.
+  ///
+  /// Generates a [BlueprintExport] from the live Scout terrain
+  /// and saves `blueprint.json` and `blueprint-prompt.md`.
+  /// Returns the paths of the exported files.
+  Future<Map<String, dynamic>> exportBlueprint({String? directory});
+
+  /// Get the full Blueprint export data without writing to disk.
+  ///
+  /// Returns the complete `BlueprintExport.toJson()` plus the
+  /// AI prompt text. Useful for MCP servers or external tools
+  /// that handle file I/O outside the app sandbox.
+  Map<String, dynamic> getBlueprintData();
 }
 
 // ---------------------------------------------------------------------------
