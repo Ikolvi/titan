@@ -754,13 +754,19 @@ The AI will:
 
 ## Physical Device & Emulator Setup
 
-### Same machine (desktop, simulator, emulator)
+The MCP server runs on your **development machine** and connects to the Relay HTTP server running **inside the Flutter app**. The network path between them varies by platform:
+
+```
+┌──────────────────┐          ┌──────────────────────────┐
+│  MCP Server      │  HTTP    │  Flutter App (Relay)     │
+│  (dev machine)   │ -------> │  (device / emulator)     │
+│  localhost:*      │  :8642  │  0.0.0.0:8642            │
+└──────────────────┘          └──────────────────────────┘
+```
+
+### Same Machine (Desktop App)
 
 Default configuration works out of the box. The Relay binds to `localhost:8642`.
-
-### iOS Simulator
-
-No extra configuration needed — the simulator shares the host's network.
 
 ```json
 {
@@ -770,29 +776,59 @@ No extra configuration needed — the simulator shares the host's network.
 }
 ```
 
-### Android Emulator
+---
 
-The Android emulator uses `10.0.2.2` to reach the host machine's `localhost`. However, since the **MCP server runs on the host** and connects to the Relay, the default `127.0.0.1:8642` works — the Relay is bound inside the emulator but accessible through port forwarding.
+### iOS Simulator
 
-Set up port forwarding:
+No extra configuration needed — the iOS Simulator shares the host's network stack. `localhost:8642` in the MCP server reaches the Relay inside the simulator directly.
 
-```bash
-adb forward tcp:8642 tcp:8642
+```json
+{
+  "command": "dart",
+  "args": ["run", "titan_colossus:blueprint_mcp_server"],
+  "cwd": "packages/titan_colossus"
+}
 ```
 
-Then use default configuration (no `--relay-host` override needed).
+---
 
-### Physical Device (same network)
+### iOS Physical Device (USB)
 
-When the app runs on a physical device, configure the Relay host to the device's IP:
+iOS physical devices do **not** share the host's network. You need port forwarding via `iproxy` (included with `libimobiledevice`).
+
+**1. Install `libimobiledevice`:**
 
 ```bash
-# Find your device's IP address
-# iOS: Settings → Wi-Fi → (i) button
-# Android: Settings → Network → Wi-Fi → Connected network
+brew install libimobiledevice
 ```
 
-Configure the MCP server:
+**2. Connect the device via USB and trust the computer** (tap "Trust" on the device if prompted).
+
+**3. Forward port 8642:**
+
+```bash
+iproxy 8642 8642
+```
+
+This maps your Mac's `localhost:8642` to the device's port `8642`. Keep this terminal open while testing.
+
+**4. Use default MCP configuration** (no `--relay-host` override needed):
+
+```json
+{
+  "command": "dart",
+  "args": ["run", "titan_colossus:blueprint_mcp_server"],
+  "cwd": "packages/titan_colossus"
+}
+```
+
+**Alternative — Wi-Fi (same network):**
+
+If USB is unavailable, use the device's IP address:
+
+```bash
+# Find your iOS device's IP: Settings → Wi-Fi → tap (i) on connected network
+```
 
 ```json
 {
@@ -805,6 +841,170 @@ Configure the MCP server:
   "cwd": "packages/titan_colossus"
 }
 ```
+
+> **Security note:** When using Wi-Fi, the Relay is exposed on the local network. Use `--relay-token` for authentication:
+>
+> ```dart
+> ColossusPlugin(
+>   enableRelay: true,
+>   relayConfig: RelayConfig(authToken: 'my-secret-token'),
+> )
+> ```
+>
+> ```json
+> "args": ["run", "titan_colossus:blueprint_mcp_server", "--relay-host", "192.168.1.50", "--relay-token", "my-secret-token"]
+> ```
+
+---
+
+### Android Emulator
+
+The Android emulator uses a virtual network where `10.0.2.2` maps to the host machine's `localhost`. Since the **MCP server runs on the host** and connects to the Relay inside the emulator, you need `adb` port forwarding to bridge the connection.
+
+**1. Set up port forwarding:**
+
+```bash
+adb forward tcp:8642 tcp:8642
+```
+
+This maps the host's `localhost:8642` to the emulator's port `8642`.
+
+**2. Use default MCP configuration** (no `--relay-host` override needed):
+
+```json
+{
+  "command": "dart",
+  "args": ["run", "titan_colossus:blueprint_mcp_server"],
+  "cwd": "packages/titan_colossus"
+}
+```
+
+**Verify forwarding is active:**
+
+```bash
+adb forward --list
+# Should show: <device-serial> tcp:8642 tcp:8642
+```
+
+**Remove forwarding when done:**
+
+```bash
+adb forward --remove tcp:8642
+```
+
+> **Note:** Port forwarding persists across app restarts but is removed when the emulator shuts down. Re-run `adb forward` after rebooting the emulator.
+
+---
+
+### Android Physical Device (USB)
+
+Android physical devices connected via USB also use `adb forward` — the same mechanism as emulators.
+
+**1. Enable USB debugging** on the device:
+   - Go to **Settings → About phone** → Tap **Build number** 7 times
+   - Go to **Settings → Developer options** → Enable **USB debugging**
+
+**2. Connect the device via USB** and authorize the computer (tap "Allow" on the device).
+
+**3. Verify the device is recognized:**
+
+```bash
+adb devices
+# Should show your device serial number
+```
+
+**4. Forward port 8642:**
+
+```bash
+adb forward tcp:8642 tcp:8642
+```
+
+**5. Use default MCP configuration:**
+
+```json
+{
+  "command": "dart",
+  "args": ["run", "titan_colossus:blueprint_mcp_server"],
+  "cwd": "packages/titan_colossus"
+}
+```
+
+**Multiple devices connected:**
+
+If you have multiple devices/emulators connected, specify the target:
+
+```bash
+# List all devices
+adb devices
+
+# Forward for a specific device
+adb -s <device-serial> forward tcp:8642 tcp:8642
+```
+
+**Alternative — Wi-Fi (same network):**
+
+```bash
+# Find your Android device's IP: Settings → Network → Wi-Fi → Connected network
+```
+
+```json
+{
+  "command": "dart",
+  "args": [
+    "run", "titan_colossus:blueprint_mcp_server",
+    "--relay-host", "192.168.1.60",
+    "--relay-port", "8642"
+  ],
+  "cwd": "packages/titan_colossus"
+}
+```
+
+---
+
+### ADB Wireless Debugging (Android 11+)
+
+For cable-free debugging with `adb` port forwarding over Wi-Fi:
+
+**1. Enable wireless debugging:**
+   - Go to **Settings → Developer options → Wireless debugging** → Enable
+   - Tap **Pair device with pairing code**
+
+**2. Pair from your computer:**
+
+```bash
+adb pair <device-ip>:<pairing-port>
+# Enter the pairing code shown on device
+```
+
+**3. Connect:**
+
+```bash
+adb connect <device-ip>:<port>
+# Use the port shown under "Wireless debugging" (NOT the pairing port)
+```
+
+**4. Forward the Relay port:**
+
+```bash
+adb forward tcp:8642 tcp:8642
+```
+
+Now use default MCP configuration — `localhost:8642` reaches the device over Wi-Fi.
+
+---
+
+### Quick Reference Table
+
+| Platform | Setup Required | Command | MCP `--relay-host` |
+|----------|---------------|---------|-------------------|
+| Desktop app | None | — | `127.0.0.1` (default) |
+| iOS Simulator | None | — | `127.0.0.1` (default) |
+| iOS Device (USB) | `iproxy` | `iproxy 8642 8642` | `127.0.0.1` (default) |
+| iOS Device (Wi-Fi) | Device IP | — | Device IP |
+| Android Emulator | `adb forward` | `adb forward tcp:8642 tcp:8642` | `127.0.0.1` (default) |
+| Android Device (USB) | `adb forward` | `adb forward tcp:8642 tcp:8642` | `127.0.0.1` (default) |
+| Android Device (Wi-Fi) | Device IP | — | Device IP |
+| Web | **Not supported** | — | — |
 
 ### Web (not supported)
 
