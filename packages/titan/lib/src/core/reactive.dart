@@ -95,7 +95,6 @@ abstract class ReactiveNode {
   /// Called automatically when a reactive value is read inside a
   /// [TitanComputed] or [TitanEffect].
   @protected
-  @pragma('vm:prefer-inline')
   void track() {
     final tracker = ReactiveScope.currentTracker;
     if (tracker != null && tracker != this) {

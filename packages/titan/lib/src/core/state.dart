@@ -145,7 +145,6 @@ class TitanState<T> extends ReactiveNode implements ReadCore<T> {
   /// Reading this inside a [TitanComputed] or [TitanEffect] automatically
   /// registers a dependency.
   @override
-  @pragma('vm:prefer-inline')
   T get value {
     track();
     return _value;
