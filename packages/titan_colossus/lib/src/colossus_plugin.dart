@@ -385,16 +385,24 @@ class ColossusPlugin extends TitanPlugin {
   Widget buildOverlay(BuildContext context, Widget child) {
     Widget result = child;
 
-    // Lens overlay (outermost — so the overlay is on top of everything)
+    // Check whether the MCP Relay is connected — used to hide the
+    // Lens FAB and ShadeListener indicator (MCP agents control
+    // recording and debugging via Scry tools instead).
+    final relayRunning =
+        enableRelay && Colossus.isActive
+            ? Colossus.instance.relay.status.isRunning
+            : false;
+
+    // Lens overlay (outermost — so the overlay is on top of everything).
+    // Hide the FAB when MCP Relay is connected.
     if (enableLens) {
-      result = Lens(enabled: true, child: result);
+      result = Lens(enabled: true, showFab: !relayRunning, child: result);
     }
 
     // ShadeListener (inside Lens — captures gestures on the app content).
     // Hide the recording indicator when the Relay is connected (MCP
     // controls recording — the status pill would be distracting).
     if (enableShade && Colossus.isActive) {
-      final relayRunning = Colossus.instance.relay.status.isRunning;
       result = ShadeListener(
         shade: Colossus.instance.shade,
         showIndicator: !relayRunning,

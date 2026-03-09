@@ -130,8 +130,20 @@ class Lens extends StatefulWidget {
   /// Typically set to `kDebugMode`.
   final bool enabled;
 
+  /// Whether to show the floating action button.
+  ///
+  /// When `false` (e.g. when MCP Relay is connected), the FAB is hidden
+  /// because AI agents interact via Scry tools — no manual toggle needed.
+  /// The Lens panel can still be opened programmatically via [Lens.show].
+  final bool showFab;
+
   /// Creates a debug overlay wrapping [child].
-  const Lens({super.key, required this.child, this.enabled = true});
+  const Lens({
+    super.key,
+    required this.child,
+    this.enabled = true,
+    this.showFab = true,
+  });
 
   // -------------------------------------------------------------------------
   // Static control — allows programmatic toggle from anywhere
@@ -322,7 +334,10 @@ class _LensState extends State<Lens> {
           // Position persists across Lens open/close cycles via static fields.
           // Hidden entirely during active Shade recording — the ShadeListener
           // recording indicator (top-left status pill) is sufficient feedback.
-          ValueListenableBuilder<bool>(
+          // Also hidden when MCP Relay is connected (showFab == false) —
+          // AI agents use Scry tools, so the manual FAB is unnecessary.
+          if (widget.showFab)
+            ValueListenableBuilder<bool>(
             valueListenable: Lens.activeRecording,
             builder: (context, isRecording, child) {
               if (isRecording) return const SizedBox.shrink();
