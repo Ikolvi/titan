@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.1] - 2025-06-15
+
+### Changed
+- Updated `titan_envoy` constraint to `^1.1.0` (transport abstraction layer)
+
 ## [2.0.0] - 2026-03-09
 
 ### Added
