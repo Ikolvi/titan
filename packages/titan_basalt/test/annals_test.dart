@@ -562,12 +562,14 @@ void main() {
         Annals.enable(indexed: true);
 
         for (var i = 0; i < 10; i++) {
-          Annals.record(AnnalEntry(
-            coreName: 'item$i',
-            pillarType: i.isEven ? 'EvenPillar' : 'OddPillar',
-            oldValue: i,
-            newValue: i + 1,
-          ));
+          Annals.record(
+            AnnalEntry(
+              coreName: 'item$i',
+              pillarType: i.isEven ? 'EvenPillar' : 'OddPillar',
+              oldValue: i,
+              newValue: i + 1,
+            ),
+          );
         }
 
         final evens = Annals.query(pillarType: 'EvenPillar');
@@ -582,12 +584,14 @@ void main() {
         Annals.enable(indexed: true);
 
         for (var i = 0; i < 20; i++) {
-          Annals.record(AnnalEntry(
-            coreName: 'item$i',
-            pillarType: 'TestPillar',
-            oldValue: i,
-            newValue: i + 1,
-          ));
+          Annals.record(
+            AnnalEntry(
+              coreName: 'item$i',
+              pillarType: 'TestPillar',
+              oldValue: i,
+              newValue: i + 1,
+            ),
+          );
         }
 
         final result = Annals.query(pillarType: 'TestPillar', limit: 3);
@@ -596,35 +600,43 @@ void main() {
         expect(result[2].coreName, 'item19');
       });
 
-      test('indexed query with additional filters uses index-assisted path',
-          () {
-        Annals.enable(indexed: true);
+      test(
+        'indexed query with additional filters uses index-assisted path',
+        () {
+          Annals.enable(indexed: true);
 
-        for (var i = 0; i < 10; i++) {
-          Annals.record(AnnalEntry(
-            coreName: 'item$i',
+          for (var i = 0; i < 10; i++) {
+            Annals.record(
+              AnnalEntry(
+                coreName: 'item$i',
+                pillarType: 'TestPillar',
+                oldValue: i,
+                newValue: i + 1,
+                action: i.isEven ? 'update' : 'delete',
+              ),
+            );
+          }
+
+          final result = Annals.query(
             pillarType: 'TestPillar',
-            oldValue: i,
-            newValue: i + 1,
-            action: i.isEven ? 'update' : 'delete',
-          ));
-        }
-
-        final result =
-            Annals.query(pillarType: 'TestPillar', action: 'update');
-        expect(result, hasLength(5));
-        expect(result.every((e) => e.action == 'update'), isTrue);
-      });
+            action: 'update',
+          );
+          expect(result, hasLength(5));
+          expect(result.every((e) => e.action == 'update'), isTrue);
+        },
+      );
 
       test('indexed query returns empty for unknown pillarType', () {
         Annals.enable(indexed: true);
 
-        Annals.record(AnnalEntry(
-          coreName: 'x',
-          pillarType: 'Known',
-          oldValue: 0,
-          newValue: 1,
-        ));
+        Annals.record(
+          AnnalEntry(
+            coreName: 'x',
+            pillarType: 'Known',
+            oldValue: 0,
+            newValue: 1,
+          ),
+        );
 
         final result = Annals.query(pillarType: 'Unknown');
         expect(result, isEmpty);
@@ -634,12 +646,14 @@ void main() {
         Annals.enable(maxEntries: 5, indexed: true);
 
         for (var i = 0; i < 10; i++) {
-          Annals.record(AnnalEntry(
-            coreName: 'item$i',
-            pillarType: 'TestPillar',
-            oldValue: i,
-            newValue: i + 1,
-          ));
+          Annals.record(
+            AnnalEntry(
+              coreName: 'item$i',
+              pillarType: 'TestPillar',
+              oldValue: i,
+              newValue: i + 1,
+            ),
+          );
         }
 
         // Only last 5 should remain
@@ -651,12 +665,14 @@ void main() {
 
       test('reset clears index and disables indexed mode', () {
         Annals.enable(indexed: true);
-        Annals.record(AnnalEntry(
-          coreName: 'x',
-          pillarType: 'Pillar',
-          oldValue: 0,
-          newValue: 1,
-        ));
+        Annals.record(
+          AnnalEntry(
+            coreName: 'x',
+            pillarType: 'Pillar',
+            oldValue: 0,
+            newValue: 1,
+          ),
+        );
 
         Annals.reset();
 
@@ -670,17 +686,17 @@ void main() {
     group('exportToBuffer', () {
       test('writes valid JSON array', () {
         Annals.enable();
-        Annals.record(AnnalEntry(
-          coreName: 'balance',
-          oldValue: 100,
-          newValue: 200,
-          action: 'deposit',
-        ));
-        Annals.record(AnnalEntry(
-          coreName: 'name',
-          oldValue: 'Alice',
-          newValue: 'Bob',
-        ));
+        Annals.record(
+          AnnalEntry(
+            coreName: 'balance',
+            oldValue: 100,
+            newValue: 200,
+            action: 'deposit',
+          ),
+        );
+        Annals.record(
+          AnnalEntry(coreName: 'name', oldValue: 'Alice', newValue: 'Bob'),
+        );
 
         final buffer = StringBuffer();
         Annals.exportToBuffer(buffer);
@@ -703,12 +719,14 @@ void main() {
       test('exportToBuffer with pillarType filter', () {
         Annals.enable();
         for (var i = 0; i < 5; i++) {
-          Annals.record(AnnalEntry(
-            coreName: 'item$i',
-            pillarType: i.isEven ? 'Alpha' : 'Beta',
-            oldValue: i,
-            newValue: i + 1,
-          ));
+          Annals.record(
+            AnnalEntry(
+              coreName: 'item$i',
+              pillarType: i.isEven ? 'Alpha' : 'Beta',
+              oldValue: i,
+              newValue: i + 1,
+            ),
+          );
         }
 
         final buffer = StringBuffer();
@@ -725,11 +743,13 @@ void main() {
 
       test('handles special characters in values', () {
         Annals.enable();
-        Annals.record(AnnalEntry(
-          coreName: 'test',
-          oldValue: 'line1\nline2',
-          newValue: 'has "quotes"',
-        ));
+        Annals.record(
+          AnnalEntry(
+            coreName: 'test',
+            oldValue: 'line1\nline2',
+            newValue: 'has "quotes"',
+          ),
+        );
 
         final buffer = StringBuffer();
         Annals.exportToBuffer(buffer);

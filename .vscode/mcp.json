@@ -12,6 +12,12 @@
         "8643"
       ],
       "cwd": "${workspaceFolder}/packages/titan_colossus"
+    },
+    // Titan Forge — OS-level screenshot, gesture, and window tools.
+    // Returns screenshots as images for AI vision. Zero OCR.
+    "titan-forge": {
+      "command": "node",
+      "args": ["/Users/admin/Documents/titan_forge/dist/src/mcp/server.js"]
     }
   }
 }

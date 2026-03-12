@@ -1,5 +1,8 @@
 // ignore_for_file: avoid_print
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:titan_envoy/titan_envoy.dart';
 
@@ -17,7 +20,14 @@ import 'package:titan_envoy/titan_envoy.dart';
 //  5. Gate — Throttle token acquire overhead
 //  6. Parcel — Multipart form data construction
 //  7. Recall — Cancel token check throughput
-//  8. CachePolicy — Strategy evaluation
+//  7. CachePolicy — Strategy evaluation
+//  8. Body Encoding — JSON, binary, string
+//  9. Response Decoding — JSON parse throughput
+// 10. DedupCourier — Key hashing & dedup savings
+// 11. CookieCourier — Cookie lookup scaling (0–1000)
+// 12. MetricsCourier — Instrumentation overhead
+// 13. HTTP Round-Trip — Loopback GET/POST/concurrent
+// 14. Dispatch — Property access throughput
 // =============================================================================
 
 void main() async {
@@ -34,6 +44,13 @@ void main() async {
   _benchParcel();
   _benchRecall();
   _benchCachePolicy();
+  await _benchBodyEncoding();
+  await _benchResponseDecoding();
+  await _benchDedupCourier();
+  await _benchCookieLookup();
+  await _benchMetricsCourierOverhead();
+  await _benchHttpRoundTrip();
+  await _benchDispatchPropertyAccess();
 
   print('');
   print('═══════════════════════════════════════════════════════');
@@ -518,6 +535,484 @@ void _benchCachePolicy() {
   }
 
   print('└───────────────────────────────────────────────────────');
+}
+
+// ---------------------------------------------------------------------------
+// 8. Body Encoding — JSON, binary, string
+// ---------------------------------------------------------------------------
+
+Future<void> _benchBodyEncoding() async {
+  print('┌─ 8. Body Encoding ────────────────────────────────────');
+
+  // JSON map encoding
+  {
+    const iterations = 100000;
+    final data = {'name': 'Kael', 'level': 42, 'guild': 'Ironforge'};
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      jsonEncode(data);
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  JSON map encode:   ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // JSON list encoding (50 items)
+  {
+    const iterations = 10000;
+    final data = List.generate(50, (i) => {'id': i, 'value': 'item_$i'});
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      jsonEncode(data);
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  JSON list encode:  ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // Uint8List passthrough
+  {
+    const iterations = 1000000;
+    final data = Uint8List(1024);
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      data.length;
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(3);
+    print('│  Binary type check: ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  print('└───────────────────────────────────────────────────────');
+  print('');
+}
+
+// ---------------------------------------------------------------------------
+// 9. Response Decoding — JSON parse throughput
+// ---------------------------------------------------------------------------
+
+Future<void> _benchResponseDecoding() async {
+  print('┌─ 9. Response Decoding ────────────────────────────────');
+
+  // Small JSON decode
+  {
+    const iterations = 100000;
+    const body = '{"id":1,"name":"Kael","level":42}';
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      jsonDecode(body);
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  Small JSON decode: ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // Large JSON decode (100 items)
+  {
+    const iterations = 10000;
+    final items = List.generate(100, (i) => '{"id":$i,"name":"item_$i"}');
+    final body = '[${items.join(",")}]';
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      jsonDecode(body);
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  Large JSON decode: ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // Nested JSON decode
+  {
+    const iterations = 10000;
+    const body =
+        '{"user":{"profile":{"settings":{"theme":"dark",'
+        '"locale":"en","notifications":{"email":true,"push":false}}}}}';
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      jsonDecode(body);
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  Nested JSON decode: ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  print('└───────────────────────────────────────────────────────');
+  print('');
+}
+
+// ---------------------------------------------------------------------------
+// 10. DedupCourier — Key hashing & dedup savings
+// ---------------------------------------------------------------------------
+
+Future<void> _benchDedupCourier() async {
+  print('┌─ 10. DedupCourier ────────────────────────────────────');
+
+  // Unique requests (no dedup)
+  {
+    const iterations = 10000;
+    final dedup = DedupCourier();
+
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      final chain = CourierChain(
+        couriers: [dedup],
+        execute: (m) async => Dispatch(
+          statusCode: 200,
+          headers: const {},
+          missive: m,
+          data: {'i': i},
+        ),
+      );
+      await chain.proceed(
+        Missive(
+          method: Method.get,
+          uri: Uri.parse('https://api.example.com/unique/$i'),
+        ),
+      );
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  Unique keys:       ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // Concurrent identical requests (dedup kicks in)
+  {
+    const batches = 1000;
+    const concurrency = 10;
+    final dedup = DedupCourier();
+    var callCount = 0;
+
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < batches; i++) {
+      final futures = <Future<Dispatch>>[];
+      for (var j = 0; j < concurrency; j++) {
+        final chain = CourierChain(
+          couriers: [dedup],
+          execute: (m) async {
+            callCount++;
+            return Dispatch(
+              statusCode: 200,
+              headers: const {},
+              missive: m,
+              data: {'ok': true},
+            );
+          },
+        );
+        futures.add(
+          chain.proceed(
+            Missive(
+              method: Method.get,
+              uri: Uri.parse('https://api.example.com/shared/$i'),
+            ),
+          ),
+        );
+      }
+      await Future.wait(futures);
+    }
+    sw.stop();
+
+    final prBatch = (sw.elapsedMicroseconds / batches).toStringAsFixed(2);
+    final ratio = (batches * concurrency) / callCount;
+    print(
+      '│  ${concurrency}x dedup batches: ${_ms(sw)}'
+      '  ($prBatch µs/batch, ${ratio.toStringAsFixed(1)}x dedup)',
+    );
+  }
+
+  print('└───────────────────────────────────────────────────────');
+  print('');
+}
+
+// ---------------------------------------------------------------------------
+// 11. CookieCourier — Cookie lookup scaling
+// ---------------------------------------------------------------------------
+
+Future<void> _benchCookieLookup() async {
+  print('┌─ 11. CookieCourier Lookup ────────────────────────────');
+
+  for (final cookieCount in [0, 10, 100, 1000]) {
+    final cookie = CookieCourier();
+
+    // Pre-populate cookies
+    if (cookieCount > 0) {
+      final setChain = CourierChain(
+        couriers: [cookie],
+        execute: (m) async {
+          final cookieHeaders = List.generate(
+            cookieCount,
+            (i) => 'cookie_$i=value_$i; Path=/',
+          ).join(', ');
+          return Dispatch(
+            statusCode: 200,
+            data: <String, dynamic>{},
+            headers: {'set-cookie': cookieHeaders},
+            missive: m,
+          );
+        },
+      );
+      await setChain.proceed(
+        Missive(
+          method: Method.get,
+          uri: Uri.parse('https://api.example.com/setup'),
+        ),
+      );
+    }
+
+    const iterations = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      final chain = CourierChain(
+        couriers: [cookie],
+        execute: (m) async =>
+            Dispatch(statusCode: 200, headers: const {}, missive: m),
+      );
+      await chain.proceed(
+        Missive(
+          method: Method.get,
+          uri: Uri.parse('https://api.example.com/bench'),
+        ),
+      );
+    }
+    sw.stop();
+
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  ${_pad(cookieCount)} cookies: ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  print('└───────────────────────────────────────────────────────');
+  print('');
+}
+
+// ---------------------------------------------------------------------------
+// 12. MetricsCourier — Instrumentation overhead
+// ---------------------------------------------------------------------------
+
+Future<void> _benchMetricsCourierOverhead() async {
+  print('┌─ 12. MetricsCourier Overhead ─────────────────────────');
+
+  final missive = Missive(
+    method: Method.get,
+    uri: Uri.parse('https://api.example.com/bench'),
+  );
+
+  final mockResponse = Dispatch(
+    statusCode: 200,
+    headers: const {'content-type': 'application/json'},
+    missive: missive,
+    data: {'ok': true},
+    rawBody: '{"ok":true}',
+  );
+
+  // Without metrics (baseline)
+  {
+    const iterations = 50000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      final chain = CourierChain(
+        couriers: [],
+        execute: (_) async => mockResponse,
+      );
+      await chain.proceed(missive);
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  Without metrics:   ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // With MetricsCourier
+  {
+    const iterations = 50000;
+    final metrics = MetricsCourier(onMetric: (_) {});
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      final chain = CourierChain(
+        couriers: [metrics],
+        execute: (_) async => mockResponse,
+      );
+      await chain.proceed(missive);
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  With MetricsCourier: ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // With MetricsCourier + toJson
+  {
+    const iterations = 50000;
+    final metrics = MetricsCourier(onMetric: (m) => m.toJson());
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      final chain = CourierChain(
+        couriers: [metrics],
+        execute: (_) async => mockResponse,
+      );
+      await chain.proceed(missive);
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  Metrics + toJson:  ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  print('└───────────────────────────────────────────────────────');
+  print('');
+}
+
+// ---------------------------------------------------------------------------
+// 13. HTTP Round-Trip — Loopback
+// ---------------------------------------------------------------------------
+
+Future<void> _benchHttpRoundTrip() async {
+  print('┌─ 13. HTTP Round-Trip (Loopback) ──────────────────────');
+
+  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+  server.listen((req) {
+    req.response
+      ..statusCode = 200
+      ..headers.contentType = ContentType.json
+      ..write('{"id":1,"name":"Kael"}')
+      ..close();
+  });
+
+  final envoy = Envoy(baseUrl: 'http://localhost:${server.port}');
+
+  // Warm up
+  for (var i = 0; i < 10; i++) {
+    await envoy.get('/users/1');
+  }
+
+  // GET benchmark
+  {
+    const iterations = 1000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      await envoy.get('/users/1');
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  GET round-trip:    ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // POST benchmark
+  {
+    const iterations = 1000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      await envoy.post('/users', data: {'name': 'Kael', 'level': i});
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  POST round-trip:   ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // Concurrent GET benchmark
+  {
+    const concurrent = 50;
+    const batches = 20;
+    final sw = Stopwatch()..start();
+    for (var b = 0; b < batches; b++) {
+      await Future.wait(
+        List.generate(concurrent, (i) => envoy.get('/users/$i')),
+      );
+    }
+    sw.stop();
+    final total = concurrent * batches;
+    final perOp = (sw.elapsedMicroseconds / total).toStringAsFixed(2);
+    print('│  $concurrent-concurrent GET: ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  envoy.close();
+  await server.close(force: true);
+
+  print('└───────────────────────────────────────────────────────');
+  print('');
+}
+
+// ---------------------------------------------------------------------------
+// 14. Dispatch — Property access throughput
+// ---------------------------------------------------------------------------
+
+Future<void> _benchDispatchPropertyAccess() async {
+  print('┌─ 14. Dispatch Property Access ────────────────────────');
+
+  final missive = Missive(
+    method: Method.get,
+    uri: Uri.parse('https://api.example.com/users'),
+  );
+  final dispatch = Dispatch(
+    statusCode: 200,
+    data: {
+      'id': 1,
+      'name': 'Kael',
+      'items': [1, 2, 3],
+    },
+    rawBody: '{"id":1,"name":"Kael","items":[1,2,3]}',
+    headers: {'content-type': 'application/json', 'content-length': '37'},
+    missive: missive,
+    duration: const Duration(milliseconds: 50),
+  );
+
+  // isSuccess
+  {
+    const iterations = 1000000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      dispatch.isSuccess;
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(3);
+    print('│  isSuccess:         ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // jsonMap
+  {
+    const iterations = 1000000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      dispatch.jsonMap;
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(3);
+    print('│  jsonMap:           ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // contentType
+  {
+    const iterations = 1000000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      dispatch.contentType;
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(3);
+    print('│  contentType:       ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // contentLength
+  {
+    const iterations = 1000000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      dispatch.contentLength;
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(3);
+    print('│  contentLength:     ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  // parsedJson (re-parse each time)
+  {
+    const iterations = 100000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      dispatch.parsedJson;
+    }
+    sw.stop();
+    final perOp = (sw.elapsedMicroseconds / iterations).toStringAsFixed(2);
+    print('│  parsedJson:        ${_ms(sw)}  ($perOp µs/op)');
+  }
+
+  print('└───────────────────────────────────────────────────────');
+  print('');
 }
 
 // ---------------------------------------------------------------------------

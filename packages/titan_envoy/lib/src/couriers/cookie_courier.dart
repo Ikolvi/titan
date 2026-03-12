@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import '../courier.dart';
 import '../dispatch.dart';
@@ -35,6 +34,10 @@ class CookieCourier extends Courier {
 
   final Map<String, Map<String, _CookieEntry>> _jar = {};
 
+  /// Eviction interval — only run expiry check every [_evictInterval] calls.
+  static const _evictInterval = 50;
+  int _requestsSinceEviction = 0;
+
   @override
   Future<Dispatch> intercept(Missive missive, CourierChain chain) async {
     // Attach stored cookies to the request
@@ -63,20 +66,28 @@ class CookieCourier extends Courier {
 
   /// Returns all cookies currently stored for [uri].
   String _getCookiesForUri(Uri uri) {
-    _evictExpired();
+    // Only evict expired cookies periodically to avoid O(n) per request.
+    _requestsSinceEviction++;
+    if (_requestsSinceEviction >= _evictInterval) {
+      _evictExpired();
+      _requestsSinceEviction = 0;
+    }
 
     final host = uri.host;
     final path = uri.path.isEmpty ? '/' : uri.path;
+    final isSecure = uri.scheme == 'https';
     final buffer = StringBuffer();
+    final now = DateTime.now();
 
     for (final entry in _jar.entries) {
       final domain = entry.key;
       if (!_domainMatches(host, domain)) continue;
 
       for (final cookie in entry.value.values) {
+        // Inline expiry check for correctness without full eviction
+        if (cookie.expires != null && cookie.expires!.isBefore(now)) continue;
         if (!path.startsWith(cookie.path)) continue;
-
-        if (cookie.secure && uri.scheme != 'https') continue;
+        if (cookie.secure && !isSecure) continue;
 
         if (buffer.isNotEmpty) buffer.write('; ');
         buffer.write('${cookie.name}=${cookie.value}');
@@ -110,13 +121,14 @@ class CookieCourier extends Courier {
     }
   }
 
+  static final _cookieSplitRegExp = RegExp(r',\s*(?=[a-zA-Z_][a-zA-Z0-9_]*=)');
+
   List<String> _parseSetCookieHeader(String header) {
     // Simple split: individual set-cookie values were already joined by ', '
     // in the response header map. We need to split them back.
     // A cookie starts with "name=value" so we look for ", name=" patterns.
     final result = <String>[];
-    final regExp = RegExp(r',\s*(?=[a-zA-Z_][a-zA-Z0-9_]*=)');
-    result.addAll(header.split(regExp));
+    result.addAll(header.split(_cookieSplitRegExp));
     return result;
   }
 
@@ -154,7 +166,7 @@ class CookieCourier extends Courier {
         case 'path':
           path = attrValue.isEmpty ? '/' : attrValue;
         case 'expires':
-          expires = HttpDate.parse(attrValue);
+          expires = _tryParseHttpDate(attrValue);
         case 'max-age':
           final seconds = int.tryParse(attrValue);
           if (seconds != null) {
@@ -219,3 +231,50 @@ class _CookieEntry {
   final bool secure;
   final bool httpOnly;
 }
+
+/// Pre-compiled pattern for RFC 1123 HTTP date parsing.
+final _rfc1123Pattern = RegExp(
+  r'(\w+),?\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s+(\d{2}):(\d{2}):(\d{2})\s*\w*',
+);
+
+/// Parses common HTTP date formats (RFC 1123, RFC 850, asctime).
+///
+/// Returns `null` if the date cannot be parsed. This replaces the
+/// `dart:io` [HttpDate.parse] to keep the courier web-compatible.
+DateTime? _tryParseHttpDate(String dateStr) {
+  // Try ISO 8601 first
+  final iso = DateTime.tryParse(dateStr);
+  if (iso != null) return iso;
+
+  // RFC 1123: "Thu, 01 Dec 2025 16:00:00 GMT"
+  final rfc1123 = _rfc1123Pattern.firstMatch(dateStr);
+  if (rfc1123 != null) {
+    final day = int.parse(rfc1123.group(2)!);
+    final month = _monthIndex(rfc1123.group(3)!);
+    final year = int.parse(rfc1123.group(4)!);
+    final hour = int.parse(rfc1123.group(5)!);
+    final minute = int.parse(rfc1123.group(6)!);
+    final second = int.parse(rfc1123.group(7)!);
+    if (month > 0) {
+      return DateTime.utc(year, month, day, hour, minute, second);
+    }
+  }
+
+  return null;
+}
+
+int _monthIndex(String month) => switch (month.substring(0, 3).toLowerCase()) {
+  'jan' => 1,
+  'feb' => 2,
+  'mar' => 3,
+  'apr' => 4,
+  'may' => 5,
+  'jun' => 6,
+  'jul' => 7,
+  'aug' => 8,
+  'sep' => 9,
+  'oct' => 10,
+  'nov' => 11,
+  'dec' => 12,
+  _ => 0,
+};

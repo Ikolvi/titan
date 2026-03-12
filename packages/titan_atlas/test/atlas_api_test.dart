@@ -21,21 +21,13 @@ void main() {
 
   group('Atlas.isActive', () {
     testWidgets('returns true after Atlas construction', (tester) async {
-      Atlas(
-        passages: [
-          Passage('/', (wp) => const SizedBox()),
-        ],
-      );
+      Atlas(passages: [Passage('/', (wp) => const SizedBox())]);
 
       expect(Atlas.isActive, true);
     });
 
     testWidgets('returns true when Atlas replaced', (tester) async {
-      Atlas(
-        passages: [
-          Passage('/', (wp) => const SizedBox()),
-        ],
-      );
+      Atlas(passages: [Passage('/', (wp) => const SizedBox())]);
 
       // Replace with new Atlas
       Atlas(
@@ -55,22 +47,14 @@ void main() {
 
   group('Atlas.addObserver / removeObserver', () {
     testWidgets('addObserver adds observer without error', (tester) async {
-      Atlas(
-        passages: [
-          Passage('/', (wp) => const SizedBox()),
-        ],
-      );
+      Atlas(passages: [Passage('/', (wp) => const SizedBox())]);
 
       final observer = _TestObserver();
       expect(() => Atlas.addObserver(observer), returnsNormally);
     });
 
     testWidgets('addObserver deduplicates same observer', (tester) async {
-      Atlas(
-        passages: [
-          Passage('/', (wp) => const SizedBox()),
-        ],
-      );
+      Atlas(passages: [Passage('/', (wp) => const SizedBox())]);
 
       final observer = _TestObserver();
       Atlas.addObserver(observer);
@@ -80,32 +64,26 @@ void main() {
     });
 
     testWidgets('removeObserver removes observer from list', (tester) async {
-      Atlas(
-        passages: [
-          Passage('/', (wp) => const SizedBox()),
-        ],
-      );
+      Atlas(passages: [Passage('/', (wp) => const SizedBox())]);
 
       final observer = _TestObserver();
       Atlas.addObserver(observer);
       expect(() => Atlas.removeObserver(observer), returnsNormally);
     });
 
-    testWidgets('removeObserver is no-op for unregistered observer',
-        (tester) async {
-      Atlas(
-        passages: [
-          Passage('/', (wp) => const SizedBox()),
-        ],
-      );
+    testWidgets('removeObserver is no-op for unregistered observer', (
+      tester,
+    ) async {
+      Atlas(passages: [Passage('/', (wp) => const SizedBox())]);
 
       final observer = _TestObserver();
       // Should not throw even though observer was never added
       expect(() => Atlas.removeObserver(observer), returnsNormally);
     });
 
-    testWidgets('observer receives navigation events after addObserver',
-        (tester) async {
+    testWidgets('observer receives navigation events after addObserver', (
+      tester,
+    ) async {
       final observer = _TestObserver();
 
       final atlas = Atlas(
@@ -118,8 +96,7 @@ void main() {
       // Add observer after construction
       Atlas.addObserver(observer);
 
-      await tester
-          .pumpWidget(MaterialApp.router(routerConfig: atlas.config));
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
       await tester.pumpAndSettle();
 
       // Navigate
@@ -143,8 +120,7 @@ void main() {
 
       Atlas.addObserver(observer);
 
-      await tester
-          .pumpWidget(MaterialApp.router(routerConfig: atlas.config));
+      await tester.pumpWidget(MaterialApp.router(routerConfig: atlas.config));
       await tester.pumpAndSettle();
 
       // Navigate to trigger observer
@@ -216,8 +192,7 @@ void main() {
         passages: [
           Passage('/', (wp) => const SizedBox()),
           Passage('/user/:userId', (wp) => const SizedBox()),
-          Passage('/post/:postId/comment/:commentId',
-              (wp) => const SizedBox()),
+          Passage('/post/:postId/comment/:commentId', (wp) => const SizedBox()),
         ],
       );
 

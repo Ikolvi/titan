@@ -6,10 +6,13 @@ import 'package:titan_bastion/titan_bastion.dart';
 import 'package:titan_colossus/titan_colossus.dart';
 
 import 'pillars/auth_pillar.dart';
+import 'pillars/bazaar_pillar.dart';
 import 'pillars/quest_detail_pillar.dart';
 import 'pillars/quest_list_pillar.dart';
 import 'pillars/questboard_pillar.dart';
 import 'screens/about_screen.dart';
+import 'screens/bazaar_screen.dart';
+import 'screens/coffer_screen.dart';
 import 'screens/enterprise_demo_screen.dart';
 import 'screens/hero_profile_screen.dart';
 import 'screens/hero_registration_screen.dart';
@@ -20,6 +23,7 @@ import 'screens/shade_demo_screen.dart';
 import 'screens/spark_demo_screen.dart';
 import 'screens/tale_detail_screen.dart';
 import 'screens/tavern_screen.dart';
+import 'screens/wares_detail_screen.dart';
 import 'pillars/tavern_pillar.dart';
 import 'utils/platform_dirs.dart';
 
@@ -122,6 +126,7 @@ void main() {
           Passage('/spark', (_) => const SparkDemoScreen(), name: 'spark'),
           Passage('/shade', (_) => const ShadeDemoScreen(), name: 'shade'),
           Passage('/tavern', (_) => const TavernScreen(), name: 'tavern'),
+          Passage('/bazaar', (_) => const BazaarScreen(), name: 'bazaar'),
         ],
       ),
 
@@ -137,6 +142,18 @@ void main() {
         (waypoint) => TaleDetailScreen(taleId: waypoint.runes['id'] ?? ''),
         shift: Shift.slideUp(),
         name: 'tale-detail',
+      ),
+      Passage(
+        '/wares/:id',
+        (waypoint) => WaresDetailScreen(waresId: waypoint.runes['id'] ?? ''),
+        shift: Shift.slideUp(),
+        name: 'wares-detail',
+      ),
+      Passage(
+        '/coffer',
+        (_) => const CofferScreen(),
+        shift: Shift.slide(),
+        name: 'coffer',
       ),
       Passage(
         '/register',
@@ -167,6 +184,7 @@ void main() {
         QuestListPillar.new,
         QuestDetailPillar.new,
         TavernPillar.new,
+        BazaarPillar.new,
       ],
       plugins: [
         ColossusPlugin(
@@ -233,6 +251,8 @@ class _QuestboardShell extends StatelessWidget {
         ? 4
         : path == '/tavern'
         ? 5
+        : path == '/bazaar'
+        ? 6
         : 0;
 
     return Scaffold(
@@ -273,7 +293,9 @@ class _QuestboardShell extends StatelessWidget {
                 ? '/spark'
                 : i == 4
                 ? '/shade'
-                : '/tavern',
+                : i == 5
+                ? '/tavern'
+                : '/bazaar',
           );
         },
         destinations: const [
@@ -306,6 +328,11 @@ class _QuestboardShell extends StatelessWidget {
             icon: Icon(Icons.local_bar_outlined),
             selectedIcon: Icon(Icons.local_bar),
             label: 'Tavern',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.storefront_outlined),
+            selectedIcon: Icon(Icons.storefront),
+            label: 'Bazaar',
           ),
         ],
       ),

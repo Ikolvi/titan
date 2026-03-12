@@ -233,7 +233,9 @@ class _CommentCard extends StatelessWidget {
                 CircleAvatar(
                   radius: 14,
                   child: Text(
-                    comment.email[0].toUpperCase(),
+                    comment.fullName.isNotEmpty
+                        ? comment.fullName[0].toUpperCase()
+                        : '?',
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),
@@ -243,18 +245,39 @@ class _CommentCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        comment.name,
+                        comment.fullName.isNotEmpty
+                            ? comment.fullName
+                            : comment.username,
                         style: theme.textTheme.labelMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        comment.email,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            '@${comment.username}',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                          if (comment.likes > 0) ...[
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.thumb_up,
+                              size: 12,
+                              color: theme.colorScheme.outline,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${comment.likes}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.outline,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),

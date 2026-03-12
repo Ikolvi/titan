@@ -22,7 +22,7 @@
 ///         "run",
 ///         "titan_colossus:blueprint_mcp_server"
 ///       ],
-///       "cwd": "${workspaceFolder}/packages/titan_colossus"
+///       "cwd": "${workspaceFolder}"
 ///     }
 ///   }
 /// }

@@ -11,6 +11,12 @@
         "titan-dev-token"
       ],
       "cwd": "${workspaceFolder}/packages/titan_colossus"
+    },
+    "titan-forge": {
+      "command": "node",
+      "args": [
+        "/Users/admin/Documents/titan_forge/dist/src/mcp/server.js"
+      ]
     }
   }
 }

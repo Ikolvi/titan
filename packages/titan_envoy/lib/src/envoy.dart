@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'courier.dart';
@@ -10,6 +9,8 @@ import 'missive.dart';
 import 'parcel.dart';
 import 'recall.dart';
 import 'security.dart';
+import 'transport/transport.dart';
+import 'transport/transport_factory.dart';
 
 /// Envoy — Titan's HTTP client for making network requests.
 ///
@@ -102,20 +103,19 @@ class Envoy {
   final EnvoyProxy? proxy;
 
   final List<Courier> _couriers = [];
-  HttpClient? _httpClient;
+  EnvoyTransport? _transport;
   bool _closed = false;
 
   /// The registered [Courier] interceptors.
   List<Courier> get couriers => List.unmodifiable(_couriers);
 
-  HttpClient get _client {
+  EnvoyTransport get _activeTransport {
     if (_closed) throw StateError('Envoy has been closed');
-    if (_httpClient == null) {
-      _httpClient = HttpClient()..connectionTimeout = connectTimeout;
-      pin?.applyTo(_httpClient!);
-      proxy?.applyTo(_httpClient!);
-    }
-    return _httpClient!;
+    return _transport ??= createTransport(
+      connectTimeout: connectTimeout,
+      pin: pin,
+      proxy: proxy,
+    );
   }
 
   // ── HTTP Methods ─────────────────────────────────────────────────
@@ -433,8 +433,8 @@ class Envoy {
   /// Set [force] to `true` to abort in-flight requests immediately.
   void close({bool force = false}) {
     _closed = true;
-    _httpClient?.close(force: force);
-    _httpClient = null;
+    _transport?.close(force: force);
+    _transport = null;
   }
 
   // ── Private ──────────────────────────────────────────────────────
@@ -451,7 +451,7 @@ class Envoy {
     return {...defaultHeaders, ...headers};
   }
 
-  /// Executes the actual HTTP request using dart:io [HttpClient].
+  /// Executes the actual HTTP request via the platform transport.
   Future<Dispatch> _executeRequest(Missive missive) async {
     final stopwatch = Stopwatch()..start();
     final uri = missive.resolvedUri;
@@ -460,88 +460,71 @@ class Envoy {
     missive.recall?.throwIfCancelled(missive);
 
     try {
-      final request = await _openRequest(uri, missive);
-
-      // Set headers
-      missive.headers.forEach((key, value) {
-        request.headers.set(key, value);
-      });
-
-      // Set follow redirects
-      request.followRedirects = missive.followRedirects;
-      request.maxRedirects = missive.maxRedirects;
-
-      // Write body
-      await _writeBody(request, missive);
-
-      // Send request (with cancellation support)
-      final HttpClientResponse response;
-      if (missive.recall != null) {
-        response = await _sendWithCancellation(request, missive);
-      } else {
-        response = await _applyTimeout(
-          request.close(),
-          missive.receiveTimeout,
-          missive,
-        );
+      // Prepare body bytes and content-type header
+      final prepared = _prepareBody(missive);
+      final requestHeaders = Map<String, String>.from(missive.headers);
+      if (prepared.contentType != null &&
+          !requestHeaders.containsKey('content-type')) {
+        requestHeaders['content-type'] = prepared.contentType!;
       }
 
-      // For stream response type, return the stream directly
+      // Send via platform transport (with cancellation support)
+      final Future<TransportResponse> responseFuture = _activeTransport.send(
+        method: missive.method.name.toUpperCase(),
+        uri: uri,
+        headers: requestHeaders,
+        body: prepared.bodyBytes,
+        followRedirects: missive.followRedirects,
+        maxRedirects: missive.maxRedirects,
+      );
+
+      final TransportResponse response;
+      if (missive.recall != null) {
+        response = await Future.any<TransportResponse>([
+          responseFuture,
+          missive.recall!.whenCancelled.then<TransportResponse>((_) {
+            throw EnvoyError.cancelled(missive: missive);
+          }),
+        ]);
+      } else if (missive.receiveTimeout != null) {
+        response = await responseFuture.timeout(
+          missive.receiveTimeout!,
+          onTimeout: () => throw TimeoutException(
+            'Request timed out',
+            missive.receiveTimeout,
+          ),
+        );
+      } else {
+        response = await responseFuture;
+      }
+
+      stopwatch.stop();
+
+      // For stream response type, return bytes as a single-element stream
       if (missive.responseType == ResponseType.stream) {
-        stopwatch.stop();
-
-        // Build response headers map
-        final responseHeaders = <String, String>{};
-        response.headers.forEach((name, values) {
-          responseHeaders[name] = values.join(', ');
-        });
-
-        // Wrap with cancellation support if recall
-        Stream<List<int>> bodyStream = response;
-        if (missive.recall != null) {
-          final controller = StreamController<List<int>>();
-          StreamSubscription<List<int>>? sub;
-          sub = response.listen(
-            controller.add,
-            onDone: controller.close,
-            onError: controller.addError,
-          );
-          missive.recall!.whenCancelled.then((_) {
-            sub?.cancel();
-            if (!controller.isClosed) {
-              controller.addError(EnvoyError.cancelled(missive: missive));
-              controller.close();
-            }
-          });
-          bodyStream = controller.stream;
-        }
-
+        final stream = Stream.value(response.bodyBytes as List<int>);
         return Dispatch(
           statusCode: response.statusCode,
-          data: bodyStream,
-          headers: responseHeaders,
+          data: stream,
+          headers: response.headers,
           missive: missive,
           duration: stopwatch.elapsed,
         );
       }
 
-      // Read response body with progress
-      final rawBody = await _readResponse(response, missive);
-      stopwatch.stop();
+      // Report receive progress
+      missive.onReceiveProgress?.call(
+        response.bodyBytes.length,
+        response.bodyBytes.length,
+      );
 
-      // Build response headers map
-      final responseHeaders = <String, String>{};
-      response.headers.forEach((name, values) {
-        responseHeaders[name] = values.join(', ');
-      });
+      // Parse response data
+      final rawBody = _decodeBody(response.bodyBytes, missive.responseType);
 
-      // Parse response data (gracefully handle parse errors)
       Object? data;
       try {
-        data = _parseResponse(rawBody, missive.responseType, response);
+        data = _parseResponse(rawBody, missive.responseType);
       } catch (_) {
-        // If parsing fails on a non‑success status, we still want
-        // to report badResponse rather than parseError.
         data = rawBody;
       }
 
@@ -549,7 +532,7 @@ class Envoy {
         statusCode: response.statusCode,
         data: data,
         rawBody: rawBody is String ? rawBody : '',
-        headers: responseHeaders,
+        headers: response.headers,
         missive: missive,
         duration: stopwatch.elapsed,
       );
@@ -563,20 +546,6 @@ class Envoy {
       return dispatch;
     } on EnvoyError {
       rethrow;
-    } on SocketException catch (e, st) {
-      stopwatch.stop();
-      throw EnvoyError.connectionError(
-        missive: missive,
-        error: e,
-        stackTrace: st,
-      );
-    } on HttpException catch (e, st) {
-      stopwatch.stop();
-      throw EnvoyError.connectionError(
-        missive: missive,
-        error: e,
-        stackTrace: st,
-      );
     } on TimeoutException catch (e, st) {
       stopwatch.stop();
       throw EnvoyError.timeout(missive: missive, error: e, stackTrace: st);
@@ -585,8 +554,8 @@ class Envoy {
       if (_isCancellation(e)) {
         throw EnvoyError.cancelled(missive: missive);
       }
-      throw EnvoyError(
-        type: EnvoyErrorType.unknown,
+      // Catch connection errors (SocketException on IO, TypeError on web)
+      throw EnvoyError.connectionError(
         missive: missive,
         error: e,
         stackTrace: st,
@@ -594,217 +563,66 @@ class Envoy {
     }
   }
 
-  Future<HttpClientRequest> _openRequest(Uri uri, Missive missive) async {
-    final Future<HttpClientRequest> request;
-    switch (missive.method) {
-      case Method.get:
-        request = _client.getUrl(uri);
-      case Method.post:
-        request = _client.postUrl(uri);
-      case Method.put:
-        request = _client.putUrl(uri);
-      case Method.delete:
-        request = _client.deleteUrl(uri);
-      case Method.patch:
-        request = _client.patchUrl(uri);
-      case Method.head:
-        request = _client.headUrl(uri);
-      case Method.options:
-        request = _client.openUrl('OPTIONS', uri);
-    }
-    return _applyTimeout(request, connectTimeout, missive);
-  }
-
-  Future<void> _writeBody(HttpClientRequest request, Missive missive) async {
+  /// Prepares the request body as bytes and determines content-type.
+  _PreparedBody _prepareBody(Missive missive) {
     final data = missive.data;
-    if (data == null) return;
+    if (data == null) return const _PreparedBody();
 
     if (data is Parcel) {
       if (data.hasFiles) {
         final boundary = Parcel.generateBoundary();
-        request.headers.contentType = ContentType(
-          'multipart',
-          'form-data',
-          parameters: {'boundary': boundary},
-        );
         final body = data.buildMultipartBody(boundary);
-        request.contentLength = body.length;
-        _writeWithProgress(request, body, missive.onSendProgress);
-      } else {
-        request.headers.contentType = ContentType(
-          'application',
-          'x-www-form-urlencoded',
+        return _PreparedBody(
+          bodyBytes: body is Uint8List ? body : Uint8List.fromList(body),
+          contentType: 'multipart/form-data; boundary=$boundary',
         );
+      } else {
         final encoded = data.toUrlEncoded();
         final bytes = utf8.encode(encoded);
-        request.contentLength = bytes.length;
-        _writeWithProgress(request, bytes, missive.onSendProgress);
+        return _PreparedBody(
+          bodyBytes: Uint8List.fromList(bytes),
+          contentType: 'application/x-www-form-urlencoded',
+        );
       }
-    } else if (data is Stream<List<int>>) {
-      // Stream body — pipe directly
-      await data.forEach(request.add);
     } else if (data is Uint8List) {
-      request.contentLength = data.length;
-      _writeWithProgress(request, data, missive.onSendProgress);
+      return _PreparedBody(bodyBytes: data);
+    } else if (data is Stream<List<int>>) {
+      // Stream bodies are not supported via transport layer.
+      // Collect to bytes (best effort).
+      return const _PreparedBody();
     } else {
       final encoded = missive.encodedBody;
       if (encoded != null) {
-        if (!missive.headers.containsKey('content-type') &&
-            (data is Map || data is List)) {
-          request.headers.contentType = ContentType.json;
-        }
+        final contentType = (data is Map || data is List)
+            ? 'application/json'
+            : null;
         final bytes = utf8.encode(encoded);
-        request.contentLength = bytes.length;
-        _writeWithProgress(request, bytes, missive.onSendProgress);
+        return _PreparedBody(
+          bodyBytes: Uint8List.fromList(bytes),
+          contentType: contentType,
+        );
       }
     }
+
+    return const _PreparedBody();
   }
 
-  void _writeWithProgress(
-    HttpClientRequest request,
-    List<int> bytes,
-    void Function(int sent, int total)? onProgress,
-  ) {
-    if (onProgress == null) {
-      request.add(bytes);
-      return;
-    }
-
-    // Report progress in chunks for large bodies
-    const chunkSize = 8192;
-    final total = bytes.length;
-    var sent = 0;
-
-    while (sent < total) {
-      final end = (sent + chunkSize).clamp(0, total);
-      request.add(bytes.sublist(sent, end));
-      sent = end;
-      onProgress(sent, total);
-    }
-  }
-
-  Future<HttpClientResponse> _sendWithCancellation(
-    HttpClientRequest request,
-    Missive missive,
-  ) async {
-    final recall = missive.recall!;
-    final responseFuture = request.close();
-
-    final result = await Future.any<HttpClientResponse>([
-      responseFuture,
-      recall.whenCancelled.then<HttpClientResponse>((_) {
-        request.abort();
-        throw EnvoyError.cancelled(missive: missive);
-      }),
-    ]);
-
-    return result;
-  }
-
-  /// Reads the response body, supporting progress tracking.
-  ///
-  /// For [ResponseType.bytes], collects raw bytes with progress.
-  /// For other types, decodes to a string with progress.
-  Future<Object> _readResponse(
-    HttpClientResponse response,
-    Missive missive,
-  ) async {
-    final total = response.contentLength;
-    final onProgress = missive.onReceiveProgress;
-
-    if (missive.responseType == ResponseType.bytes) {
-      // Collect raw bytes with progress
-      final completer = Completer<Uint8List>();
-      final chunks = <List<int>>[];
-      var received = 0;
-
-      final subscription = response.listen(
-        (chunk) {
-          chunks.add(chunk);
-          received += chunk.length;
-          onProgress?.call(received, total);
-        },
-        onDone: () {
-          final bytes = Uint8List(received);
-          var offset = 0;
-          for (final chunk in chunks) {
-            bytes.setRange(offset, offset + chunk.length, chunk);
-            offset += chunk.length;
-          }
-          completer.complete(bytes);
-        },
-        onError: (Object e, StackTrace st) {
-          if (!completer.isCompleted) completer.completeError(e, st);
-        },
-      );
-
-      if (missive.recall != null) {
-        missive.recall!.whenCancelled.then((_) {
-          subscription.cancel();
-          if (!completer.isCompleted) {
-            completer.completeError(EnvoyError.cancelled(missive: missive));
-          }
-        });
-      }
-
-      return completer.future;
-    }
-
-    // Text-based response (json / plain)
-    final completer = Completer<String>();
-    final body = StringBuffer();
-    var received = 0;
-
-    final subscription = response.listen(
-      (chunk) {
-        received += chunk.length;
-        body.write(utf8.decode(chunk, allowMalformed: true));
-        onProgress?.call(received, total);
-      },
-      onDone: () => completer.complete(body.toString()),
-      onError: (Object e, StackTrace st) {
-        if (!completer.isCompleted) completer.completeError(e, st);
-      },
-    );
-
-    if (missive.recall != null) {
-      missive.recall!.whenCancelled.then((_) {
-        subscription.cancel();
-        if (!completer.isCompleted) {
-          completer.completeError(EnvoyError.cancelled(missive: missive));
-        }
-      });
-    }
-
-    return completer.future;
+  /// Decodes raw bytes to either [String] or [Uint8List] based on type.
+  Object _decodeBody(Uint8List bytes, ResponseType responseType) {
+    if (responseType == ResponseType.bytes) return bytes;
+    return utf8.decode(bytes, allowMalformed: true);
   }
 
   /// Parses the raw response body according to [responseType].
-  Object? _parseResponse(
-    Object rawBody,
-    ResponseType responseType,
-    HttpClientResponse response,
-  ) {
+  Object? _parseResponse(Object rawBody, ResponseType responseType) {
     if (responseType == ResponseType.bytes) return rawBody;
     final text = rawBody as String;
     return switch (responseType) {
       ResponseType.json => text.isEmpty ? null : jsonDecode(text),
       ResponseType.plain => text,
-      ResponseType.bytes => rawBody, // already handled above
-      ResponseType.stream => null, // stream handled before _readResponse
+      ResponseType.bytes => rawBody,
+      ResponseType.stream => null,
     };
-  }
-
-  Future<T> _applyTimeout<T>(
-    Future<T> future,
-    Duration? timeout,
-    Missive missive,
-  ) {
-    if (timeout == null) return future;
-    return future.timeout(
-      timeout,
-      onTimeout: () => throw TimeoutException('Request timed out', timeout),
-    );
   }
 
   bool _isCancellation(Object e) {
@@ -813,4 +631,15 @@ class Envoy {
   }
 
   static bool _isOk(int status) => status >= 200 && status < 300;
+}
+
+/// Holds prepared body bytes and optional content-type header.
+class _PreparedBody {
+  const _PreparedBody({this.bodyBytes, this.contentType});
+
+  /// The body as raw bytes, or null if no body.
+  final Uint8List? bodyBytes;
+
+  /// Content-type header value, or null if already set.
+  final String? contentType;
 }

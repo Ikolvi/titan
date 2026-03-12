@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:test/test.dart';
 import 'package:titan_envoy/titan_envoy.dart';
+import 'package:titan_envoy/src/transport/transport_io.dart' as io_transport;
 
 void main() {
   group('EnvoyPin', () {
@@ -25,46 +24,46 @@ void main() {
       });
     });
 
-    group('applyTo', () {
-      test('applies self-signed to HttpClient without error', () {
+    group('transport integration', () {
+      test('creates transport with self-signed pin without error', () {
         final pin = EnvoyPin(allowSelfSigned: true);
-        final client = HttpClient();
-        addTearDown(client.close);
+        final transport = io_transport.createTransport(pin: pin);
+        addTearDown(() => transport.close());
 
         // Should not throw
-        pin.applyTo(client);
+        expect(transport, isNotNull);
       });
 
-      test('no-op when fingerprints empty and not self-signed', () {
+      test('creates transport with empty fingerprints without error', () {
         final pin = EnvoyPin();
-        final client = HttpClient();
-        addTearDown(client.close);
+        final transport = io_transport.createTransport(pin: pin);
+        addTearDown(() => transport.close());
 
         // Should not throw
-        pin.applyTo(client);
+        expect(transport, isNotNull);
       });
 
-      test('applies fingerprint pinning without error', () {
+      test('creates transport with fingerprint pinning without error', () {
         final pin = EnvoyPin(
           fingerprints: ['abcdef1234567890abcdef1234567890abcdef12'],
         );
-        final client = HttpClient();
-        addTearDown(client.close);
+        final transport = io_transport.createTransport(pin: pin);
+        addTearDown(() => transport.close());
 
         // Should not throw
-        pin.applyTo(client);
+        expect(transport, isNotNull);
       });
 
-      test('applies with hostOverride without error', () {
+      test('creates transport with hostOverride without error', () {
         final pin = EnvoyPin(
           fingerprints: ['abc123'],
           hostOverride: 'api.example.com',
         );
-        final client = HttpClient();
-        addTearDown(client.close);
+        final transport = io_transport.createTransport(pin: pin);
+        addTearDown(() => transport.close());
 
         // Should not throw
-        pin.applyTo(client);
+        expect(transport, isNotNull);
       });
     });
   });
@@ -96,41 +95,41 @@ void main() {
       });
     });
 
-    group('applyTo', () {
-      test('applies proxy to HttpClient without error', () {
+    group('transport integration', () {
+      test('creates transport with proxy without error', () {
         final proxy = EnvoyProxy(host: 'proxy.test.com', port: 9090);
-        final client = HttpClient();
-        addTearDown(client.close);
+        final transport = io_transport.createTransport(proxy: proxy);
+        addTearDown(() => transport.close());
 
         // Should not throw
-        proxy.applyTo(client);
+        expect(transport, isNotNull);
       });
 
-      test('applies proxy with credentials without error', () {
+      test('creates transport with proxy credentials without error', () {
         final proxy = EnvoyProxy(
           host: 'proxy.test.com',
           port: 9090,
           username: 'user',
           password: 'pass',
         );
-        final client = HttpClient();
-        addTearDown(client.close);
+        final transport = io_transport.createTransport(proxy: proxy);
+        addTearDown(() => transport.close());
 
         // Should not throw
-        proxy.applyTo(client);
+        expect(transport, isNotNull);
       });
 
-      test('applies proxy with bypass list without error', () {
+      test('creates transport with bypass list without error', () {
         final proxy = EnvoyProxy(
           host: 'proxy.test.com',
           port: 9090,
           bypass: ['localhost', '127.0.0.1'],
         );
-        final client = HttpClient();
-        addTearDown(client.close);
+        final transport = io_transport.createTransport(proxy: proxy);
+        addTearDown(() => transport.close());
 
         // Should not throw
-        proxy.applyTo(client);
+        expect(transport, isNotNull);
       });
     });
 

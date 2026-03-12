@@ -1,10 +1,8 @@
-import 'dart:io';
-
 /// **EnvoyPin** — SSL/TLS certificate pinning configuration for [Envoy].
 ///
-/// Validates server certificates against known SHA-1 fingerprints
-/// to prevent man-in-the-middle attacks. Uses the fingerprint
-/// natively provided by Dart's [X509Certificate].
+/// Holds pinning data (fingerprints, host override, self-signed flag).
+/// The actual certificate validation is applied by the platform-specific
+/// transport layer (IO only — browsers manage TLS natively).
 ///
 /// ```dart
 /// final envoy = Envoy(
@@ -20,11 +18,12 @@ import 'dart:io';
 class EnvoyPin {
   /// Creates a certificate pin configuration.
   ///
-  /// - [fingerprints]: SHA-1 certificate fingerprints (colon-separated hex).
-  ///   Dart's [X509Certificate.sha1] returns a `Uint8List` that is
-  ///   formatted as `XX:XX:XX:...` for comparison.
+  /// - [fingerprints]: SHA-1 certificate fingerprints.
+  ///   Each entry should be a lowercase hex string of the SHA-1 hash
+  ///   (40 hex chars, no colons).
   /// - [hostOverride]: Only pin for this specific host (null = pin all).
   /// - [allowSelfSigned]: Whether to allow self-signed certificates.
+  ///   Use only for development/testing. Never enable in production.
   const EnvoyPin({
     this.fingerprints = const [],
     this.hostOverride,
@@ -32,9 +31,6 @@ class EnvoyPin {
   });
 
   /// Allowed SHA-1 certificate fingerprints.
-  ///
-  /// Each entry should be a lowercase hex string of the SHA-1 hash, e.g.
-  /// `'a1b2c3d4e5f6...'` (40 hex chars, no colons).
   final List<String> fingerprints;
 
   /// Only apply pinning to this specific host.
@@ -43,36 +39,14 @@ class EnvoyPin {
   final String? hostOverride;
 
   /// Whether to accept self-signed certificates.
-  ///
-  /// Use only for development/testing. Never enable in production.
   final bool allowSelfSigned;
-
-  /// Configures the [HttpClient] with this pin's certificate validation.
-  void applyTo(HttpClient client) {
-    if (allowSelfSigned) {
-      client.badCertificateCallback = (cert, host, port) {
-        if (hostOverride != null && host != hostOverride) return false;
-        return true;
-      };
-      return;
-    }
-
-    if (fingerprints.isEmpty) return;
-
-    client.badCertificateCallback = (cert, host, port) {
-      if (hostOverride != null && host != hostOverride) return false;
-
-      // Compare SHA-1 fingerprint from the certificate
-      final sha1Bytes = cert.sha1;
-      final fingerprint = sha1Bytes
-          .map((b) => b.toRadixString(16).padLeft(2, '0'))
-          .join();
-      return fingerprints.contains(fingerprint);
-    };
-  }
 }
 
 /// **EnvoyProxy** — HTTP/HTTPS proxy configuration for [Envoy].
+///
+/// Holds proxy data (host, port, credentials). The actual proxy routing
+/// is applied by the platform-specific transport layer (IO only — browsers
+/// use system proxy settings).
 ///
 /// ```dart
 /// final envoy = Envoy(
@@ -115,25 +89,6 @@ class EnvoyProxy {
 
   /// Hostnames that bypass the proxy.
   final List<String> bypass;
-
-  /// Configures the [HttpClient] with this proxy.
-  void applyTo(HttpClient client) {
-    client.findProxy = (uri) {
-      if (bypass.any((b) => uri.host.endsWith(b))) {
-        return 'DIRECT';
-      }
-      return 'PROXY $host:$port';
-    };
-
-    if (username != null && password != null) {
-      client.addProxyCredentials(
-        host,
-        port,
-        'Basic',
-        HttpClientBasicCredentials(username!, password!),
-      );
-    }
-  }
 
   @override
   String toString() =>

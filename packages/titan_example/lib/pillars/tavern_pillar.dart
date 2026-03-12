@@ -1,4 +1,5 @@
 import 'package:titan_basalt/titan_basalt.dart';
+import 'package:titan_colossus/titan_colossus.dart';
 import 'package:titan_envoy/titan_envoy.dart';
 
 import '../models/tale.dart';
@@ -26,12 +27,12 @@ import '../models/tale.dart';
 //   EnvoyMetric         — Real-time request metric tracking
 //   EnvoyError          — Typed error handling
 //
-// API: JSONPlaceholder (https://jsonplaceholder.typicode.com)
+// API: DummyJSON (https://dummyjson.com)
 //   GET    /posts           — paginated tales
 //   GET    /posts/:id       — tale detail
-//   GET    /posts/:id/comments — tale comments
+//   GET    /comments/post/:id — tale comments
 //   GET    /users           — guild members (authors)
-//   POST   /posts           — create a new tale
+//   POST   /posts/add       — create a new tale
 //   DELETE /posts/:id       — delete a tale
 // ---------------------------------------------------------------------------
 
@@ -49,7 +50,7 @@ import '../models/tale.dart';
 class TavernPillar extends EnvoyPillar {
   TavernPillar()
     : super(
-        baseUrl: 'https://jsonplaceholder.typicode.com',
+        baseUrl: 'https://dummyjson.com',
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 15),
       );
@@ -88,27 +89,31 @@ class TavernPillar extends EnvoyPillar {
   // State — Paginated Tales (Codex + Envoy)
   // -------------------------------------------------------------------------
 
-  /// Paginated tale list — fetches from `/posts?_page=N&_limit=10`.
+  /// Paginated tale list — fetches from `/posts?limit=N&skip=N`.
   ///
   /// Uses [Codex] with an Envoy-powered fetcher for HTTP pagination.
-  /// JSONPlaceholder supports `_page` and `_limit` query parameters.
+  /// DummyJSON uses `limit` and `skip` query parameters.
   late final tales = codex<Tale>(
     (request) async {
+      final skip = request.page * request.pageSize;
       final dispatch = await envoy.get(
         '/posts',
         queryParameters: {
-          '_page': request.page.toString(),
-          '_limit': request.pageSize.toString(),
+          'limit': request.pageSize.toString(),
+          'skip': skip.toString(),
         },
       );
-      final items = (dispatch.data as List)
+      final data = dispatch.data as Map<String, dynamic>;
+      final items = (data['posts'] as List)
           .map((e) => Tale.fromJson(e as Map<String, dynamic>))
           .toList();
       // Enrich with cached author names
       for (final tale in items) {
         tale.authorName = _authorCache[tale.userId];
       }
-      return CodexPage(items: items, hasMore: items.length == request.pageSize);
+      final total = data['total'] as int;
+      final hasMore = skip + items.length < total;
+      return CodexPage(items: items, hasMore: hasMore);
     },
     pageSize: 10,
     name: 'tales',
@@ -166,11 +171,12 @@ class TavernPillar extends EnvoyPillar {
     name: 'taleDetail',
   );
 
-  /// Comments on the current tale — fetched from `/posts/:id/comments`.
+  /// Comments on the current tale — fetched from `/comments/post/:id`.
   late final comments = quarry<List<TaleComment>>(
     fetcher: () async {
-      final dispatch = await envoy.get('/posts/${taleId.value}/comments');
-      return (dispatch.data as List)
+      final dispatch = await envoy.get('/comments/post/${taleId.value}');
+      final data = dispatch.data as Map<String, dynamic>;
+      return (data['comments'] as List)
           .map((e) => TaleComment.fromJson(e as Map<String, dynamic>))
           .toList();
     },
@@ -190,9 +196,12 @@ class TavernPillar extends EnvoyPillar {
   late final members = envoyQuarry<List<GuildMember>>(
     envoy: envoy,
     path: '/users',
-    fromJson: (data) => (data as List)
-        .map((e) => GuildMember.fromJson(e as Map<String, dynamic>))
-        .toList(),
+    fromJson: (data) {
+      final map = data as Map<String, dynamic>;
+      return (map['users'] as List)
+          .map((e) => GuildMember.fromJson(e as Map<String, dynamic>))
+          .toList();
+    },
     staleTime: const Duration(minutes: 10),
     name: 'guildMembers',
   );
@@ -335,22 +344,22 @@ class TavernPillar extends EnvoyPillar {
 
   /// Create a new tale — demonstrates POST with Envoy.
   ///
-  /// JSONPlaceholder returns the created resource with an assigned ID
-  /// (always 101 in the mock API).
+  /// DummyJSON returns the created resource with an assigned ID
+  /// (simulated — the mock API doesn't persist).
   Future<Tale?> createTale({
     required String title,
     required String body,
   }) async {
     try {
       final dispatch = await envoy.post(
-        '/posts',
+        '/posts/add',
         data: {'title': title, 'body': body, 'userId': 1},
       );
       final tale = Tale.fromJson(dispatch.data as Map<String, dynamic>);
       tale.authorName = _authorCache[1] ?? 'Anonymous';
       log.info('Created tale: "${tale.title}"');
 
-      // Prepend to the local list (JSONPlaceholder doesn't persist)
+      // Prepend to the local list (DummyJSON doesn't persist)
       strike(() {
         tales.items.value = [tale, ...tales.items.value];
       });
@@ -399,6 +408,12 @@ class TavernPillar extends EnvoyPillar {
 
   void _onMetric(EnvoyMetric metric) {
     metrics.value = [...metrics.value, metric];
+
+    // Forward to Colossus for unified API tracking dashboard
+    if (Colossus.isActive) {
+      Colossus.instance.trackApiMetric(metric.toJson());
+    }
+
     log.debug(
       'HTTP ${metric.method} ${metric.url} → ${metric.statusCode} '
       'in ${metric.duration.inMilliseconds}ms'

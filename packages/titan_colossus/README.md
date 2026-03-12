@@ -518,9 +518,7 @@ ColossusPlugin(
 Use the CLI tool to build a Blueprint from previously saved Shade sessions:
 
 ```bash
-cd packages/titan_colossus
-
-# Basic export
+# Basic export (run from your project root)
 dart run titan_colossus:export_blueprint
 
 # With options
@@ -544,7 +542,7 @@ Expose Blueprint data to AI assistants via the Model Context Protocol:
     "titan-blueprint": {
       "command": "dart",
       "args": ["run", "titan_colossus:blueprint_mcp_server"],
-      "cwd": "${workspaceFolder}/packages/titan_colossus"
+      "cwd": "${workspaceFolder}"
     }
   }
 }

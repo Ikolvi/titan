@@ -97,9 +97,11 @@ On web, browsers cannot host HTTP servers. The connection direction is **reverse
 ## Prerequisites
 
 1. **Dart SDK** ≥ 3.10.3 (or Flutter ≥ 3.10.0)
-2. **titan_colossus** package in your app's dependencies
+2. **titan_colossus** package in your app's `pubspec.yaml` dependencies
 3. **Dart SDK** and **Flutter** available on your PATH
 4. Your Flutter app configured with `ColossusPlugin(enableRelay: true)` for live mode
+
+> **How `dart run` resolves the MCP server:** When you run `dart run titan_colossus:blueprint_mcp_server`, Dart looks up `titan_colossus` in your project's dependencies and resolves the executable from the **pub cache** (`~/.pub-cache/`). You do **not** need the package source code in your project — just the dependency in `pubspec.yaml`. This is why `cwd` must point to your **project root**.
 
 ### Verify Dart is available
 
@@ -172,11 +174,13 @@ Create or edit `.vscode/settings.json` in your project root:
         "run",
         "titan_colossus:blueprint_mcp_server"
       ],
-      "cwd": "${workspaceFolder}/packages/titan_colossus"
+      "cwd": "${workspaceFolder}"
     }
   }
 }
 ```
+
+> **Note:** `cwd` must point to your **project root** (where `pubspec.yaml` is). `dart run` resolves the `titan_colossus` executable automatically from the pub cache.
 
 #### Option B: User settings (global)
 
@@ -191,7 +195,7 @@ Open VS Code Settings (`Cmd+,` / `Ctrl+,`) → search for "mcp" → edit `settin
         "run",
         "titan_colossus:blueprint_mcp_server"
       ],
-      "cwd": "/absolute/path/to/your/project/packages/titan_colossus"
+      "cwd": "/absolute/path/to/your/project"
     }
   }
 }
@@ -213,7 +217,7 @@ For custom relay host/port (e.g., physical device on the network):
         "--relay-port", "8642",
         "--blueprint-path", ".titan/blueprint.json"
       ],
-      "cwd": "${workspaceFolder}/packages/titan_colossus"
+      "cwd": "${workspaceFolder}"
     }
   }
 }
@@ -467,13 +471,13 @@ Create `.cursor/mcp.json` in your project root:
         "run",
         "titan_colossus:blueprint_mcp_server"
       ],
-      "cwd": "/absolute/path/to/your/project/packages/titan_colossus"
+      "cwd": "/absolute/path/to/your/project"
     }
   }
 }
 ```
 
-> **Important:** Cursor requires **absolute paths** for `cwd`. Replace `/absolute/path/to/your/project` with the actual path to your workspace.
+> **Important:** Cursor requires **absolute paths** for `cwd`. Replace `/absolute/path/to/your/project` with the actual path to your project root (where `pubspec.yaml` is).
 
 #### Option B: Global configuration
 
@@ -488,7 +492,7 @@ Create or edit `~/.cursor/mcp.json`:
         "run",
         "titan_colossus:blueprint_mcp_server"
       ],
-      "cwd": "/absolute/path/to/your/project/packages/titan_colossus"
+      "cwd": "/absolute/path/to/your/project"
     }
   }
 }
@@ -516,7 +520,7 @@ JetBrains IDEs 2025.1+ include native MCP support in the AI Assistant.
    - **Name:** `titan-blueprint`
    - **Command:** `dart`
    - **Arguments:** `run titan_colossus:blueprint_mcp_server`
-   - **Working Directory:** `/path/to/project/packages/titan_colossus`
+   - **Working Directory:** `/path/to/project`
 4. Click **OK** → **Apply**
 
 Or edit the MCP configuration file directly. Create `.idea/mcp.json` in your project:
@@ -530,7 +534,7 @@ Or edit the MCP configuration file directly. Create `.idea/mcp.json` in your pro
         "run",
         "titan_colossus:blueprint_mcp_server"
       ],
-      "cwd": "$PROJECT_DIR$/packages/titan_colossus"
+      "cwd": "$PROJECT_DIR$"
     }
   }
 }
@@ -563,7 +567,7 @@ Create or edit `~/.codeium/windsurf/mcp_config.json`:
         "run",
         "titan_colossus:blueprint_mcp_server"
       ],
-      "cwd": "/absolute/path/to/your/project/packages/titan_colossus"
+      "cwd": "/absolute/path/to/your/project"
     }
   }
 }
@@ -580,7 +584,7 @@ Or use the project-level config at `.windsurf/mcp_config.json`:
         "run",
         "titan_colossus:blueprint_mcp_server"
       ],
-      "cwd": "/absolute/path/to/your/project/packages/titan_colossus"
+      "cwd": "/absolute/path/to/your/project"
     }
   }
 }
@@ -635,7 +639,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
         "run",
         "titan_colossus:blueprint_mcp_server"
       ],
-      "cwd": "/absolute/path/to/your/project/packages/titan_colossus"
+      "cwd": "/absolute/path/to/your/project"
     }
   }
 }
@@ -667,7 +671,7 @@ Edit `.continue/config.json` in your project root (or `~/.continue/config.json` 
             "run",
             "titan_colossus:blueprint_mcp_server"
           ],
-          "cwd": "/absolute/path/to/your/project/packages/titan_colossus"
+          "cwd": "/absolute/path/to/your/project"
         }
       }
     ]
@@ -695,7 +699,7 @@ Edit `.continue/config.json` in your project root (or `~/.continue/config.json` 
         "run",
         "titan_colossus:blueprint_mcp_server"
       ],
-      "cwd": "/absolute/path/to/your/project/packages/titan_colossus"
+      "cwd": "/absolute/path/to/your/project"
     }
   }
 }
@@ -758,7 +762,7 @@ On web, browsers cannot host HTTP servers. Instead, the connection direction is 
         "run", "bin/blueprint_mcp_server.dart",
         "--relay-ws-port", "8643"
       ],
-      "cwd": "${workspaceFolder}/packages/titan_colossus"
+      "cwd": "${workspaceFolder}"
     }
   }
 }
@@ -943,7 +947,6 @@ Requests without a valid token receive a **401** JSON-RPC error response:
 ### Running manually (for testing)
 
 ```bash
-cd packages/titan_colossus
 dart run titan_colossus:blueprint_mcp_server
 
 # With custom options
@@ -1256,7 +1259,7 @@ Default configuration works out of the box. The Relay binds to `localhost:8642`.
 {
   "command": "dart",
   "args": ["run", "titan_colossus:blueprint_mcp_server"],
-  "cwd": "packages/titan_colossus"
+  "cwd": "."
 }
 ```
 
@@ -1270,7 +1273,7 @@ No extra configuration needed — the iOS Simulator shares the host's network st
 {
   "command": "dart",
   "args": ["run", "titan_colossus:blueprint_mcp_server"],
-  "cwd": "packages/titan_colossus"
+  "cwd": "."
 }
 ```
 
@@ -1302,7 +1305,7 @@ This maps your Mac's `localhost:8642` to the device's port `8642`. Keep this ter
 {
   "command": "dart",
   "args": ["run", "titan_colossus:blueprint_mcp_server"],
-  "cwd": "packages/titan_colossus"
+  "cwd": "."
 }
 ```
 
@@ -1322,7 +1325,7 @@ If USB is unavailable, use the device's IP address:
     "--relay-host", "192.168.1.50",
     "--relay-port", "8642"
   ],
-  "cwd": "packages/titan_colossus"
+  "cwd": "."
 }
 ```
 
@@ -1359,7 +1362,7 @@ This maps the host's `localhost:8642` to the emulator's port `8642`.
 {
   "command": "dart",
   "args": ["run", "titan_colossus:blueprint_mcp_server"],
-  "cwd": "packages/titan_colossus"
+  "cwd": "."
 }
 ```
 
@@ -1409,7 +1412,7 @@ adb forward tcp:8642 tcp:8642
 {
   "command": "dart",
   "args": ["run", "titan_colossus:blueprint_mcp_server"],
-  "cwd": "packages/titan_colossus"
+  "cwd": "."
 }
 ```
 
@@ -1439,7 +1442,7 @@ adb -s <device-serial> forward tcp:8642 tcp:8642
     "--relay-host", "192.168.1.60",
     "--relay-port", "8642"
   ],
-  "cwd": "packages/titan_colossus"
+  "cwd": "."
 }
 ```
 
@@ -1504,8 +1507,8 @@ On web, browsers cannot host HTTP servers. The connection direction is **reverse
 |---------|-----|
 | Server not listed | Restart IDE after adding configuration |
 | "command not found: dart" | Ensure `dart` is on your PATH or use absolute path (e.g., `which dart`) |
-| Server crashes immediately | Run manually in terminal to see error: `cd packages/titan_colossus && dart run titan_colossus:blueprint_mcp_server` |
-| Wrong cwd | Ensure `cwd` points to `packages/titan_colossus` (where `pubspec.yaml` is) |
+| Server crashes immediately | Run manually in terminal to see error: `dart run titan_colossus:blueprint_mcp_server` |
+| Wrong cwd | Ensure `cwd` points to your **project root** (where `pubspec.yaml` with `titan_colossus` dependency is) |
 
 ### Relay connection issues
 
