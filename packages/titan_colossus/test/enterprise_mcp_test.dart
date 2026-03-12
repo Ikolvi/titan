@@ -212,22 +212,31 @@ void main() {
       colossus.dispose();
     });
 
-    test('Titan.lazyTypes returns lazy factory types', () {
+    test('lazy types are computed from registeredTypes minus instances', () {
       Titan.lazy<String>(() => 'hello');
-      expect(Titan.lazyTypes, contains(String));
+      final lazyTypes = Titan.registeredTypes.difference(
+        Titan.instances.keys.toSet(),
+      );
+      expect(lazyTypes, contains(String));
 
       // Resolving should move it from lazy to instances
       Titan.get<String>();
-      expect(Titan.lazyTypes, isNot(contains(String)));
+      final lazyTypesAfter = Titan.registeredTypes.difference(
+        Titan.instances.keys.toSet(),
+      );
+      expect(lazyTypesAfter, isNot(contains(String)));
       expect(Titan.instances, contains(String));
 
       // Clean up
       Titan.remove<String>();
     });
 
-    test('Titan.lazyTypes is empty when no lazy registrations', () {
+    test('lazy types is empty when no lazy registrations', () {
       // Colossus itself is registered eagerly
-      expect(Titan.lazyTypes, isNot(contains(Colossus)));
+      final lazyTypes = Titan.registeredTypes.difference(
+        Titan.instances.keys.toSet(),
+      );
+      expect(lazyTypes, isNot(contains(Colossus)));
       expect(Titan.registeredTypes, contains(Colossus));
     });
 
@@ -236,7 +245,10 @@ void main() {
 
       expect(Titan.registeredTypes, contains(Colossus));
       expect(Titan.registeredTypes, contains(int));
-      expect(Titan.lazyTypes, contains(int));
+      final lazyTypes = Titan.registeredTypes.difference(
+        Titan.instances.keys.toSet(),
+      );
+      expect(lazyTypes, contains(int));
       expect(Titan.instances, isNot(contains(int)));
 
       // Clean up

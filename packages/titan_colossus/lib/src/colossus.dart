@@ -2549,7 +2549,8 @@ class _ColossusRelayHandler implements RelayHandler {
   Map<String, dynamic> inspectDi() {
     final registeredTypes = Titan.registeredTypes;
     final instances = Titan.instances;
-    final lazyTypes = Titan.lazyTypes;
+    // Compute lazy types from public API: registered but not yet instantiated.
+    final lazyTypes = registeredTypes.difference(instances.keys.toSet());
 
     final entries = <Map<String, dynamic>>[];
 

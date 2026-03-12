@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.2] - 2026-03-12
+
+### Fixed
+- **DI Inspection** — Compute lazy types from public API (`registeredTypes.difference(instances)`) instead of unpublished `Titan.lazyTypes` getter. Fixes static analysis error that caused 0/50 pana score.
+- **Relay WASM Compatibility** — Changed conditional import from `dart.library.html` to `dart.library.js_interop` for web platform selection.
+
 ## [2.0.1] - 2025-06-15
 
 ### Changed

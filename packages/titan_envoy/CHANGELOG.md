@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1
+
+### Fixed
+- **WASM Compatibility** — Changed conditional imports from `dart.library.html` to `dart.library.js_interop` for `EnvoySocket`, `EnvoySse`, and `Transport` platform selection. Package is now fully WASM-compatible.
+
 ## 1.1.0
 
 ### Added

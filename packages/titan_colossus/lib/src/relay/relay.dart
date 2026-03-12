@@ -10,7 +10,9 @@ library;
 
 import 'dart:async';
 
-import 'relay_io.dart' if (dart.library.html) 'relay_web.dart' as platform;
+import 'relay_io.dart'
+    if (dart.library.js_interop) 'relay_web.dart'
+    as platform;
 
 // ---------------------------------------------------------------------------
 // RelayConfig — Configuration

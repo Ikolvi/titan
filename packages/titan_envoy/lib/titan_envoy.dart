@@ -80,9 +80,9 @@ export 'src/gate.dart';
 
 // WebSocket & SSE (IO-only; web stubs provided for compilation)
 export 'src/envoy_socket.dart'
-    if (dart.library.html) 'src/web_stubs/envoy_socket_web.dart';
+    if (dart.library.js_interop) 'src/web_stubs/envoy_socket_web.dart';
 export 'src/envoy_sse.dart'
-    if (dart.library.html) 'src/web_stubs/envoy_sse_web.dart';
+    if (dart.library.js_interop) 'src/web_stubs/envoy_sse_web.dart';
 
 // Security
 export 'src/security.dart';

@@ -2,7 +2,7 @@ import 'transport.dart';
 
 export 'transport_stub.dart'
     if (dart.library.io) 'transport_io.dart'
-    if (dart.library.html) 'transport_web.dart';
+    if (dart.library.js_interop) 'transport_web.dart';
 
 /// Factory function signature for creating platform-specific transports.
 ///
