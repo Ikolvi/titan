@@ -972,6 +972,30 @@ These tools require a running app with `ColossusPlugin(enableRelay: true)`.
 | **`scry_act`** | Execute one or more actions and return the resulting screen state. Supports: `tap`, `enterText`, `clearText`, `scroll`, `back`, `longPress`, `doubleTap`, `swipe`, `navigate`, `waitForElement`, `waitForElementGone`, `pressKey`, `submitField`, `toggleSwitch`, `toggleCheckbox`, `selectDropdown`. Pass a single action or an `actions` array. |
 | **`scry_diff`** | Compare current screen state against the last observation. Shows appeared/disappeared/changed elements, route changes, overlay changes, and form status updates. |
 
+#### Detected Interactive Widgets
+
+Scry automatically detects and reports these widget types as interactive (tappable):
+
+`ElevatedButton`, `TextButton`, `FilledButton`, `OutlinedButton`, `IconButton`,
+`FloatingActionButton`, **`GestureDetector`**, **`InkWell`**, `TextField`, `TextFormField`,
+`Checkbox`, `Radio`, `Switch`, `Slider`, `DropdownButton`, `PopupMenuButton`,
+`ListTile`, `ExpansionTile`, `NavigationDestination`, `TabBar`, `SegmentedButton`,
+`SearchBar`, `MenuAnchor`, `Autocomplete`
+
+**Label-less widgets** (e.g., `GestureDetector` wrapping an image or container)
+are still visible to Scry. Labels are resolved in order: child Text → decoration
+hint → tooltip → Semantics → widget Key → positional fallback (`"tap@120,340"`).
+
+> **Tip:** Add a `ValueKey` to `GestureDetector`/`InkWell` widgets that wrap
+> non-text children for the most reliable targeting:
+> ```dart
+> GestureDetector(
+>   key: const ValueKey('profile-avatar'),
+>   onTap: () => navigateToProfile(),
+>   child: CircleAvatar(backgroundImage: userImage),
+> )
+> ```
+
 #### `scry` parameters
 
 *(none — just call it)*

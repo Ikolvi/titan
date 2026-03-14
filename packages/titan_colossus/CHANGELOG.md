@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.3] - 2026-03-14
+
+### Fixed
+- **GestureDetector Visibility** — `GestureDetector` and `InkWell` wrapping non-text children (Container, Image, custom widgets) were invisible to Scry because label-less Glyphs were filtered out in the observation pipeline. TableauCapture now synthesizes labels from the widget Key (preferred) or screen coordinates (fallback), ensuring all interactive widgets are discoverable.
+- **GestureDetector Enabled State** — `_getEnabledState` now checks `onTap`, `onLongPress`, and `onDoubleTap` for `GestureDetector`, and `onTap` for `InkWell`. Previously both always reported `isEnabled: true` regardless of whether callbacks were set.
+
+### Recommendation
+Add a `Key` to `GestureDetector` and `InkWell` widgets that wrap non-text children for stable Scry targeting:
+```dart
+GestureDetector(
+  key: const ValueKey('profile-avatar'),
+  onTap: () => navigateToProfile(),
+  child: CircleAvatar(backgroundImage: userImage),
+)
+```
+
 ## [2.0.2] - 2026-03-12
 
 ### Fixed

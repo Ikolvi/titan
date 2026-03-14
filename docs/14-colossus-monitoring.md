@@ -1244,6 +1244,56 @@ Colossus provides a built-in handler that delegates to `executeCampaignJson`, `t
 
 Scry gives AI assistants (via MCP) live vision of the running app. Instead of executing pre-written Campaigns, the AI observes the screen, decides what to do, acts, and observes the result.
 
+### Supported Interactive Widgets
+
+TableauCapture automatically detects and captures these widget types as interactive elements:
+
+| Widget | Interaction Type | Enabled Detection |
+|--------|-----------------|-------------------|
+| `ElevatedButton`, `TextButton`, `FilledButton`, `OutlinedButton` | tap | `widget.enabled` |
+| `IconButton` | tap | `onPressed != null` |
+| `FloatingActionButton` | tap | always |
+| `GestureDetector` | tap / longPress | `onTap`, `onLongPress`, or `onDoubleTap != null` |
+| `InkWell` | tap | `onTap != null` |
+| `TextField`, `TextFormField` | textInput | `widget.enabled` |
+| `Checkbox` | checkbox | `onChanged != null` |
+| `Radio` | radio | `onChanged != null` |
+| `Switch` | switch | `onChanged != null` |
+| `Slider` | slider | `onChanged != null` |
+| `DropdownButton`, `PopupMenuButton` | dropdown | always |
+| `ListTile` | tap | `widget.enabled` |
+| `ExpansionTile` | tap | always |
+| `NavigationDestination` | tap | always |
+| `TabBar` | tap | always |
+| `SegmentedButton` | tap | always |
+| `SearchBar` | tap | always |
+| `MenuAnchor` | tap | always |
+| `Autocomplete` | tap | always |
+
+### Label Resolution for Interactive Widgets
+
+Labels are extracted in priority order:
+
+1. **Child `Text` widget** — `ElevatedButton(child: Text('Save'))` → `"Save"`
+2. **Decoration** — `TextField(decoration: InputDecoration(labelText: 'Email'))` → `"Email"`
+3. **Tooltip / semantic label** — `IconButton(tooltip: 'Delete')` → `"Delete"`
+4. **Semantics label** — `Semantics(label: 'Close menu')` → `"Close menu"`
+5. **Widget `Key`** — `GestureDetector(key: ValueKey('avatar-tap'))` → `"avatar-tap"`
+6. **Positional fallback** — Auto-generated `"tap@120,340"` from screen coordinates
+
+Steps 5–6 ensure `GestureDetector` and `InkWell` widgets wrapping non-text
+children (images, containers, custom painters) are still visible to Scry.
+
+**Best practice:** Add a `Key` to interactive widgets without text children:
+
+```dart
+GestureDetector(
+  key: const ValueKey('profile-avatar'),
+  onTap: () => navigateToProfile(),
+  child: CircleAvatar(backgroundImage: userImage),
+)
+```
+
 ### The Agent Loop
 
 ```
@@ -1388,10 +1438,10 @@ Combine multiple actions in one call:
 
 | Kind | Description |
 |------|-------------|
-| `button` | Tappable interactive elements |
-| `field` | Text input fields (TextField, TextFormField) |
+| `button` | Tappable interactive elements (buttons, GestureDetector, InkWell, ListTile) |
+| `field` | Text input fields (TextField, TextFormField, EditableText) |
 | `navigation` | Tab bar, nav bar, drawer items |
-| `content` | Display-only text and images |
+| `content` | Display-only text, images, icons |
 | `structural` | AppBar titles, toolbar labels |
 
 ### Text Injection Strategies

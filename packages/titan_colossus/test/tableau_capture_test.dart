@@ -223,4 +223,129 @@ void main() {
       expect(errorGlyphs.first.label, 'Widget build failed');
     });
   });
+
+  group('TableauCapture — GestureDetector visibility', () {
+    testWidgets('captures GestureDetector with text child', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GestureDetector(onTap: () {}, child: const Text('Tap me')),
+          ),
+        ),
+      );
+
+      final tableau = await TableauCapture.capture(index: 0);
+      final glyph = tableau.glyphs.firstWhere(
+        (g) => g.widgetType == 'GestureDetector',
+      );
+
+      expect(glyph.label, 'Tap me');
+      expect(glyph.isInteractive, true);
+      expect(glyph.isEnabled, true);
+    });
+
+    testWidgets('captures GestureDetector without text child via key', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GestureDetector(
+              key: const ValueKey('avatar-tap'),
+              onTap: () {},
+              child: Container(width: 48, height: 48, color: Colors.blue),
+            ),
+          ),
+        ),
+      );
+
+      final tableau = await TableauCapture.capture(index: 0);
+      final glyph = tableau.glyphs.firstWhere(
+        (g) => g.widgetType == 'GestureDetector',
+      );
+
+      expect(glyph.label, 'avatar-tap');
+      expect(glyph.isInteractive, true);
+    });
+
+    testWidgets(
+      'captures label-less GestureDetector with positional fallback',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: GestureDetector(
+                onTap: () {},
+                child: Container(width: 100, height: 100, color: Colors.red),
+              ),
+            ),
+          ),
+        );
+
+        final tableau = await TableauCapture.capture(index: 0);
+        final glyph = tableau.glyphs.firstWhere(
+          (g) => g.widgetType == 'GestureDetector',
+        );
+
+        expect(glyph.label, isNotNull);
+        expect(glyph.label, startsWith('tap@'));
+        expect(glyph.isInteractive, true);
+      },
+    );
+
+    testWidgets('GestureDetector with no callbacks is disabled', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GestureDetector(child: const Text('No handler')),
+          ),
+        ),
+      );
+
+      final tableau = await TableauCapture.capture(index: 0);
+      final glyph = tableau.glyphs.firstWhere(
+        (g) => g.widgetType == 'GestureDetector',
+      );
+
+      expect(glyph.isEnabled, false);
+    });
+
+    testWidgets('InkWell with no onTap is disabled', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: InkWell(child: const Text('No handler'))),
+        ),
+      );
+
+      final tableau = await TableauCapture.capture(index: 0);
+      final glyph = tableau.glyphs.firstWhere((g) => g.widgetType == 'InkWell');
+
+      expect(glyph.isEnabled, false);
+    });
+
+    testWidgets('GestureDetector onLongPress sets longPress interaction type', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GestureDetector(
+              onLongPress: () {},
+              child: const Text('Hold me'),
+            ),
+          ),
+        ),
+      );
+
+      final tableau = await TableauCapture.capture(index: 0);
+      final glyph = tableau.glyphs.firstWhere(
+        (g) => g.widgetType == 'GestureDetector',
+      );
+
+      expect(glyph.interactionType, 'longPress');
+      expect(glyph.isEnabled, true);
+    });
+  });
 }

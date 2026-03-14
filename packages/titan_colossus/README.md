@@ -37,6 +37,9 @@ Colossus — named after the Colossus of Rhodes, a representation of the Titan H
 | Blueprint Export | **BlueprintExport** | Export Terrain, Stratagems & Verdicts to JSON/Markdown for AI assistants |
 | Export CLI | **export_blueprint** | Offline Blueprint export from saved Shade sessions |
 | MCP Server | **blueprint_mcp_server** | Model Context Protocol server for Copilot/Claude integration |
+| Screen Observation | **Scry** | AI agent interface with 18 intelligence capabilities |
+| Screen Snapshots | **Tableau** | Element tree snapshot with interactive widget detection |
+| Element Capture | **Glyph** | UI element abstraction with label, bounds, and interaction type |
 
 ## Quick Start
 
@@ -144,6 +147,16 @@ That's it. Colossus auto-registers its Lens tab and begins monitoring.
 | `BlueprintExport` | 📦 | Structured export container for Terrain, Stratagems & Verdicts |
 | `BlueprintExportIO` | 💾 | File I/O for saving/loading Blueprint exports |
 | `BlueprintSaveResult` | ✅ | Result object from `saveAll()` with JSON and prompt paths |
+| `Scry` | 👁️ | AI agent interface — observes screens, acts on elements |
+| `ScryGaze` | 🔮 | Observation result with classified elements and intelligence |
+| `ScryElement` | 🎯 | Single observable element (button, field, nav, content) |
+| `ScryElementKind` | 🏷️ | Element classification enum |
+| `ScryScreenType` | 📱 | Screen type classification (login, form, list, etc.) |
+| `ScryAlert` | ⚡ | Detected error, warning, info, or loading state |
+| `ScryDiff` | 🔄 | Before/after screen comparison |
+| `Tableau` | 📸 | Element tree snapshot captured from live widget tree |
+| `TableauCapture` | 🔍 | Static walker — extracts Glyphs from the Element tree |
+| `Glyph` | ✨ | Single captured UI element (type, label, bounds, interaction) |
 
 ## Usage
 
@@ -368,6 +381,156 @@ class MyForm extends Spark {
 The `fieldId` parameter enables accurate text replay — Phantom matches
 recorded text events to the correct field by ID. Without `fieldId`,
 Phantom falls back to injecting text into the currently focused field.
+
+### Widget Detection — TableauCapture & Glyphs
+
+TableauCapture walks the live Flutter Element tree and extracts **Glyphs** —
+standardized representations of every meaningful widget on screen. These
+Glyphs feed into Shade recordings, Scout analysis, and Scry observation.
+
+#### Supported Interactive Widgets
+
+The following widget types are automatically detected as interactive
+and captured with their label, bounds, enabled state, and interaction type:
+
+| Widget | Interaction Type | Enabled Detection |
+|--------|-----------------|--------------------|
+| `ElevatedButton`, `TextButton`, `FilledButton`, `OutlinedButton` | tap | `widget.enabled` |
+| `IconButton` | tap | `onPressed != null` |
+| `FloatingActionButton` | tap | always |
+| `GestureDetector` | tap / longPress | `onTap`, `onLongPress`, or `onDoubleTap != null` |
+| `InkWell` | tap | `onTap != null` |
+| `TextField`, `TextFormField` | textInput | `widget.enabled` |
+| `Checkbox` | checkbox | `onChanged != null` |
+| `Radio` | radio | `onChanged != null` |
+| `Switch` | switch | `onChanged != null` |
+| `Slider` | slider | `onChanged != null` |
+| `DropdownButton`, `PopupMenuButton` | dropdown | always |
+| `ListTile` | tap | `widget.enabled` |
+| `ExpansionTile` | tap | always |
+| `NavigationDestination` | tap | always |
+| `TabBar` | tap | always |
+| `SegmentedButton` | tap | always |
+| `SearchBar` | tap | always |
+| `MenuAnchor` | tap | always |
+| `Autocomplete` | tap | always |
+
+#### Label Extraction
+
+Labels are extracted automatically in priority order:
+
+1. **Child `Text` widget** — `ElevatedButton(child: Text('Save'))` → `"Save"`
+2. **Decoration hint/label** — `TextField(decoration: InputDecoration(labelText: 'Email'))` → `"Email"`
+3. **Tooltip or semantic label** — `IconButton(tooltip: 'Delete')` → `"Delete"`
+4. **Semantics label** — `Semantics(label: 'Close menu')` → `"Close menu"`
+5. **Widget key** — `GestureDetector(key: ValueKey('avatar-tap'))` → `"avatar-tap"`
+6. **Positional fallback** — `GestureDetector(onTap: ...)` → `"tap@120,340"`
+
+Steps 5–6 ensure that `GestureDetector` and `InkWell` widgets without
+text children are still discoverable by Scry. For best results, add a
+`Key` to interactive widgets that wrap non-text children:
+
+```dart
+// ✅ Discoverable by Scry via key
+GestureDetector(
+  key: const ValueKey('profile-avatar'),
+  onTap: () => navigateToProfile(),
+  child: CircleAvatar(backgroundImage: userImage),
+)
+
+// ⚠️ Still discoverable, but targeted by coordinates
+GestureDetector(
+  onTap: () => navigateToProfile(),
+  child: CircleAvatar(backgroundImage: userImage),
+)
+```
+
+#### Visible Content Widgets
+
+These widgets are captured as non-interactive content (display-only):
+
+`Text`, `RichText`, `Image`, `Icon`, `AppBar`, `Card`, `Dialog`,
+`AlertDialog`, `SimpleDialog`, `SnackBar`, `BottomSheet`, `Chip`,
+`Badge`, `Banner`, `Tooltip`, `Drawer`, `CircularProgressIndicator`,
+`LinearProgressIndicator`, `ErrorWidget`
+
+All other widgets (`Container`, `Padding`, `Row`, `Column`, `Center`,
+`Align`, `Builder`, etc.) are classified as layout noise and skipped.
+
+#### Deduplication
+
+Material buttons produce nested interactive layers (e.g.,
+`FilledButton` → `InkWell` → `GestureDetector`). TableauCapture
+automatically suppresses inner layers that share the same label,
+so each logical button produces exactly one Glyph.
+
+---
+
+### Scry — AI Agent Interface
+
+Scry gives AI assistants (via MCP) live vision of the running app.
+Instead of executing pre-written Campaigns, the AI observes the screen,
+decides what to do, acts, and observes the result.
+
+#### The Agent Loop
+
+```
+scry (observe) → AI decides → scry_act (act) → scry_diff (compare) → repeat
+```
+
+#### Observing
+
+```dart
+const scry = Scry();
+final gaze = scry.observe(glyphs, route: '/login');
+
+gaze.buttons;     // Tappable elements (ElevatedButton, GestureDetector, InkWell, ...)
+gaze.fields;      // Text inputs with current values
+gaze.navigation;  // Tab bars, nav items
+gaze.content;     // Display-only text and images
+gaze.gated;       // ⚠️ Destructive actions (delete, remove, reset)
+gaze.screenType;  // ScryScreenType.login, .form, .list, etc.
+gaze.alerts;      // Errors, warnings, loading indicators
+gaze.dataFields;  // Detected key-value data pairs
+gaze.suggestions; // Context-aware action recommendations
+```
+
+#### Screen Types
+
+| Type | Detection Logic |
+|------|----------------|
+| `login` | Text fields + login/signin/enter button |
+| `form` | Multiple fields + submit/save button |
+| `list` | Many similar content items, no fields |
+| `detail` | Key-value data pairs, no input fields |
+| `settings` | Toggles, switches, checkboxes, dropdowns |
+| `empty` | Very few elements, no meaningful content |
+| `error` | Error alerts visible (snackbar, error text) |
+| `dashboard` | Mix of navigation, content, and buttons |
+| `unknown` | Cannot be classified |
+
+#### Element Classification
+
+| Kind | Description |
+|------|-------------|
+| `button` | Tappable interactive elements (buttons, GestureDetector, InkWell) |
+| `field` | Text input fields (TextField, TextFormField, EditableText) |
+| `navigation` | Tab bar, nav bar, drawer items |
+| `content` | Display-only text, images, icons |
+| `structural` | AppBar titles, toolbar labels |
+
+#### Acting
+
+```json
+{"action": "tap", "label": "Sign Out"}
+{"action": "enterText", "label": "Hero Name", "value": "Arcturus"}
+{"action": "longPress", "key": "profile-avatar"}
+```
+
+Targeting supports `label` (display text), `key` (widget Key), or
+positional labels (`"tap@120,340"`) for elements without visible text.
+
+---
 
 ### Scout — AI Test Discovery
 

@@ -241,7 +241,23 @@ class TableauCapture {
 
     // Extract widget-specific properties
     final isInteractive = classification == _WidgetClassification.interactive;
-    final label = _extractLabel(element, widget);
+    var label = _extractLabel(element, widget);
+
+    // Synthesize a label for label-less interactive widgets so Scry
+    // can still discover and target them (e.g. GestureDetector wrapping
+    // a Container, custom painter, or image).
+    if (label == null && isInteractive) {
+      final key = _getKey(widget);
+      if (key != null) {
+        label = key;
+      } else {
+        // Positional fallback: "tap@120,340"
+        final ix = globalPosition.dx.round();
+        final iy = globalPosition.dy.round();
+        label = '${_getInteractionType(widget)}@$ix,$iy';
+      }
+    }
+
     final interactionType = isInteractive ? _getInteractionType(widget) : null;
     final fieldId = _getFieldId(widget);
     final key = _getKey(widget);
@@ -609,6 +625,12 @@ class TableauCapture {
   static bool _getEnabledState(Widget widget) {
     if (widget is ButtonStyleButton) return widget.enabled;
     if (widget is IconButton) return widget.onPressed != null;
+    if (widget is GestureDetector) {
+      return widget.onTap != null ||
+          widget.onLongPress != null ||
+          widget.onDoubleTap != null;
+    }
+    if (widget is InkWell) return widget.onTap != null;
     if (widget is TextField) return widget.enabled ?? true;
     if (widget is Checkbox) return widget.onChanged != null;
     if (widget is Radio) {
