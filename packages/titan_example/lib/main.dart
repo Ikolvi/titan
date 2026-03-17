@@ -192,6 +192,10 @@ void main() {
           enableLensTab: true,
           enableChronicle: true,
           enableRelay: true, // AI-driven testing bridge
+          enableSentinel: true, // HTTP traffic interception
+          sentinelConfig: const SentinelConfig(
+            excludePatterns: [r'localhost:864\d'], // Exclude Relay traffic
+          ),
           relayConfig: kIsWeb
               ? const RelayConfig(targetUrl: 'ws://localhost:8643/relay')
               : const RelayConfig(),

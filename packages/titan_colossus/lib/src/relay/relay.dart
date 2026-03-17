@@ -357,6 +357,16 @@ abstract interface class RelayHandler {
   ///
   /// Returns a summary of applied changes and the resulting state.
   Map<String, dynamic> configureEnvoy(Map<String, dynamic> config);
+
+  /// Get full Sentinel HTTP interception records.
+  ///
+  /// Returns detailed records with request/response headers and
+  /// bodies — like Charles Proxy. Unlike [getApiMetrics] which
+  /// provides summary data only.
+  Map<String, dynamic> getSentinelRecords();
+
+  /// Clear all captured Sentinel records.
+  Map<String, dynamic> clearSentinelRecords();
 }
 
 // ---------------------------------------------------------------------------

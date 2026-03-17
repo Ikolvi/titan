@@ -1,6 +1,6 @@
 name: titan_colossus
 description: "Enterprise performance monitoring, AI testing, and MCP integration for Titan. Scry observation, Relay bridge, Blueprint generation, 48 MCP tools, and Lens debug overlay."
-version: 2.0.7
+version: 2.0.8
 homepage: https://ikolvi.com
 repository: https://github.com/Ikolvi/titan
 issue_tracker: https://github.com/Ikolvi/titan/issues

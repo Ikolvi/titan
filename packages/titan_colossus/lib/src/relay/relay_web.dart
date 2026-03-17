@@ -25,9 +25,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 
-import 'package:titan/titan.dart';
 import 'package:web/web.dart' as web;
 
+import '../bindings/colossus_bindings.dart';
+import '../bindings/colossus_logger.dart';
 import '../integration/lens.dart';
 import 'relay.dart';
 
@@ -40,7 +41,7 @@ class RelayPlatform {
   web.WebSocket? _ws;
   RelayConfig? _config;
   RelayHandler? _handler;
-  Chronicle? _chronicle;
+  ColossusLogger? _logger;
   DateTime? _startedAt;
   int _requestsHandled = 0;
   int _campaignsExecuted = 0;
@@ -75,13 +76,13 @@ class RelayPlatform {
     _handler = handler;
     _stopping = false;
 
-    if (config.enableLogging) {
-      _chronicle = Chronicle('Relay');
+    if (config.enableLogging && ColossusBindings.isInstalled) {
+      _logger = ColossusBindings.instance.createLogger('Relay');
     }
 
     final url = config.targetUrl;
     if (url == null || url.isEmpty) {
-      _chronicle?.info(
+      _logger?.info(
         'Relay disabled on web — no targetUrl configured. '
         'Set RelayConfig(targetUrl: "ws://localhost:8643/relay") '
         'to enable.',
@@ -100,7 +101,7 @@ class RelayPlatform {
 
     final ws = _ws;
     if (ws != null) {
-      _chronicle?.info(
+      _logger?.info(
         'Relay stopping (handled $_requestsHandled requests, '
         '$_campaignsExecuted campaigns)',
       );
@@ -110,7 +111,7 @@ class RelayPlatform {
 
     _config = null;
     _handler = null;
-    _chronicle = null;
+    _logger = null;
   }
 
   // -----------------------------------------------------------------------
@@ -126,7 +127,7 @@ class RelayPlatform {
       connectUrl = '$url${separator}token=$token';
     }
 
-    _chronicle?.info('Relay connecting to $url');
+    _logger?.info('Relay connecting to $url');
 
     try {
       final ws = web.WebSocket(connectUrl);
@@ -137,7 +138,7 @@ class RelayPlatform {
       ws.onopen = ((JSAny? event) {
         _startedAt = DateTime.now();
         _reconnectAttempts = 0;
-        _chronicle?.info('Relay connected to $url');
+        _logger?.info('Relay connected to $url');
 
         if (!openCompleter.isCompleted) {
           openCompleter.complete();
@@ -149,9 +150,7 @@ class RelayPlatform {
       }).toJS;
 
       ws.onclose = ((web.CloseEvent event) {
-        _chronicle?.info(
-          'Relay WebSocket closed: ${event.code} ${event.reason}',
-        );
+        _logger?.info('Relay WebSocket closed: ${event.code} ${event.reason}');
         _ws = null;
 
         if (!_stopping) {
@@ -164,7 +163,7 @@ class RelayPlatform {
       }).toJS;
 
       ws.onerror = ((JSAny? event) {
-        _chronicle?.warning('Relay WebSocket error');
+        _logger?.warning('Relay WebSocket error');
 
         if (!openCompleter.isCompleted) {
           openCompleter.complete(); // Don't block caller forever
@@ -175,11 +174,11 @@ class RelayPlatform {
       await openCompleter.future.timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          _chronicle?.warning('Relay connection timeout');
+          _logger?.warning('Relay connection timeout');
         },
       );
     } catch (e) {
-      _chronicle?.warning('Relay connection failed: $e');
+      _logger?.warning('Relay connection failed: $e');
       _ws = null;
 
       if (!_stopping) {
@@ -200,7 +199,7 @@ class RelayPlatform {
               .clamp(0, _maxReconnectDelay.inMilliseconds),
     );
 
-    _chronicle?.info(
+    _logger?.info(
       'Relay reconnecting in ${delay.inSeconds}s '
       '(attempt $_reconnectAttempts)',
     );
@@ -238,7 +237,7 @@ class RelayPlatform {
       final queryParams = uri?.queryParameters ?? const {};
 
       if (id == null) {
-        _chronicle?.warning('Relay received message without id');
+        _logger?.warning('Relay received message without id');
         return;
       }
 
@@ -247,7 +246,7 @@ class RelayPlatform {
       // Route the command asynchronously.
       unawaited(_handleCommand(id, method, path, body, queryParams));
     } catch (e) {
-      _chronicle?.warning('Relay message parse error: $e');
+      _logger?.warning('Relay message parse error: $e');
     }
   }
 
@@ -274,7 +273,7 @@ class RelayPlatform {
       );
       _sendResponse(id, 200, body: result);
     } catch (e, st) {
-      _chronicle?.warning('Relay command error ($method $path): $e');
+      _logger?.warning('Relay command error ($method $path): $e');
       _sendResponse(id, 500, error: '$e', stackTrace: st.toString());
     }
   }
@@ -430,6 +429,12 @@ class RelayPlatform {
         if (body == null) return {'error': 'Missing config'};
         return handler.configureEnvoy(body);
 
+      case ('GET', '/sentinel/records'):
+        return handler.getSentinelRecords();
+
+      case ('DELETE', '/sentinel/records'):
+        return handler.clearSentinelRecords();
+
       case ('POST', '/lens'):
         final visible = body?['visible'] as bool? ?? true;
         Lens.relayConnected.value = !visible;
@@ -465,7 +470,7 @@ class RelayPlatform {
     try {
       ws.send(jsonEncode(response).toJS);
     } catch (e) {
-      _chronicle?.warning('Relay send error: $e');
+      _logger?.warning('Relay send error: $e');
     }
   }
 }

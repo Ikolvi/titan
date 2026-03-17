@@ -146,16 +146,13 @@ void _benchScoutAnalyze() {
     const sessions = 100;
     final sw = Stopwatch()..start();
     for (var i = 0; i < sessions; i++) {
-      scout.analyzeSession(_session(
-        id: 's_$i',
-        routes: routes,
-        glyphsPerTableau: 8,
-      ));
+      scout.analyzeSession(
+        _session(id: 's_$i', routes: routes, glyphsPerTableau: 8),
+      );
     }
     sw.stop();
 
-    final perSession =
-        (sw.elapsedMicroseconds / sessions).toStringAsFixed(1);
+    final perSession = (sw.elapsedMicroseconds / sessions).toStringAsFixed(1);
     print(
       '│  $sessions sessions × $routeCount routes:  ${_ms(sw)}  '
       '($perSession µs/session, ${terrain.screenCount} outposts)',
@@ -179,11 +176,9 @@ void _benchTerrainSerialization() {
   final terrain = Terrain();
   final scout = Scout.withTerrain(terrain);
   for (var i = 0; i < 20; i++) {
-    scout.analyzeSession(_session(
-      id: 'ser_$i',
-      routes: _chainRoutes(25),
-      glyphsPerTableau: 6,
-    ));
+    scout.analyzeSession(
+      _session(id: 'ser_$i', routes: _chainRoutes(25), glyphsPerTableau: 6),
+    );
   }
   Scout.reset();
 
@@ -232,11 +227,9 @@ void _benchTerrainExport() {
   final terrain = Terrain();
   final scout = Scout.withTerrain(terrain);
   for (var i = 0; i < 10; i++) {
-    scout.analyzeSession(_session(
-      id: 'exp_$i',
-      routes: _chainRoutes(30),
-      glyphsPerTableau: 4,
-    ));
+    scout.analyzeSession(
+      _session(id: 'exp_$i', routes: _chainRoutes(30), glyphsPerTableau: 4),
+    );
   }
   Scout.reset();
 
@@ -282,11 +275,9 @@ void _benchTerrainQueries() {
   final scout = Scout.withTerrain(terrain);
   // Build a 50-screen graph with transitions
   for (var i = 0; i < 20; i++) {
-    scout.analyzeSession(_session(
-      id: 'q_$i',
-      routes: _chainRoutes(50),
-      glyphsPerTableau: 4,
-    ));
+    scout.analyzeSession(
+      _session(id: 'q_$i', routes: _chainRoutes(50), glyphsPerTableau: 4),
+    );
   }
   Scout.reset();
 
@@ -324,9 +315,7 @@ void _benchTerrainQueries() {
   }
   sw3.stop();
   final perRf = (sw3.elapsedMicroseconds / count).toStringAsFixed(1);
-  print(
-    '│  reachableFrom  ($count):  ${_ms(sw3)}  ($perRf µs/op)',
-  );
+  print('│  reachableFrom  ($count):  ${_ms(sw3)}  ($perRf µs/op)');
 
   // shortestPath
   final lastRoute = terrain.outposts.keys.last;
@@ -336,9 +325,7 @@ void _benchTerrainQueries() {
   }
   sw4.stop();
   final perSp = (sw4.elapsedMicroseconds / count).toStringAsFixed(1);
-  print(
-    '│  shortestPath   ($count):  ${_ms(sw4)}  ($perSp µs/op)',
-  );
+  print('│  shortestPath   ($count):  ${_ms(sw4)}  ($perSp µs/op)');
 
   print('└───────────────────────────────────────────────────────');
   print('');
@@ -366,16 +353,16 @@ void _benchTerrainAtScale() {
       final startIdx = batch * batchSize;
       final endIdx = (startIdx + batchSize).clamp(0, screenCount);
       // Use unique single-segment routes to avoid parameterizer collapsing
-      final routes = [
-        for (var i = startIdx; i < endIdx; i++) '/s${i}page',
-      ];
+      final routes = [for (var i = startIdx; i < endIdx; i++) '/s${i}page'];
       // Feed multiple sessions so transitions form
       for (var s = 0; s < 5; s++) {
-        scout.analyzeSession(_session(
-          id: 'scale_${batch}_$s',
-          routes: routes,
-          glyphsPerTableau: 4,
-        ));
+        scout.analyzeSession(
+          _session(
+            id: 'scale_${batch}_$s',
+            routes: routes,
+            glyphsPerTableau: 4,
+          ),
+        );
       }
     }
     buildSw.stop();
@@ -431,11 +418,9 @@ void _benchGauntletGenerate() {
   final terrain = Terrain();
   final scout = Scout.withTerrain(terrain);
   for (var i = 0; i < 10; i++) {
-    scout.analyzeSession(_session(
-      id: 'g_$i',
-      routes: _chainRoutes(15),
-      glyphsPerTableau: 8,
-    ));
+    scout.analyzeSession(
+      _session(id: 'g_$i', routes: _chainRoutes(15), glyphsPerTableau: 8),
+    );
   }
   Scout.reset();
 
@@ -445,16 +430,13 @@ void _benchGauntletGenerate() {
     var totalStratagems = 0;
     final sw = Stopwatch()..start();
     for (final outpost in outposts) {
-      final stratagems = Gauntlet.generateFor(
-        outpost,
-        intensity: intensity,
-      );
+      final stratagems = Gauntlet.generateFor(outpost, intensity: intensity);
       totalStratagems += stratagems.length;
     }
     sw.stop();
 
-    final perOutpost =
-        (sw.elapsedMicroseconds / outposts.length).toStringAsFixed(1);
+    final perOutpost = (sw.elapsedMicroseconds / outposts.length)
+        .toStringAsFixed(1);
     print(
       '│  ${intensity.name.padRight(9)} (${outposts.length} outposts):  '
       '${_ms(sw)}  ($perOutpost µs/outpost, $totalStratagems stratagems)',
@@ -476,11 +458,9 @@ void _benchStratagemSerialization() {
   final terrain = Terrain();
   final scout = Scout.withTerrain(terrain);
   for (var i = 0; i < 5; i++) {
-    scout.analyzeSession(_session(
-      id: 'ss_$i',
-      routes: _chainRoutes(10),
-      glyphsPerTableau: 6,
-    ));
+    scout.analyzeSession(
+      _session(id: 'ss_$i', routes: _chainRoutes(10), glyphsPerTableau: 6),
+    );
   }
   Scout.reset();
 
@@ -507,9 +487,8 @@ void _benchStratagemSerialization() {
   }
   sw1.stop();
 
-  final perTo =
-      (sw1.elapsedMicroseconds / (iterations * stratagems.length))
-          .toStringAsFixed(2);
+  final perTo = (sw1.elapsedMicroseconds / (iterations * stratagems.length))
+      .toStringAsFixed(2);
   print(
     '│  toJson()   ($iterations × ${stratagems.length}):  '
     '${_ms(sw1)}  ($perTo µs/stratagem)',
@@ -524,9 +503,8 @@ void _benchStratagemSerialization() {
   }
   sw2.stop();
 
-  final perFrom =
-      (sw2.elapsedMicroseconds / (iterations * jsons.length))
-          .toStringAsFixed(2);
+  final perFrom = (sw2.elapsedMicroseconds / (iterations * jsons.length))
+      .toStringAsFixed(2);
   print(
     '│  fromJson() ($iterations × ${jsons.length}):  '
     '${_ms(sw2)}  ($perFrom µs/stratagem)',
@@ -548,11 +526,13 @@ void _benchBlueprintExportConstruction() {
     final terrain = Terrain();
     final scout = Scout.withTerrain(terrain);
     for (var i = 0; i < 10; i++) {
-      scout.analyzeSession(_session(
-        id: 'bec_$i',
-        routes: _chainRoutes(routeCount),
-        glyphsPerTableau: 6,
-      ));
+      scout.analyzeSession(
+        _session(
+          id: 'bec_$i',
+          routes: _chainRoutes(routeCount),
+          glyphsPerTableau: 6,
+        ),
+      );
     }
 
     const iterations = 100;
@@ -562,8 +542,7 @@ void _benchBlueprintExportConstruction() {
     }
     sw.stop();
 
-    final perExport =
-        (sw.elapsedMicroseconds / iterations).toStringAsFixed(1);
+    final perExport = (sw.elapsedMicroseconds / iterations).toStringAsFixed(1);
     print(
       '│  $routeCount routes ($iterations):  ${_ms(sw)}  '
       '($perExport µs/export, ${terrain.screenCount} screens)',
@@ -587,11 +566,9 @@ void _benchBlueprintExportSerialization() {
   final terrain = Terrain();
   final scout = Scout.withTerrain(terrain);
   for (var i = 0; i < 10; i++) {
-    scout.analyzeSession(_session(
-      id: 'bes_$i',
-      routes: _chainRoutes(20),
-      glyphsPerTableau: 6,
-    ));
+    scout.analyzeSession(
+      _session(id: 'bes_$i', routes: _chainRoutes(20), glyphsPerTableau: 6),
+    );
   }
   final export = BlueprintExport.fromScout(scout: scout);
   Scout.reset();
@@ -670,9 +647,7 @@ void _benchTableauCreation() {
   }
   sw1.stop();
   final perTo = (sw1.elapsedMicroseconds / serCount).toStringAsFixed(2);
-  print(
-    '│  toMap()  ($serCount, 20 glyphs):  ${_ms(sw1)}  ($perTo µs/op)',
-  );
+  print('│  toMap()  ($serCount, 20 glyphs):  ${_ms(sw1)}  ($perTo µs/op)');
 
   final sw2 = Stopwatch()..start();
   for (var i = 0; i < serCount; i++) {
@@ -680,9 +655,7 @@ void _benchTableauCreation() {
   }
   sw2.stop();
   final perFrom = (sw2.elapsedMicroseconds / serCount).toStringAsFixed(2);
-  print(
-    '│  fromMap()($serCount, 20 glyphs):  ${_ms(sw2)}  ($perFrom µs/op)',
-  );
+  print('│  fromMap()($serCount, 20 glyphs):  ${_ms(sw2)}  ($perFrom µs/op)');
 
   print('└───────────────────────────────────────────────────────');
   print('');
@@ -756,11 +729,13 @@ void _benchFullPipeline() {
     // Phase 1: Feed sessions
     final feedSw = Stopwatch()..start();
     for (var i = 0; i < scenario.sessions; i++) {
-      scout.analyzeSession(_session(
-        id: 'pipe_$i',
-        routes: routes,
-        glyphsPerTableau: scenario.glyphs,
-      ));
+      scout.analyzeSession(
+        _session(
+          id: 'pipe_$i',
+          routes: routes,
+          glyphsPerTableau: scenario.glyphs,
+        ),
+      );
     }
     feedSw.stop();
 
@@ -768,9 +743,10 @@ void _benchFullPipeline() {
     final gauntletSw = Stopwatch()..start();
     var stratagemCount = 0;
     for (final outpost in terrain.outposts.values) {
-      stratagemCount +=
-          Gauntlet.generateFor(outpost, intensity: GauntletIntensity.standard)
-              .length;
+      stratagemCount += Gauntlet.generateFor(
+        outpost,
+        intensity: GauntletIntensity.standard,
+      ).length;
     }
     gauntletSw.stop();
 
@@ -783,14 +759,20 @@ void _benchFullPipeline() {
 
     totalSw.stop();
 
-    print('│  ${scenario.name.padRight(7)} '
-        '(${scenario.sessions}s × ${scenario.routes}r):');
-    print('│    Feed: ${_ms(feedSw)}  '
-        'Gauntlet: ${_ms(gauntletSw)} ($stratagemCount plans)  '
-        'Export: ${_ms(exportSw)}');
-    print('│    Total: ${_ms(totalSw)}  '
-        '(${terrain.screenCount} screens, '
-        '${terrain.transitionCount} transitions)');
+    print(
+      '│  ${scenario.name.padRight(7)} '
+      '(${scenario.sessions}s × ${scenario.routes}r):',
+    );
+    print(
+      '│    Feed: ${_ms(feedSw)}  '
+      'Gauntlet: ${_ms(gauntletSw)} ($stratagemCount plans)  '
+      'Export: ${_ms(exportSw)}',
+    );
+    print(
+      '│    Total: ${_ms(totalSw)}  '
+      '(${terrain.screenCount} screens, '
+      '${terrain.transitionCount} transitions)',
+    );
 
     Scout.reset();
   }

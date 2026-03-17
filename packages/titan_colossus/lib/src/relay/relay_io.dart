@@ -9,8 +9,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
-import 'package:titan/titan.dart';
 
+import '../bindings/colossus_bindings.dart';
+import '../bindings/colossus_logger.dart';
 import '../integration/lens.dart';
 import 'relay.dart';
 
@@ -19,7 +20,7 @@ class RelayPlatform {
   HttpServer? _server;
   RelayConfig? _config;
   RelayHandler? _handler;
-  Chronicle? _chronicle;
+  ColossusLogger? _logger;
   DateTime? _startedAt;
   int _requestsHandled = 0;
   int _campaignsExecuted = 0;
@@ -50,8 +51,8 @@ class RelayPlatform {
     _config = config;
     _handler = handler;
 
-    if (config.enableLogging) {
-      _chronicle = Chronicle('Relay');
+    if (config.enableLogging && ColossusBindings.isInstalled) {
+      _logger = ColossusBindings.instance.createLogger('Relay');
     }
 
     try {
@@ -60,16 +61,16 @@ class RelayPlatform {
       _requestsHandled = 0;
       _campaignsExecuted = 0;
 
-      _chronicle?.info('Relay started on ${config.host}:${config.port}');
+      _logger?.info('Relay started on ${config.host}:${config.port}');
 
       if (config.authToken != null) {
-        _chronicle?.info('Auth token: ${config.authToken}');
+        _logger?.info('Auth token: ${config.authToken}');
       }
 
       // Process requests without blocking the caller
       unawaited(_listen());
     } on SocketException catch (e) {
-      _chronicle?.warning('Relay failed to bind: $e');
+      _logger?.warning('Relay failed to bind: $e');
       _server = null;
       rethrow;
     }
@@ -80,7 +81,7 @@ class RelayPlatform {
     final server = _server;
     if (server == null) return;
 
-    _chronicle?.info(
+    _logger?.info(
       'Relay stopping (handled $_requestsHandled requests, '
       '$_campaignsExecuted campaigns)',
     );
@@ -89,7 +90,7 @@ class RelayPlatform {
     _server = null;
     _config = null;
     _handler = null;
-    _chronicle = null;
+    _logger = null;
   }
 
   // -----------------------------------------------------------------------
@@ -255,6 +256,12 @@ class RelayPlatform {
         case ('POST', '/envoy/configure'):
           await _handleConfigureEnvoy(request);
 
+        case ('GET', '/sentinel/records'):
+          _handleGetSentinelRecords(request);
+
+        case ('DELETE', '/sentinel/records'):
+          _handleClearSentinelRecords(request);
+
         case ('POST', '/lens'):
           await _handleSetLens(request);
 
@@ -266,7 +273,7 @@ class RelayPlatform {
           );
       }
     } catch (e, st) {
-      _chronicle?.warning('Request error: $e');
+      _logger?.warning('Request error: $e');
       try {
         _sendError(
           request.response,
@@ -334,7 +341,7 @@ class RelayPlatform {
       return;
     }
 
-    _chronicle?.info(
+    _logger?.info(
       'Executing campaign: ${body['name'] ?? 'unnamed'} '
       '(${(body['entries'] as List?)?.length ?? 0} entries)',
     );
@@ -346,7 +353,7 @@ class RelayPlatform {
 
       _campaignsExecuted++;
 
-      _chronicle?.info('Campaign complete');
+      _logger?.info('Campaign complete');
 
       _sendJson(request.response, result);
     } on TimeoutException {
@@ -1149,5 +1156,27 @@ class RelayPlatform {
     final visible = body?['visible'] as bool? ?? true;
     Lens.relayConnected.value = !visible;
     _sendJson(request.response, {'visible': visible, 'fabHidden': !visible});
+  }
+
+  // -----------------------------------------------------------------------
+  // Sentinel endpoints
+  // -----------------------------------------------------------------------
+
+  void _handleGetSentinelRecords(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(request.response, HttpStatus.serviceUnavailable, 'Not ready');
+      return;
+    }
+    _sendJson(request.response, handler.getSentinelRecords());
+  }
+
+  void _handleClearSentinelRecords(HttpRequest request) {
+    final handler = _handler;
+    if (handler == null) {
+      _sendError(request.response, HttpStatus.serviceUnavailable, 'Not ready');
+      return;
+    }
+    _sendJson(request.response, handler.clearSentinelRecords());
   }
 }

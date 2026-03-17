@@ -336,4 +336,4 @@ The Envoy rode out from the Forge, carrying Missives to every endpoint the Quest
 
 ---
 
-*Next: [Chapter LXII — The Envoy Returns](chapter-62-the-envoy-returns.md) — Advanced patterns: custom Couriers, streaming responses, progress tracking, and building your own cache adapters.*
+*Next: [Chapter LXII — The Silent Watch](chapter-62-the-silent-watch.md) — HTTP interception with Sentinel, DevTools integration, and the bridge that lets the toolsmiths see everything the Colossus sees.*

@@ -1550,4 +1550,14 @@ class _MockRelayHandler implements RelayHandler {
       'currentState': inspectEnvoy(),
     };
   }
+
+  @override
+  Map<String, dynamic> getSentinelRecords() {
+    return {'totalRecords': 0, 'records': <Map<String, dynamic>>[]};
+  }
+
+  @override
+  Map<String, dynamic> clearSentinelRecords() {
+    return {'cleared': 0};
+  }
 }

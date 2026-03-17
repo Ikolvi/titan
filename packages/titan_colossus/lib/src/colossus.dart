@@ -16,7 +16,12 @@ import 'package:titan_bastion/titan_bastion.dart';
 import 'package:titan_envoy/titan_envoy.dart';
 
 import 'alerts/tremor.dart';
+import 'bindings/colossus_bindings.dart';
+import 'bindings/colossus_error_reporter.dart';
+import 'bindings/colossus_logger.dart';
+import 'bindings/titan_bindings.dart';
 import 'framework_error.dart';
+import 'integration/devtools_bridge.dart';
 import 'integration/lens.dart';
 import 'export/inscribe.dart';
 import 'integration/blueprint_lens_tab.dart';
@@ -47,6 +52,7 @@ import 'discovery/lineage.dart';
 import 'discovery/scout.dart';
 import 'discovery/terrain.dart';
 import 'integration/colossus_atlas_observer.dart';
+import 'monitors/sentinel.dart';
 import 'relay/relay.dart';
 import 'widgets/shade_text_controller.dart';
 
@@ -163,7 +169,7 @@ class Colossus extends Pillar {
   /// Whether to register a Lens plugin tab.
   final bool _enableLensTab;
 
-  /// Whether to log performance events to Chronicle.
+  /// Whether to enable structured logging via [ColossusBindings].
   final bool _enableChronicle;
 
   /// Whether to auto-feed Shade sessions into Scout for Terrain building.
@@ -175,7 +181,7 @@ class Colossus extends Pillar {
 
   final Map<String, int> _rebuildsPerWidget = {};
   final DateTime _sessionStart = DateTime.now();
-  Chronicle? _chronicle;
+  ColossusLogger? _logger;
 
   /// History of fired [ColossusTremor] alerts (newest last).
   ///
@@ -433,7 +439,46 @@ class Colossus extends Pillar {
     if (_apiMetrics.length > _maxApiMetrics) {
       _apiMetrics.removeAt(0);
     }
+    if (DevToolsBridge.isInstalled) {
+      DevToolsBridge.postApiMetric(metric);
+      DevToolsBridge.timelineApiCall(
+        (metric['method'] as String?) ?? '',
+        (metric['url'] as String?) ?? '',
+        metric['statusCode'] as int?,
+        ((metric['durationMs'] as num?) ?? 0).toInt(),
+      );
+    }
     _evaluateTremors();
+  }
+
+  // -----------------------------------------------------------------------
+  // Sentinel — HTTP Interception
+  // -----------------------------------------------------------------------
+
+  /// Whether Sentinel HTTP interception is enabled.
+  bool _enableSentinel = false;
+
+  /// Full HTTP transaction records captured by Sentinel (newest last).
+  ///
+  /// Unlike [apiMetrics] which contains summary data, these records
+  /// include request/response headers and bodies — like Charles Proxy.
+  ///
+  /// ```dart
+  /// final records = Colossus.instance.sentinelRecords;
+  /// final failed = records.where((r) => !r.success);
+  /// ```
+  final List<SentinelRecord> _sentinelRecords = [];
+
+  /// All Sentinel records since initialization (newest last).
+  List<SentinelRecord> get sentinelRecords =>
+      List.unmodifiable(_sentinelRecords);
+
+  /// Whether Sentinel HTTP interception is active.
+  bool get isSentinelActive => Sentinel.isInstalled;
+
+  /// Clear all captured Sentinel records.
+  void clearSentinelRecords() {
+    _sentinelRecords.clear();
   }
 
   // -----------------------------------------------------------------------
@@ -591,7 +636,7 @@ class Colossus extends Pillar {
     _isPerfRecording = true;
     _perfRecordingStart = DateTime.now();
     perfRecordingStatus = '';
-    _chronicle?.info('Perf recording started');
+    _logger?.info('Perf recording started');
   }
 
   /// Stop the current performance recording session.
@@ -606,9 +651,7 @@ class Colossus extends Pillar {
     perfRecordingStatus =
         'Recorded ${duration.inSeconds}s — '
         'check Export tab for report';
-    _chronicle?.info(
-      'Perf recording stopped — ${duration.inSeconds}s captured',
-    );
+    _logger?.info('Perf recording stopped — ${duration.inSeconds}s captured');
   }
 
   /// The session persistence vault.
@@ -667,9 +710,24 @@ class Colossus extends Pillar {
     bool enableScreenCapture = false,
     double screenCapturePixelRatio = 0.5,
     bool autoLearnSessions = true,
+    bool enableSentinel = false,
+    SentinelConfig sentinelConfig = const SentinelConfig(),
+    bool enableDevTools = true,
+    ColossusBindings? bindings,
   }) {
     if (_instance != null) {
       return _instance!;
+    }
+
+    // Install bindings (TitanBindings by default for full ecosystem
+    // integration). Custom bindings allow standalone or third-party
+    // state management usage.
+    if (!ColossusBindings.isInstalled) {
+      if (bindings != null) {
+        ColossusBindings.install(bindings);
+      } else {
+        ColossusBindings.install(TitanBindings());
+      }
     }
 
     final colossus = Colossus._(
@@ -701,6 +759,27 @@ class Colossus extends Pillar {
 
     _instance = colossus;
     Titan.put(colossus);
+
+    // Configure Sentinel HTTP interception
+    colossus._enableSentinel = enableSentinel;
+    if (enableSentinel) {
+      Sentinel.install(
+        config: sentinelConfig,
+        onRecord: (record) {
+          colossus._sentinelRecords.add(record);
+          if (colossus._sentinelRecords.length > sentinelConfig.maxRecords) {
+            colossus._sentinelRecords.removeAt(0);
+          }
+          // Also feed summary into the API metrics pipeline
+          colossus.trackApiMetric(record.toMetricJson());
+        },
+      );
+    }
+
+    // Install DevTools bridge (registerExtension + postEvent + Timeline)
+    if (enableDevTools) {
+      DevToolsBridge.install(colossus);
+    }
 
     return colossus;
   }
@@ -734,8 +813,8 @@ class Colossus extends Pillar {
   @override
   void onInit() {
     if (_enableChronicle) {
-      _chronicle = Chronicle('Colossus');
-      _chronicle!.info('Colossus initialized — performance monitoring active');
+      _logger = ColossusBindings.instance.createLogger('Colossus');
+      _logger!.info('Colossus initialized — performance monitoring active');
     }
 
     // Start frame monitoring
@@ -830,6 +909,14 @@ class Colossus extends Pillar {
     // Stop Relay server
     relay.stop();
 
+    // Uninstall Sentinel
+    if (_enableSentinel) {
+      Sentinel.uninstall();
+    }
+
+    // Uninstall DevTools bridge
+    DevToolsBridge.uninstall();
+
     // Clean up auto-learn wiring
     if (_autoLearnSessions) {
       shade.onRecordingStopped = null;
@@ -842,7 +929,7 @@ class Colossus extends Pillar {
     FlutterError.onError = _previousErrorHandler;
     _previousErrorHandler = null;
 
-    _chronicle?.info('Colossus shut down');
+    _logger?.info('Colossus shut down');
     Spark.textControllerFactory = null;
     _instance = null;
   }
@@ -882,9 +969,12 @@ class Colossus extends Pillar {
   }
 
   void _onPageLoad(PageLoadMark mark) {
-    _chronicle?.info(
+    _logger?.info(
       'Page load: ${mark.path} in ${mark.duration.inMilliseconds}ms',
     );
+    if (DevToolsBridge.isInstalled) {
+      DevToolsBridge.timelinePageLoad(mark.path, mark.duration);
+    }
     _evaluateTremors();
   }
 
@@ -946,16 +1036,31 @@ class Colossus extends Pillar {
           _alertHistory.removeAt(0);
         }
 
-        // Emit via Herald
-        Herald.emit(event);
+        // Emit via event bus
+        ColossusBindings.instance.eventBus.emit(event);
 
-        // Log via Chronicle
-        _chronicle?.warning('Tremor: ${event.message}');
+        // Log via logger
+        _logger?.warning('Tremor: ${event.message}');
 
-        // Report via Vigil
-        Vigil.capture(
+        // Push to DevTools
+        if (DevToolsBridge.isInstalled) {
+          DevToolsBridge.postTremorAlert(
+            tremor.name,
+            tremor.category.name,
+            tremor.severity.name,
+            event.message,
+          );
+          DevToolsBridge.timelineTremor(
+            tremor.name,
+            event.message,
+            tremor.severity.name,
+          );
+        }
+
+        // Report via error reporter
+        ColossusBindings.instance.errorReporter.capture(
           'Performance alert: ${tremor.name}',
-          severity: _tremorToVigilSeverity(tremor.severity),
+          severity: _tremorToErrorSeverity(tremor.severity),
         );
       }
     }
@@ -982,11 +1087,11 @@ class Colossus extends Pillar {
     };
   }
 
-  ErrorSeverity _tremorToVigilSeverity(TremorSeverity severity) {
+  ColossusErrorSeverity _tremorToErrorSeverity(TremorSeverity severity) {
     return switch (severity) {
-      TremorSeverity.info => ErrorSeverity.info,
-      TremorSeverity.warning => ErrorSeverity.warning,
-      TremorSeverity.error => ErrorSeverity.error,
+      TremorSeverity.info => ColossusErrorSeverity.info,
+      TremorSeverity.warning => ColossusErrorSeverity.warning,
+      TremorSeverity.error => ColossusErrorSeverity.error,
     };
   }
 
@@ -1034,8 +1139,13 @@ class Colossus extends Pillar {
       _frameworkErrors.removeAt(0);
     }
 
-    // Log via Chronicle
-    _chronicle?.warning('Framework ${error.category.name}: $truncated');
+    // Log via logger
+    _logger?.warning('Framework ${error.category.name}: $truncated');
+
+    // Push to DevTools
+    if (DevToolsBridge.isInstalled) {
+      DevToolsBridge.postFrameworkError(error.category.name, truncated);
+    }
 
     // Forward to previous handler (preserves default behavior)
     _previousErrorHandler?.call(details);
@@ -1076,7 +1186,7 @@ class Colossus extends Pillar {
     for (final tremor in _tremors) {
       tremor.reset();
     }
-    _chronicle?.info('Colossus metrics reset');
+    _logger?.info('Colossus metrics reset');
   }
 
   // -----------------------------------------------------------------------
@@ -1133,13 +1243,11 @@ class Colossus extends Pillar {
   /// ```
   Future<String?> saveSession(ShadeSession session) async {
     if (_vault == null) {
-      _chronicle?.warning(
-        'Cannot save session — shadeStoragePath not configured',
-      );
+      _logger?.warning('Cannot save session — shadeStoragePath not configured');
       return null;
     }
     final path = await _vault!.save(session);
-    _chronicle?.info('Session saved: ${session.name} → $path');
+    _logger?.info('Session saved: ${session.name} → $path');
     return path;
   }
 
@@ -1170,7 +1278,7 @@ class Colossus extends Pillar {
     double speed = 1.0,
   }) async {
     if (_vault == null) {
-      _chronicle?.warning(
+      _logger?.warning(
         'Cannot set auto-replay — shadeStoragePath not configured',
       );
       return;
@@ -1180,7 +1288,7 @@ class Colossus extends Pillar {
       sessionId: sessionId,
       speed: speed,
     );
-    _chronicle?.info(
+    _logger?.info(
       'Auto-replay ${enabled ? 'enabled' : 'disabled'}'
       '${sessionId != null ? ' for session $sessionId' : ''}',
     );
@@ -1210,7 +1318,7 @@ class Colossus extends Pillar {
 
     final session = await _vault!.load(config.sessionId!);
     if (session == null) {
-      _chronicle?.warning('Auto-replay session not found: ${config.sessionId}');
+      _logger?.warning('Auto-replay session not found: ${config.sessionId}');
       return null;
     }
 
@@ -1229,7 +1337,7 @@ class Colossus extends Pillar {
             'Auto-replay blocked: session was recorded on '
             '"${session.startRoute}" but app restarted on '
             '"$currentRoute"';
-        _chronicle?.warning(message);
+        _logger?.warning(message);
 
         // Open Lens so the user sees the warning
         Lens.show();
@@ -1238,7 +1346,7 @@ class Colossus extends Pillar {
       }
     }
 
-    _chronicle?.info(
+    _logger?.info(
       'Auto-replay starting: ${session.name} at ${config.speed}x speed',
     );
 
@@ -1282,7 +1390,7 @@ class Colossus extends Pillar {
         final message =
             'Route mismatch: session was recorded on '
             '"${session.startRoute}" but app is on "$currentRoute"';
-        _chronicle?.warning(message);
+        _logger?.warning(message);
         if (requireMatchingRoute) {
           throw StateError(message);
         }
@@ -1303,7 +1411,7 @@ class Colossus extends Pillar {
       onProgress: onProgress,
     );
 
-    _chronicle?.info(
+    _logger?.info(
       'Phantom replay starting: ${session.name} '
       '(${session.eventCount} events, '
       '${session.duration.inMilliseconds}ms)',
@@ -1312,13 +1420,13 @@ class Colossus extends Pillar {
     final result = await phantom.replay(session);
 
     if (result.routeChanged) {
-      _chronicle?.warning(
+      _logger?.warning(
         'Phantom replay stopped — route changed to '
         '"${result.invalidRoute}" '
         '(${result.eventsDispatched}/${result.totalEvents} events)',
       );
     } else {
-      _chronicle?.info(
+      _logger?.info(
         'Phantom replay ${result.wasCancelled ? 'cancelled' : 'complete'}: '
         '${result.eventsDispatched}/${result.totalEvents} events dispatched '
         'in ${result.actualDuration.inMilliseconds}ms',
@@ -1349,7 +1457,7 @@ class Colossus extends Pillar {
     void Function(VerdictStep)? onStepComplete,
     WidgetTester? tester,
   }) async {
-    _chronicle?.info(
+    _logger?.info(
       'Executing Stratagem: ${stratagem.name} '
       '(${stratagem.steps.length} steps)',
     );
@@ -1364,7 +1472,7 @@ class Colossus extends Pillar {
 
     final verdict = await runner.execute(stratagem);
 
-    _chronicle?.info(
+    _logger?.info(
       'Stratagem ${stratagem.name} '
       '${verdict.passed ? "PASSED" : "FAILED"}: '
       '${verdict.summary.oneLiner}',
@@ -1438,7 +1546,7 @@ class Colossus extends Pillar {
             .toList()
           ..sort((a, b) => a.path.compareTo(b.path));
 
-    _chronicle?.info(
+    _logger?.info(
       'Running Stratagem suite: ${files.length} files in $directory',
     );
 
@@ -1451,7 +1559,7 @@ class Colossus extends Pillar {
       verdicts.add(verdict);
 
       if (stopOnFirstFailure && !verdict.passed) {
-        _chronicle?.warning(
+        _logger?.warning(
           'Stratagem suite stopped: ${verdict.stratagemName} failed',
         );
         break;
@@ -1507,9 +1615,7 @@ class Colossus extends Pillar {
   Future<void> saveVerdict(Verdict verdict, {String? directory}) async {
     final dir = directory ?? 'verdicts';
     await verdict.saveToFile(dir);
-    _chronicle?.info(
-      'Verdict saved: $dir/${verdict.stratagemName}.verdict.json',
-    );
+    _logger?.info('Verdict saved: $dir/${verdict.stratagemName}.verdict.json');
   }
 
   /// Load a previously saved [Verdict] from disk.
@@ -1564,12 +1670,12 @@ class Colossus extends Pillar {
   /// print(Colossus.instance.terrain.outposts.length);
   /// ```
   void learnFromSession(ShadeSession session) {
-    _chronicle?.info(
+    _logger?.info(
       'Learning from session: ${session.name} '
       '(${session.tableaux.length} tableaux)',
     );
     Scout.instance.analyzeSession(session);
-    _chronicle?.info(
+    _logger?.info(
       'Terrain updated: ${terrain.outposts.length} screens, '
       '${terrain.marches.length} transitions',
     );
@@ -1594,7 +1700,7 @@ class Colossus extends Pillar {
   /// ```
   List<Stratagem> generateSorties() {
     final sorties = Scout.instance.generateAllSorties();
-    _chronicle?.info('Generated ${sorties.length} exploration sorties');
+    _logger?.info('Generated ${sorties.length} exploration sorties');
     return sorties;
   }
 
@@ -1641,7 +1747,7 @@ class Colossus extends Pillar {
   }) {
     final outpost = terrain.outposts[routePattern];
     if (outpost == null) {
-      _chronicle?.warning('Gauntlet: no outpost found for "$routePattern"');
+      _logger?.warning('Gauntlet: no outpost found for "$routePattern"');
       return [];
     }
 
@@ -1652,7 +1758,7 @@ class Colossus extends Pillar {
       intensity: intensity,
     );
 
-    _chronicle?.info(
+    _logger?.info(
       'Generated ${stratagems.length} Gauntlet tests for "$routePattern" '
       '(intensity: ${intensity.name})',
     );
@@ -1679,7 +1785,7 @@ class Colossus extends Pillar {
     Future<void> Function(String route)? navigateToRoute,
     WidgetTester? tester,
   }) async {
-    _chronicle?.info(
+    _logger?.info(
       'Executing Campaign: ${campaign.name} '
       '(${campaign.entries.length} entries)',
     );
@@ -1695,7 +1801,7 @@ class Colossus extends Pillar {
 
     final result = await campaign.execute(runner: runner, terrain: terrain);
 
-    _chronicle?.info(
+    _logger?.info(
       'Campaign ${campaign.name} complete: '
       '${result.totalExecuted} executed, '
       '${result.totalFailed} failed '
@@ -1752,11 +1858,11 @@ class Colossus extends Pillar {
   /// print(report.toAiSummary());
   /// ```
   DebriefReport debrief(List<Verdict> verdicts) {
-    _chronicle?.info('Debriefing ${verdicts.length} verdicts');
+    _logger?.info('Debriefing ${verdicts.length} verdicts');
 
     final report = Debrief(verdicts: verdicts, terrain: terrain).analyze();
 
-    _chronicle?.info(
+    _logger?.info(
       'Debrief complete: ${report.passedVerdicts}/${report.totalVerdicts} '
       'passed, ${report.insights.length} insights',
     );
@@ -2814,5 +2920,19 @@ class _ColossusRelayHandler implements RelayHandler {
       'CookieCourier' => CookieCourier(),
       _ => null,
     };
+  }
+
+  @override
+  Map<String, dynamic> getSentinelRecords() => {
+    'active': _colossus.isSentinelActive,
+    'totalRecords': _colossus.sentinelRecords.length,
+    'records': _colossus.sentinelRecords.map((r) => r.toDetailJson()).toList(),
+  };
+
+  @override
+  Map<String, dynamic> clearSentinelRecords() {
+    final count = _colossus.sentinelRecords.length;
+    _colossus.clearSentinelRecords();
+    return {'success': true, 'recordsCleared': count};
   }
 }

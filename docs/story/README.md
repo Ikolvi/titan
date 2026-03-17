@@ -71,6 +71,7 @@
 | [LV](chapter-55-the-gauntlet-awaits.md) | **The Gauntlet Awaits** | `Gauntlet`, `Campaign`, `Stratagem`, `Verdict`, `Debrief`, edge-case generation, auto-test orchestration |
 | [LVI](chapter-56-the-bridge-extends.md) | **The Bridge Extends** | `BlueprintExport`, `BlueprintExportIO`, MCP server, `blueprint.json`, AI-ready data export |
 | [LVII](chapter-57-the-relay-speaks.md) | **The Relay Speaks** | `Relay`, `RelayConfig`, `RelayStatus`, `RelayHandler`, HTTP bridge, `execute_campaign`, cross-platform AI-driven automation |
+| [LXII](chapter-62-the-silent-watch.md) | **The Silent Watch** | `Sentinel`, `SentinelRecord`, `SentinelConfig`, `DevToolsBridge`, HTTP interception, service extensions, timeline annotations, event streaming |
 
 ---
 

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:titan_atlas/titan_atlas.dart';
@@ -11,6 +13,7 @@ import 'integration/colossus_basalt.dart';
 import 'integration/colossus_bastion.dart';
 import 'integration/colossus_envoy.dart';
 import 'integration/lens.dart';
+import 'monitors/sentinel.dart';
 import 'relay/relay.dart';
 import 'widgets/shade_listener.dart';
 import 'alerts/tremor.dart';
@@ -281,6 +284,25 @@ class ColossusPlugin extends TitanPlugin {
   /// lifecycle tracking, state mutation heat maps, and effect errors.
   final bool autoBastionMetrics;
 
+  /// Whether to enable Sentinel HTTP interception.
+  ///
+  /// When `true`, installs `HttpOverrides` to capture all HTTP
+  /// traffic — like Charles Proxy built into the app. Works with
+  /// any HTTP client (package:http, dio, Envoy, raw HttpClient).
+  ///
+  /// Native platforms only (`dart:io`). No-op on web.
+  final bool enableSentinel;
+
+  /// Configuration for Sentinel HTTP interception.
+  final SentinelConfig sentinelConfig;
+
+  /// Whether to install the DevTools bridge.
+  ///
+  /// Registers VM service extensions (`ext.colossus.*`) that
+  /// DevTools extension tabs can query, and pushes events to
+  /// the DevTools Performance timeline and Extension stream.
+  final bool enableDevTools;
+
   /// Creates a ColossusPlugin with the given configuration.
   ///
   /// All parameters mirror [Colossus.init] options. The plugin
@@ -308,6 +330,9 @@ class ColossusPlugin extends TitanPlugin {
     this.autoEnvoyMetrics = true,
     this.autoArgusMetrics = true,
     this.autoBastionMetrics = true,
+    this.enableSentinel = false,
+    this.sentinelConfig = const SentinelConfig(),
+    this.enableDevTools = true,
   });
 
   @override
@@ -324,6 +349,9 @@ class ColossusPlugin extends TitanPlugin {
       exportDirectory: exportDirectory,
       enableTableauCapture: enableTableauCapture,
       autoLearnSessions: autoLearnSessions,
+      enableSentinel: enableSentinel,
+      sentinelConfig: sentinelConfig,
+      enableDevTools: enableDevTools,
     );
 
     final instance = Colossus.instance;
@@ -356,8 +384,16 @@ class ColossusPlugin extends TitanPlugin {
     // Start Relay HTTP server for AI-driven campaign execution.
     // Scheduled post-frame so Colossus is fully initialized first.
     if (enableRelay) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        instance.startRelay(config: relayConfig);
+      SchedulerBinding.instance.addPostFrameCallback((_) async {
+        try {
+          await instance.startRelay(config: relayConfig);
+        } on SocketException catch (e) {
+          // Port already in use — previous instance or hot restart.
+          // Log and continue; the app runs fine without Relay.
+          debugPrint(
+            '[Colossus] Relay failed to bind port ${relayConfig.port}: $e',
+          );
+        }
       });
     }
 

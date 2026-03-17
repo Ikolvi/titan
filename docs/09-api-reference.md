@@ -1209,6 +1209,121 @@ TextField(controller: controller)
 
 During replay, Phantom injects text directly via `setValueSilently()`, bypassing the keyboard.
 
+### Sentinel
+
+Silent HTTP interception via `HttpOverrides`. Captures all `dart:io` HTTP traffic.
+
+```dart
+class Sentinel
+```
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `Sentinel.install({config, onRecord, chainPreviousOverrides})` | `void` | Install HTTP interception globally |
+| `Sentinel.uninstall()` | `void` | Restore previous `HttpOverrides` |
+| `Sentinel.isInstalled` | `bool` | Whether Sentinel is currently active |
+| `Sentinel.createClient([SecurityContext?])` | `HttpClient?` | Create a Sentinel-wrapped client (for test zones) |
+
+### SentinelRecord
+
+Immutable record of a complete HTTP transaction captured by Sentinel.
+
+```dart
+class SentinelRecord
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `String` | Unique request ID |
+| `method` | `String` | HTTP method (GET, POST, etc.) |
+| `url` | `Uri` | Full request URL |
+| `timestamp` | `DateTime` | When the request was initiated |
+| `duration` | `Duration` | Total round-trip time |
+| `statusCode` | `int?` | Response status code (null on connection failure) |
+| `requestHeaders` | `Map<String, List<String>>` | Request headers |
+| `requestBody` | `List<int>?` | Request body bytes (capped at `maxBodyCapture`) |
+| `requestSize` | `int` | Actual request body size |
+| `requestContentType` | `String?` | Detected content type |
+| `responseHeaders` | `Map<String, List<String>>?` | Response headers |
+| `responseBody` | `List<int>?` | Response body bytes (capped at `maxBodyCapture`) |
+| `responseSize` | `int?` | Actual response body size |
+| `responseContentType` | `String?` | Detected content type |
+| `success` | `bool` | Whether status is 2xx |
+| `error` | `String?` | Error message on failure |
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `toMetricJson()` | `Map<String, dynamic>` | Compact format for Colossus API metrics |
+| `toDetailJson()` | `Map<String, dynamic>` | Full record with headers and bodies |
+
+### SentinelConfig
+
+Configuration for Sentinel HTTP interception.
+
+```dart
+class SentinelConfig
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `maxBodyCapture` | `int` | `65536` | Max bytes per body |
+| `excludePatterns` | `List<String>` | `[]` | URL regex patterns to skip |
+| `includePatterns` | `List<String>?` | `null` | If set, only matching URLs are captured |
+| `captureRequestBody` | `bool` | `true` | Capture request bodies |
+| `captureResponseBody` | `bool` | `true` | Capture response bodies |
+| `captureHeaders` | `bool` | `true` | Capture headers |
+| `maxRecords` | `int` | `500` | Ring buffer size |
+
+### DevToolsBridge
+
+Connects Colossus to Flutter DevTools via `dart:developer`.
+
+```dart
+class DevToolsBridge
+```
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `DevToolsBridge.install(colossus)` | `void` | Register 8 service extensions |
+| `DevToolsBridge.uninstall()` | `void` | Clear Colossus reference |
+| `DevToolsBridge.isInstalled` | `bool` | Whether bridge is active |
+
+#### Timeline Methods
+
+| Method | Description |
+|--------|-------------|
+| `timelinePageLoad(route, duration)` | Record page load in Performance timeline |
+| `timelineTremor(name, message, severity)` | Record Tremor alert in timeline |
+| `timelineApiCall(method, url, statusCode, durationMs)` | Record API call in timeline |
+
+#### Event Streaming Methods
+
+| Method | Description |
+|--------|-------------|
+| `postTremorAlert(name, category, severity, message)` | Push `colossus:alert` event |
+| `postApiMetric(metric)` | Push `colossus:api` event |
+| `postRouteChange(from, to, action)` | Push `colossus:route` event |
+| `postFrameworkError(category, message)` | Push `colossus:frameworkError` event |
+
+#### Logging
+
+| Method | Description |
+|--------|-------------|
+| `log(message, {level, error})` | Write to DevTools Logging tab via `developer.log` |
+
+#### Service Extensions
+
+| Extension Name | Data Returned |
+|---------------|---------------|
+| `ext.colossus.getPerformance` | Full Decree report |
+| `ext.colossus.getApiMetrics` | API call metrics |
+| `ext.colossus.getSentinelRecords` | HTTP records with full detail |
+| `ext.colossus.getTerrain` | Navigation graph |
+| `ext.colossus.getMemorySnapshot` | Memory state |
+| `ext.colossus.getAlerts` | Tremor alert history |
+| `ext.colossus.getFrameworkErrors` | Framework errors |
+| `ext.colossus.getEvents` | Integration events (optional source filter) |
+
 ---
 
 ## Form Management (package:titan)

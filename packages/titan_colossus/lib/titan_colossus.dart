@@ -33,6 +33,15 @@
 /// - **Lens Integration**: Auto-registered "Perf" and "Shade" tabs in the Lens overlay
 library;
 
+// Bindings — Framework-agnostic abstraction layer
+export 'src/bindings/colossus_bindings.dart';
+export 'src/bindings/colossus_error_reporter.dart';
+export 'src/bindings/colossus_event_bus.dart';
+export 'src/bindings/colossus_logger.dart';
+export 'src/bindings/colossus_reactive_value.dart';
+export 'src/bindings/colossus_service_locator.dart';
+export 'src/bindings/titan_bindings.dart';
+
 // Metrics
 export 'src/metrics/mark.dart';
 export 'src/metrics/decree.dart';
@@ -43,6 +52,7 @@ export 'src/framework_error.dart';
 
 // Monitors
 export 'src/monitors/pulse.dart';
+export 'src/monitors/sentinel.dart';
 export 'src/monitors/stride.dart';
 export 'src/monitors/vessel.dart';
 
@@ -99,6 +109,7 @@ export 'src/mcp/mcp_ws_client.dart';
 // Integrations
 export 'src/integration/blueprint_lens_tab.dart';
 export 'src/integration/bridge_lens_tab.dart';
+export 'src/integration/devtools_bridge.dart';
 export 'src/integration/envoy_lens_tab.dart';
 export 'src/integration/argus_lens_tab.dart';
 export 'src/integration/colossus_argus.dart';

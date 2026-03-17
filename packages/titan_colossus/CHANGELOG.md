@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.0.8] - 2026-03-17
+
+### Added
+
+#### Sentinel — Silent HTTP Interception
+- **Sentinel** — `HttpOverrides`-based HTTP interception that captures all `dart:io` HTTP traffic (works with `package:http`, Dio, Envoy, raw `HttpClient`). Like Charles Proxy, built into the app. Install with `Colossus.init(enableSentinel: true)`.
+- **SentinelRecord** — Immutable HTTP transaction record with method, URL, headers, request/response bodies, timing, status code, and outcome. Supports `toMetricJson()` (compact) and `toDetailJson()` (full) serialization.
+- **SentinelConfig** — Configuration for URL filtering (`excludePatterns`, `includePatterns`), body capture limits (`maxBodyCapture`, `captureRequestBody`, `captureResponseBody`), header capture, and record retention (`maxRecords`).
+- **Sentinel.install() / uninstall()** — One-call install/teardown. Chains previous `HttpOverrides` by default for compatibility.
+- **Sentinel.createClient()** — Factory for creating intercepted `HttpClient` instances directly, bypassing zone-scoped overrides (useful in Flutter test environments).
+- **chainPreviousOverrides** — Parameter to skip chaining previous `HttpOverrides` in test environments where mock overrides block network access.
+- **Colossus integration** — Sentinel records auto-feed into `trackApiMetric()`, Tremor evaluation, Relay endpoints, and Lens overlay.
+- **Relay endpoints** — `GET /sentinel/records` and `DELETE /sentinel/records` for querying/clearing HTTP records from MCP servers.
+
+#### DevToolsBridge — Flutter DevTools Integration
+- **DevToolsBridge** — Connects Colossus to Flutter DevTools via three integration layers. Installed automatically by `Colossus.init(enableDevTools: true)` (default in debug mode).
+- **Service extensions** — 8 queryable `ext.colossus.*` endpoints: `getPerformance`, `getApiMetrics`, `getSentinelRecords`, `getTerrain`, `getMemorySnapshot`, `getAlerts`, `getFrameworkErrors`, `getEvents` (with optional source filter).
+- **Timeline annotations** — `timelinePageLoad()`, `timelineTremor()`, `timelineApiCall()` feed named spans into the DevTools Performance timeline for correlation with frame timing.
+- **Event streaming** — `postTremorAlert()`, `postApiMetric()`, `postRouteChange()`, `postFrameworkError()` push real-time events via `dart:developer` `postEvent` for live dashboards without polling.
+- **Structured logging** — `DevToolsBridge.log()` writes to the standard DevTools Logging tab (visible without custom extensions).
+
+### Performance
+- **Sentinel overhead** — SentinelRecord creation: 0.34 µs/record. URL filtering: 0.08 µs/url. Body buffering (30B): 0.18 µs. Install/uninstall: 0.01 µs/cycle. All sub-microsecond on hot path.
+- **DevToolsBridge overhead** — Timeline annotation: 0.86 µs/call. Event posting: 0.64 µs/call. Logging: 0.19 µs/call.
+
 ## [2.0.7] - 2026-03-17
 
 ### Added

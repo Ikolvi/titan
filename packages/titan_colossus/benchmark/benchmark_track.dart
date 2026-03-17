@@ -45,6 +45,7 @@ void main() {
     _runOverheadBenchmarks();
     _runBlueprintBenchmarks();
     _runScryBenchmarks();
+    _runSentinelBenchmarks();
     _isWarmup = false;
     _results.clear();
     warmupSw.stop();
@@ -63,6 +64,7 @@ void main() {
       _runOverheadBenchmarks();
       _runBlueprintBenchmarks();
       _runScryBenchmarks();
+      _runSentinelBenchmarks();
       for (final entry in _results.entries) {
         allSamples.putIfAbsent(entry.key, () => []).add(entry.value);
       }
@@ -1381,6 +1383,211 @@ ShadeSession _blueprintSession({
           ],
         ),
     ],
+  );
+}
+
+// =============================================================================
+// Sentinel Benchmarks (43–50)
+// =============================================================================
+
+void _runSentinelBenchmarks() {
+  // 43. SentinelRecord creation
+  {
+    const count = 1000000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      SentinelRecord(
+        id: 'sentinel-$i',
+        method: 'GET',
+        url: Uri.parse('https://api.questboard.io/quests/$i'),
+        timestamp: DateTime.now(),
+        duration: Duration(milliseconds: 100 + (i % 200)),
+        statusCode: 200,
+        success: true,
+      );
+    }
+    sw.stop();
+    _record(
+      'SentinelRecord Creation (1M)',
+      sw.elapsedMicroseconds / count,
+      'µs/record',
+      'sentinel',
+    );
+  }
+
+  // 44. SentinelRecord toMetricJson
+  {
+    final record = _makeSentinelRecord();
+    const count = 100000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      record.toMetricJson();
+    }
+    sw.stop();
+    _record(
+      'SentinelRecord toMetricJson (100K)',
+      sw.elapsedMicroseconds / count,
+      'µs/op',
+      'sentinel',
+    );
+  }
+
+  // 45. SentinelRecord toDetailJson (with bodies)
+  {
+    final record = _makeSentinelRecord(withBodies: true);
+    const count = 100000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      record.toDetailJson();
+    }
+    sw.stop();
+    _record(
+      'SentinelRecord toDetailJson (100K)',
+      sw.elapsedMicroseconds / count,
+      'µs/op',
+      'sentinel',
+    );
+  }
+
+  // 46. URL filter — exclude patterns (4 regexes × 5 URLs)
+  {
+    final excludeRegexes = [
+      RegExp(r'localhost:864\d'),
+      RegExp(r'/health$'),
+      RegExp(r'/ping$'),
+      RegExp(r'analytics\.questboard\.io'),
+    ];
+    final urls = [
+      Uri.parse('https://api.questboard.io/quests'),
+      Uri.parse('https://api.questboard.io/heroes/7'),
+      Uri.parse('http://localhost:8642/health'),
+      Uri.parse('https://analytics.questboard.io/event'),
+      Uri.parse('https://api.questboard.io/quests/42/comments'),
+    ];
+    const iterations = 1000000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      final urlStr = urls[i % urls.length].toString();
+      for (final regex in excludeRegexes) {
+        if (regex.hasMatch(urlStr)) break;
+      }
+    }
+    sw.stop();
+    _record(
+      'URL Filter Exclude (1M × 4 patterns)',
+      sw.elapsedMicroseconds / iterations,
+      'µs/url',
+      'sentinel',
+    );
+  }
+
+  // 47. Install/uninstall cycle
+  {
+    const count = 10000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      Sentinel.install(onRecord: (_) {}, chainPreviousOverrides: false);
+      Sentinel.uninstall();
+    }
+    sw.stop();
+    _record(
+      'Sentinel Install/Uninstall (10K)',
+      sw.elapsedMicroseconds / count,
+      'µs/cycle',
+      'sentinel',
+    );
+  }
+
+  // 48. Record callback + list management (cap=500)
+  {
+    final records = <SentinelRecord>[];
+    const maxRecords = 500;
+    final record = _makeSentinelRecord();
+    const iterations = 100000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      records.add(record);
+      while (records.length > maxRecords) {
+        records.removeAt(0);
+      }
+    }
+    sw.stop();
+    _record(
+      'Record Dispatch (100K, cap=500)',
+      sw.elapsedMicroseconds / iterations,
+      'µs/dispatch',
+      'sentinel',
+    );
+  }
+
+  // 49. Body buffering — small payloads (30 bytes)
+  {
+    final payload = utf8.encode('{"title":"Quest","reward":100}');
+    const maxCapture = 64 * 1024;
+    const iterations = 100000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < iterations; i++) {
+      final buffer = <int>[];
+      final remaining = maxCapture - buffer.length;
+      buffer.addAll(
+        payload.length <= remaining ? payload : payload.sublist(0, remaining),
+      );
+    }
+    sw.stop();
+    _record(
+      'Body Buffer Small (100K × 30B)',
+      sw.elapsedMicroseconds / iterations,
+      'µs/buffer',
+      'sentinel',
+    );
+  }
+
+  // 50. DevToolsBridge.timelinePageLoad
+  {
+    const count = 100000;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      DevToolsBridge.timelinePageLoad(
+        '/quests/$i',
+        Duration(milliseconds: 100 + (i % 300)),
+      );
+    }
+    sw.stop();
+    _record(
+      'DevToolsBridge timelinePageLoad (100K)',
+      sw.elapsedMicroseconds / count,
+      'µs/call',
+      'sentinel',
+    );
+  }
+}
+
+SentinelRecord _makeSentinelRecord({bool withBodies = false}) {
+  return SentinelRecord(
+    id: 'sentinel-42',
+    method: 'GET',
+    url: Uri.parse('https://api.questboard.io/quests/42'),
+    timestamp: DateTime(2025, 1, 15, 12, 0, 0),
+    duration: const Duration(milliseconds: 142),
+    requestHeaders: const {
+      'accept': ['application/json'],
+      'authorization': ['Bearer eyJ...'],
+    },
+    requestBody: withBodies
+        ? utf8.encode('{"title":"Shadow Wyrm Quest","reward":500}')
+        : null,
+    requestSize: withBodies ? 42 : 0,
+    requestContentType: 'application/json',
+    statusCode: 200,
+    responseHeaders: const {
+      'content-type': ['application/json; charset=utf-8'],
+    },
+    responseBody: withBodies
+        ? utf8.encode('{"id":42,"title":"Shadow Wyrm Quest","status":"active"}')
+        : null,
+    responseSize: withBodies ? 55 : 1024,
+    responseContentType: 'application/json',
+    success: true,
   );
 }
 
