@@ -40,6 +40,8 @@ Colossus — named after the Colossus of Rhodes, a representation of the Titan H
 | Screen Observation | **Scry** | AI agent interface with 18 intelligence capabilities |
 | Screen Snapshots | **Tableau** | Element tree snapshot with interactive widget detection |
 | Element Capture | **Glyph** | UI element abstraction with label, bounds, and interaction type |
+| HTTP Interception | **Sentinel** | Charles Proxy-like HTTP traffic capture built into the app |
+| DevTools Bridge | **DevToolsBridge** | Expose Colossus data to Flutter DevTools via `dart:developer` |
 
 ## Quick Start
 
@@ -62,6 +64,11 @@ void main() {
       plugins: [
         if (kDebugMode) ColossusPlugin(
           tremors: [Tremor.fps(), Tremor.leaks()],
+          // HTTP Interception — capture all network traffic
+          enableSentinel: true,
+          sentinelConfig: const SentinelConfig(
+            excludePatterns: [r'localhost:864\d'], // Skip Relay traffic
+          ),
           // AI Blueprint Generation — all enabled by default
           enableTableauCapture: true,   // Shade records screen metadata
           autoLearnSessions: true,      // Shade → Scout auto-feed
@@ -104,6 +111,142 @@ void main() {
 ```
 
 That's it. Colossus auto-registers its Lens tab and begins monitoring.
+
+### Usage without Titan state management
+
+Colossus works with **any** Flutter architecture — Bloc, Riverpod, Provider, GetX, or vanilla `setState`. You don't need to use Titan's `Pillar`, `Core`, `Vestige`, or `Beacon` for your app's business logic. Colossus manages its own state internally.
+
+#### ColossusBindings — the abstraction layer
+
+Colossus uses a **bindings system** that decouples its internals from Titan. By default, `TitanBindings` is installed (for Chronicle logging, Herald events, Vigil errors, and Titan DI). For non-Titan apps, call `installDefaults()` to use lightweight standalone implementations:
+
+| Binding | TitanBindings (default) | installDefaults() |
+|---------|------------------------|-------------------|
+| Logger | Chronicle | `dart:developer` log() |
+| Event bus | Herald | StreamController |
+| Error reporter | Vigil | In-memory list |
+| Service locator | Titan DI | Map-based lookup |
+| Reactive values | Core | ChangeNotifier |
+
+#### With Bloc / Provider / Riverpod
+
+```dart
+import 'package:titan_colossus/titan_colossus.dart';
+
+void main() {
+  // Use standalone bindings — no Titan integration required
+  ColossusBindings.installDefaults();
+
+  if (kDebugMode) {
+    Colossus.init(
+      tremors: [Tremor.fps(), Tremor.leaks()],
+      enableSentinel: true,
+      sentinelConfig: const SentinelConfig(
+        excludePatterns: [r'localhost:864\d'],
+      ),
+    );
+  }
+
+  runApp(
+    // Use your preferred state management — no Beacon required
+    BlocProvider(               // Bloc
+      create: (_) => MyCubit(),
+      child: Lens(              // Colossus debug overlay
+        enabled: kDebugMode,
+        child: MaterialApp(
+          home: const MyHomePage(),
+        ),
+      ),
+    ),
+  );
+}
+```
+
+#### Custom bindings (advanced)
+
+For deeper integration with your framework, create custom bindings:
+
+```dart
+class BlocBindings extends ColossusBindings {
+  BlocBindings()
+      : super(
+          createLogger: DefaultLogger.new,
+          eventBus: DefaultEventBus(),
+          errorReporter: DefaultErrorReporter(),
+          serviceLocator: DefaultServiceLocator(),
+          createReactiveValue: <T>(T initial) =>
+              DefaultReactiveValue<T>(initial),
+        );
+}
+
+void main() {
+  ColossusBindings.install(BlocBindings());
+  Colossus.init();
+  runApp(const MyBlocApp());
+}
+```
+
+#### What works without Titan state management
+
+All Colossus features work without Beacon or Pillar:
+- **Pulse** (FPS), **Stride** (page loads), **Vessel** (memory), **Echo** (rebuilds)
+- **Tremor** performance alerts
+- **Sentinel** HTTP interception
+- **DevToolsBridge** service extensions and timeline
+- **Shade** recording & **Phantom** replay
+- **Scry** AI testing & **Campaign** execution
+- **Lens** debug overlay
+- **Scout** / **Terrain** / **Gauntlet** discovery
+- **MCP** / **Relay** remote bridge
+
+> **Note:** `Vessel` Pillar leak detection is less useful in non-Titan apps since it monitors Titan's DI registry. All other features are fully framework-agnostic.
+
+#### Sentinel standalone (zero Titan dependency)
+
+Sentinel itself has no Titan imports — it uses only `dart:io` and `dart:convert`. You can use it as a lightweight HTTP interceptor without installing Colossus:
+
+```dart
+import 'package:titan_colossus/titan_colossus.dart';
+
+void main() {
+  Sentinel.install(
+    config: SentinelConfig(
+      excludePatterns: [r'analytics\.'],
+      maxBodyCapture: 32 * 1024,
+    ),
+    onRecord: (record) {
+      debugPrint('${record.method} ${record.url} → '
+          '${record.statusCode} (${record.duration.inMilliseconds}ms)');
+    },
+  );
+
+  runApp(const MyApp());
+
+  // Later: Sentinel.uninstall();
+}
+```
+
+#### Manual page load timing
+
+Without Atlas, record page load times manually:
+
+```dart
+final sw = Stopwatch()..start();
+await loadData();
+sw.stop();
+Colossus.instance.stride.record('/my-page', sw.elapsed);
+```
+
+#### Manual Shade recording
+
+Without Atlas/Beacon, wrap your widget tree manually:
+
+```dart
+ShadeListener(
+  shade: Colossus.instance.shade,
+  child: MaterialApp(home: const MyApp()),
+)
+```
 
 ## The Colossus Lexicon
 
@@ -157,6 +300,10 @@ That's it. Colossus auto-registers its Lens tab and begins monitoring.
 | `Tableau` | 📸 | Element tree snapshot captured from live widget tree |
 | `TableauCapture` | 🔍 | Static walker — extracts Glyphs from the Element tree |
 | `Glyph` | ✨ | Single captured UI element (type, label, bounds, interaction) |
+| `Sentinel` | 🕵️ | Silent HTTP interception via `HttpOverrides` |
+| `SentinelRecord` | 📝 | Complete HTTP transaction record (request + response + timing) |
+| `SentinelConfig` | ⚙️ | Filtering, body capture limits, and retention settings |
+| `DevToolsBridge` | 🔗 | Connects Colossus to Flutter DevTools (extensions, timeline, events) |
 
 ## Usage
 
@@ -532,6 +679,175 @@ positional labels (`"tap@120,340"`) for elements without visible text.
 
 ---
 
+### Sentinel — HTTP Interception
+
+Sentinel intercepts all HTTP traffic via `dart:io` `HttpOverrides` — like
+Charles Proxy but built into the app. Works with any Dart HTTP client
+(package:http, dio, Envoy, raw HttpClient) because all native HTTP flows
+through `dart:io`.
+
+#### Enable via ColossusPlugin
+
+```dart
+ColossusPlugin(
+  enableSentinel: true,
+  sentinelConfig: const SentinelConfig(
+    excludePatterns: [r'localhost:864\d'], // Exclude Relay traffic
+    maxBodyCapture: 64 * 1024,            // 64 KB body limit
+    maxRecords: 500,                      // Ring buffer size
+  ),
+)
+```
+
+#### Enable manually
+
+```dart
+Colossus.init(
+  enableSentinel: true,
+  sentinelConfig: SentinelConfig(
+    excludePatterns: [r'localhost:864\d'],
+  ),
+);
+```
+
+#### Browse captured records
+
+```dart
+final records = Colossus.instance.sentinelRecords;
+for (final r in records) {
+  print('${r.method} ${r.url} → ${r.statusCode} '
+        '(${r.duration.inMilliseconds}ms, ${r.responseSize}B)');
+}
+```
+
+#### SentinelRecord fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `String` | Unique request ID |
+| `method` | `String` | HTTP method (GET, POST, etc.) |
+| `url` | `Uri` | Full request URL |
+| `timestamp` | `DateTime` | When the request started |
+| `duration` | `Duration` | Total round-trip time |
+| `statusCode` | `int?` | Response status (null if connection failed) |
+| `requestHeaders` | `Map<String, List<String>>` | Request headers |
+| `requestBody` | `List<int>?` | Request body bytes (capped) |
+| `requestSize` | `int` | Actual request body size |
+| `responseHeaders` | `Map<String, List<String>>?` | Response headers |
+| `responseBody` | `List<int>?` | Response body bytes (capped) |
+| `responseSize` | `int?` | Actual response body size |
+| `success` | `bool` | Whether status is 2xx |
+| `error` | `String?` | Error message on failure |
+
+#### SentinelConfig options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `maxBodyCapture` | `65536` | Max bytes to capture per body |
+| `excludePatterns` | `[]` | URL regex patterns to skip |
+| `includePatterns` | `null` | If set, only matching URLs are captured |
+| `captureRequestBody` | `true` | Capture request bodies |
+| `captureResponseBody` | `true` | Capture response bodies |
+| `captureHeaders` | `true` | Capture headers |
+| `maxRecords` | `500` | Max records in memory (ring buffer) |
+
+#### Relay endpoint
+
+Sentinel records are available via the Relay HTTP bridge:
+
+```bash
+# Get all records
+curl http://localhost:8642/sentinel/records
+
+# Clear records
+curl -X DELETE http://localhost:8642/sentinel/records
+```
+
+#### Standalone usage (without Colossus)
+
+```dart
+Sentinel.install(
+  config: SentinelConfig(maxBodyCapture: 32 * 1024),
+  onRecord: (record) {
+    print('${record.method} ${record.url} → ${record.statusCode}');
+  },
+);
+
+// Make HTTP calls — all traffic is captured
+final response = await http.get(Uri.parse('https://api.example.com/data'));
+
+// Clean up
+Sentinel.uninstall();
+```
+
+#### Testing
+
+In test environments where Flutter's test zone blocks network access:
+
+```dart
+Sentinel.install(
+  onRecord: (r) => records.add(r),
+  chainPreviousOverrides: false, // Skip Flutter test's MockHttpOverrides
+);
+
+// Use Sentinel.createClient() instead of HttpClient()
+final client = Sentinel.createClient()!;
+```
+
+---
+
+### DevToolsBridge — Flutter DevTools Integration
+
+DevToolsBridge connects Colossus data to Flutter DevTools via three
+`dart:developer` APIs:
+
+1. **Service Extensions** — DevTools extension tabs can query live data
+2. **Timeline Annotations** — Performance events in the DevTools timeline
+3. **Event Streaming** — Real-time push via `postEvent`
+
+#### Automatic setup
+
+DevToolsBridge installs automatically when `Colossus.init()` is called
+with `enableDevTools: true` (the default).
+
+#### Service Extensions
+
+| Extension | What it returns |
+|-----------|----------------|
+| `ext.colossus.getPerformance` | Full Decree (FPS, jank, page loads, memory) |
+| `ext.colossus.getApiMetrics` | All tracked API call metrics |
+| `ext.colossus.getSentinelRecords` | Sentinel HTTP records with full detail |
+| `ext.colossus.getTerrain` | Scout's navigation graph |
+| `ext.colossus.getMemorySnapshot` | Vessel memory state |
+| `ext.colossus.getAlerts` | Tremor alert history |
+| `ext.colossus.getFrameworkErrors` | Captured Flutter framework errors |
+| `ext.colossus.getEvents` | Integration events (filterable by source) |
+
+#### Timeline methods
+
+```dart
+DevToolsBridge.timelinePageLoad('/quest/42', Duration(milliseconds: 347));
+DevToolsBridge.timelineTremor('fps_low', 'FPS dropped to 42', 'warning');
+DevToolsBridge.timelineApiCall('GET', 'https://api.example.com/users', 200, 181);
+```
+
+#### Event streaming
+
+```dart
+DevToolsBridge.postTremorAlert('fps_low', 'frame', 'warning', 'FPS dropped to 42');
+DevToolsBridge.postApiMetric({'method': 'GET', 'url': '...', 'durationMs': 181});
+DevToolsBridge.postRouteChange('/login', '/quests', 'navigate');
+DevToolsBridge.postFrameworkError('overflow', 'A RenderFlex overflowed by 42 pixels');
+```
+
+#### Structured logging
+
+```dart
+DevToolsBridge.log('Campaign completed: 12/15 passed');
+```
+
+---
+
 ### Scout — AI Test Discovery
 
 Scout passively analyzes Shade sessions to build a **Terrain** — a live map of
@@ -733,6 +1049,8 @@ Available MCP tools:
 | **Scout** | Builds Terrain from sessions, triggers `terrainNotifier` |
 | **BlueprintExport** | Bridges runtime data to IDE-time AI assistants |
 | **MCP Server** | Exposes Blueprint tools to Copilot/Claude |
+| **Sentinel** | Captures all HTTP traffic via `HttpOverrides` interception |
+| **DevToolsBridge** | Exposes Colossus data to Flutter DevTools via `dart:developer` |
 
 ## Architecture
 
@@ -744,8 +1062,10 @@ Available MCP tools:
 │  Pulse   │  Stride  │  Vessel  │   Echo     │
 │  (FPS)   │ (Loads)  │ (Memory) │ (Rebuilds) │
 ├──────────┴──────────┴──────────┴────────────┤
-│  Shade (Record & Replay) │ Inscribe (Export)│
-├──────────────────────────┴──────────────────┤
+│  Sentinel (HTTP)  │  Shade (Record & Replay)│
+├───────────────────┬─────────────────────────┤
+│ Inscribe (Export) │ DevToolsBridge (DevTools)│
+├───────────────────┴─────────────────────────┤
 │            AI Blueprint Generation           │
 │  Scout → Terrain → Gauntlet → Campaign       │
 │  Lineage │ Stratagem │ Verdict │ Debrief     │
