@@ -131,6 +131,32 @@ extension StrikeAt on WidgetTester {
     await pump();
   }
 
+  /// Enter text into the first [EditableText] matched by [finder].
+  ///
+  /// Delegates to [WidgetTester.enterText] which goes through Flutter's
+  /// `TestTextInput` channel — more reliable than manual controller
+  /// manipulation in widget tests.
+  ///
+  /// ```dart
+  /// await tester.strikeText(find.byType(TextField), 'hello');
+  /// ```
+  Future<void> strikeText(Finder finder, String text) async {
+    await tap(finder);
+    await pump();
+    await enterText(finder, text);
+    await pump();
+  }
+
+  /// Enter text into the widget with the given [ValueKey].
+  Future<void> strikeTextByKey(String key, String text) async {
+    await strikeText(find.byKey(ValueKey(key)), text);
+  }
+
+  /// Clear text from the first [EditableText] matched by [finder].
+  Future<void> strikeClearText(Finder finder) async {
+    await strikeText(finder, '');
+  }
+
   // -----------------------------------------------------------------------
   // Internals
   // -----------------------------------------------------------------------

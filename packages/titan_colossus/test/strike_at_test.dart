@@ -382,5 +382,86 @@ void main() {
 
       expect(scrolled, isTrue);
     });
+
+    // -----------------------------------------------------------------------
+    // strikeText — text input via flutter_test
+    // -----------------------------------------------------------------------
+
+    testWidgets('strikeText enters text into TextField', (tester) async {
+      final controller = TextEditingController();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: TextField(controller: controller)),
+        ),
+      );
+
+      await tester.strikeText(find.byType(TextField), 'hello world');
+
+      expect(controller.text, 'hello world');
+    });
+
+    testWidgets('strikeTextByKey enters text by ValueKey', (tester) async {
+      final controller = TextEditingController();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TextField(
+              key: const ValueKey('email-field'),
+              controller: controller,
+            ),
+          ),
+        ),
+      );
+
+      await tester.strikeTextByKey('email-field', 'test@example.com');
+
+      expect(controller.text, 'test@example.com');
+    });
+
+    testWidgets('strikeClearText clears TextField', (tester) async {
+      final controller = TextEditingController(text: 'existing');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: TextField(controller: controller)),
+        ),
+      );
+
+      await tester.strikeClearText(find.byType(TextField));
+
+      expect(controller.text, isEmpty);
+    });
+
+    testWidgets('strikeText replaces existing text', (tester) async {
+      final controller = TextEditingController(text: 'old text');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: TextField(controller: controller)),
+        ),
+      );
+
+      await tester.strikeText(find.byType(TextField), 'new text');
+
+      expect(controller.text, 'new text');
+    });
+
+    testWidgets('strikeText works with TextFormField', (tester) async {
+      final controller = TextEditingController();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Form(child: TextFormField(controller: controller)),
+          ),
+        ),
+      );
+
+      await tester.strikeText(find.byType(TextFormField), 'form value');
+
+      expect(controller.text, 'form value');
+    });
   });
 }

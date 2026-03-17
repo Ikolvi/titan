@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.7] - 2026-03-17
+
+### Added
+- **WidgetTester text injection** — `StratagemRunner` now accepts an optional `WidgetTester` parameter. When provided, `enterText` and `clearText` actions use `tester.enterText()` from `flutter_test` instead of manual controller lookup. Falls back to 3-strategy injection if no `EditableText` found at target position.
+- **Colossus tester passthrough** — `executeStratagem()`, `executeStratagemFile()`, `executeCampaign()`, and `executeCampaignJson()` accept optional `WidgetTester? tester` for widget test contexts.
+- **StrikeAt text input** — New `strikeText()`, `strikeTextByKey()`, and `strikeClearText()` methods on the `StrikeAt` extension for text input in widget tests.
+
 ## [2.0.6] - 2026-03-17
 
 ### Fixed

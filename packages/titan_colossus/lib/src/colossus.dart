@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart' show Element, WidgetsBinding;
+import 'package:flutter_test/flutter_test.dart' show WidgetTester;
 import 'package:titan_atlas/titan_atlas.dart' show Atlas;
 import 'package:titan_bastion/titan_bastion.dart';
 import 'package:titan_envoy/titan_envoy.dart';
@@ -1346,6 +1347,7 @@ class Colossus extends Pillar {
     bool captureScreenshots = false,
     Duration? stepTimeout,
     void Function(VerdictStep)? onStepComplete,
+    WidgetTester? tester,
   }) async {
     _chronicle?.info(
       'Executing Stratagem: ${stratagem.name} '
@@ -1357,6 +1359,7 @@ class Colossus extends Pillar {
       captureScreenshots: captureScreenshots,
       defaultStepTimeout: stepTimeout ?? const Duration(seconds: 10),
       onStepComplete: onStepComplete,
+      tester: tester,
     );
 
     final verdict = await runner.execute(stratagem);
@@ -1383,6 +1386,7 @@ class Colossus extends Pillar {
   Future<Verdict> executeStratagemFile(
     String path, {
     bool captureScreenshots = false,
+    WidgetTester? tester,
   }) async {
     final file = File(path);
     if (!file.existsSync()) {
@@ -1391,7 +1395,11 @@ class Colossus extends Pillar {
     final content = await file.readAsString();
     final json = jsonDecode(content) as Map<String, dynamic>;
     final stratagem = Stratagem.fromJson(json);
-    return executeStratagem(stratagem, captureScreenshots: captureScreenshots);
+    return executeStratagem(
+      stratagem,
+      captureScreenshots: captureScreenshots,
+      tester: tester,
+    );
   }
 
   /// Execute all Stratagems in a directory.
@@ -1669,6 +1677,7 @@ class Colossus extends Pillar {
     Campaign campaign, {
     bool captureScreenshots = false,
     Future<void> Function(String route)? navigateToRoute,
+    WidgetTester? tester,
   }) async {
     _chronicle?.info(
       'Executing Campaign: ${campaign.name} '
@@ -1681,6 +1690,7 @@ class Colossus extends Pillar {
       defaultStepTimeout: campaign.timeout,
       navigateToRoute: navigateToRoute ?? _defaultNavigateToRoute,
       authStratagem: campaign.authStratagem,
+      tester: tester,
     );
 
     final result = await campaign.execute(runner: runner, terrain: terrain);
@@ -1706,12 +1716,14 @@ class Colossus extends Pillar {
     Map<String, dynamic> json, {
     bool captureScreenshots = false,
     Future<void> Function(String route)? navigateToRoute,
+    WidgetTester? tester,
   }) {
     final campaign = Campaign.fromJson(json);
     return executeCampaign(
       campaign,
       captureScreenshots: captureScreenshots,
       navigateToRoute: navigateToRoute,
+      tester: tester,
     );
   }
 

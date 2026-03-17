@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:titan_atlas/titan_atlas.dart' show Atlas;
 
@@ -109,6 +110,14 @@ class StratagemRunner {
   /// ```
   final Stratagem? authStratagem;
 
+  /// Optional [WidgetTester] for test environments.
+  ///
+  /// When provided, text input uses `tester.enterText()` from
+  /// `flutter_test` instead of the manual controller-lookup
+  /// strategy. This is more reliable in widget tests because it
+  /// goes through Flutter's `TestTextInput` channel.
+  final WidgetTester? tester;
+
   /// Pointer ID counter for synthetic events.
   int _pointerCounter = 200;
 
@@ -130,6 +139,7 @@ class StratagemRunner {
     this.onStepComplete,
     this.navigateToRoute,
     this.authStratagem,
+    this.tester,
   });
 
   // -----------------------------------------------------------------------
@@ -386,24 +396,36 @@ class StratagemRunner {
         await _dispatchLongPress(target!.centerX, target.centerY);
 
       case StratagemAction.enterText:
-        // Tap to focus, then inject text
-        await _dispatchTap(target!.centerX, target.centerY);
         final text = stratagem.interpolate(step.value ?? '');
-        await _injectText(
-          text,
-          clearFirst: step.clearFirst ?? true,
-          targetX: target.centerX,
-          targetY: target.centerY,
-        );
+        if (tester != null) {
+          await _testerEnterText(
+            target!,
+            text,
+            clearFirst: step.clearFirst ?? true,
+          );
+        } else {
+          // Tap to focus, then inject text
+          await _dispatchTap(target!.centerX, target.centerY);
+          await _injectText(
+            text,
+            clearFirst: step.clearFirst ?? true,
+            targetX: target.centerX,
+            targetY: target.centerY,
+          );
+        }
 
       case StratagemAction.clearText:
-        await _dispatchTap(target!.centerX, target.centerY);
-        await _injectText(
-          '',
-          clearFirst: true,
-          targetX: target.centerX,
-          targetY: target.centerY,
-        );
+        if (tester != null) {
+          await _testerEnterText(target!, '', clearFirst: true);
+        } else {
+          await _dispatchTap(target!.centerX, target.centerY);
+          await _injectText(
+            '',
+            clearFirst: true,
+            targetX: target.centerX,
+            targetY: target.centerY,
+          );
+        }
 
       case StratagemAction.submitField:
         // Trigger text input action (done/next/go)
@@ -794,6 +816,83 @@ class StratagemRunner {
   // -----------------------------------------------------------------------
   // Text injection
   // -----------------------------------------------------------------------
+
+  /// Enter text using [WidgetTester.enterText] from `flutter_test`.
+  ///
+  /// Finds the [EditableText] at the target's screen position, resolves
+  /// a [Finder] for it, and delegates to [WidgetTester.enterText]. This
+  /// goes through Flutter's `TestTextInput` channel and is more reliable
+  /// in widget-test environments than manual controller manipulation.
+  Future<void> _testerEnterText(
+    Glyph target,
+    String text, {
+    bool clearFirst = true,
+  }) async {
+    final t = tester!;
+
+    // Find the EditableText at the target position.
+    final finder = _findEditableTextAt(target.centerX, target.centerY);
+
+    if (finder == null) {
+      // Fallback to manual injection if no EditableText found.
+      await _dispatchTap(target.centerX, target.centerY);
+      await _injectText(
+        text,
+        clearFirst: clearFirst,
+        targetX: target.centerX,
+        targetY: target.centerY,
+      );
+      return;
+    }
+
+    // Tap to focus via tester, then enter text.
+    await t.tap(finder);
+    await t.pump();
+
+    if (clearFirst) {
+      // Select all + delete to clear, then enter new text.
+      await t.enterText(finder, text);
+    } else {
+      // Append to existing text — read current value first.
+      final element = finder.evaluate().first;
+      final controller = (element.widget as EditableText).controller;
+      await t.enterText(finder, controller.text + text);
+    }
+
+    await t.pump();
+  }
+
+  /// Find an [EditableText] [Finder] at the given screen coordinates.
+  ///
+  /// Walks the element tree to locate an [EditableText] whose render
+  /// box contains the point. Returns a [Finder] for use with
+  /// [WidgetTester], or `null` if not found.
+  Finder? _findEditableTextAt(double x, double y) {
+    final point = Offset(x, y);
+    Element? matched;
+
+    void visit(Element element) {
+      if (matched != null) return;
+      if (element.widget is EditableText) {
+        final renderObject = element.renderObject;
+        if (renderObject is RenderBox && renderObject.hasSize) {
+          final position = renderObject.localToGlobal(Offset.zero);
+          final bounds = position & renderObject.size;
+          if (bounds.contains(point)) {
+            matched = element;
+            return;
+          }
+        }
+      }
+      element.visitChildren(visit);
+    }
+
+    WidgetsBinding.instance.rootElement?.visitChildren(visit);
+    if (matched == null) return null;
+
+    // Return a finder that matches this exact element.
+    return find.byElementPredicate((e) => identical(e, matched));
+  }
 
   /// Inject text into the focused (or position-matched) text field.
   ///
